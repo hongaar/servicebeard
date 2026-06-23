@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "serviceboard.fullname" . }}-config
+  labels:
+    {{- include "serviceboard.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.env.NODE_ENV | quote }}
+  LOG_LEVEL: {{ .Values.env.LOG_LEVEL | quote }}
+  PORT: {{ .Values.api.port | quote }}
+  OIDC_LOGIN: {{ .Values.env.OIDC_LOGIN | quote }}
+  OIDC_SIGNUP: {{ .Values.env.OIDC_SIGNUP | quote }}
+  LOCAL_LOGIN: {{ .Values.env.LOCAL_LOGIN | quote }}
+  LOCAL_LOGIN_SIGNUP: {{ .Values.env.LOCAL_LOGIN_SIGNUP | quote }}
+  OIDC_ISSUER: {{ .Values.env.OIDC_ISSUER | quote }}
+  OIDC_CLIENT_ID: {{ .Values.env.OIDC_CLIENT_ID | quote }}
+  OIDC_REDIRECT_URI: {{ .Values.env.OIDC_REDIRECT_URI | quote }}
+  API_URL: {{ .Values.env.API_URL | quote }}
+  WEB_URL: {{ .Values.env.WEB_URL | quote }}
+  WEBHOOK_BASE_URL: {{ .Values.env.WEBHOOK_BASE_URL | quote }}

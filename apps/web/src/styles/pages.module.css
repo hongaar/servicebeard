@@ -1,0 +1,501 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 3rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  margin-bottom: 2rem;
+  font-size: 0.9375rem;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.credentialAuth {
+  text-align: left;
+}
+
+.credentialAuthTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.credentialAuth .tabs {
+  margin-bottom: 1rem;
+}
+
+.credentialAuth .form {
+  gap: 0.75rem;
+}
+
+.methodTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.methodTab {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.methodTabActive {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: rgba(108, 140, 255, 0.08);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.teamCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  transition: border-color 0.15s;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.teamCard:hover {
+  border-color: var(--color-primary);
+  text-decoration: none;
+}
+
+.teamName {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.teamRole {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.table th {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badgeActive {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--color-success);
+}
+
+.badgeInactive {
+  background: rgba(154, 160, 180, 0.15);
+  color: var(--color-text-muted);
+}
+
+.badgeInbound {
+  background: rgba(108, 140, 255, 0.15);
+  color: var(--color-primary);
+}
+
+.badgeOutbound {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--color-warning);
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--color-text-muted);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.ruleCard {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.ruleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.ruleActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ruleName {
+  font-weight: 600;
+}
+
+.ruleMeta {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.alertError {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.alertSuccess {
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.formHint {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin-top: -0.5rem;
+}
+
+.labelGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.labelOption {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.labelSwatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.snapshotList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.snapshotItem {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.snapshotSubject {
+  font-weight: 500;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.snapshotPreview {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 0.375rem;
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.collapseSection {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.collapseHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: var(--color-bg);
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapseHeader:hover {
+  background: var(--color-surface);
+}
+
+.collapseTitle {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.collapseSummary {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.collapseChevron {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.collapseChevron[data-expanded="true"] {
+  transform: rotate(180deg);
+}
+
+.collapseBody {
+  padding: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.previewTableWrap {
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.previewTableWrap .table th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 1;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.debugPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+}
+
+.debugSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.debugSectionTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.debugGrid {
+  display: grid;
+  grid-template-columns: minmax(8rem, 11rem) 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.debugField {
+  display: contents;
+}
+
+.debugLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.debugValue {
+  margin: 0;
+  font-size: 0.875rem;
+  word-break: break-word;
+}
+
+.debugValue code,
+.debugBodyText {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.debugMessageList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.debugMessageCard {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.debugMessageHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.debugMessageIndex {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.debugList {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.debugBody {
+  margin-top: 0.75rem;
+}
+
+.debugBodyText {
+  margin: 0.375rem 0 0;
+  padding: 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  max-height: 240px;
+  overflow: auto;
+}

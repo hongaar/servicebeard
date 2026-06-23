@@ -1,0 +1,33 @@
+{
+  "name": "serviceboard",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:api": "bun run --filter @serviceboard/api dev",
+    "dev:web": "bun run --filter @serviceboard/web dev",
+    "dev:worker": "bun run --filter @serviceboard/worker dev",
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "eslint .",
+    "test": "bun test tests/",
+    "db:generate": "bun run --filter @serviceboard/db generate",
+    "db:migrate": "bun run --filter @serviceboard/db migrate",
+    "db:studio": "bun run --filter @serviceboard/db studio"
+  },
+  "devDependencies": {
+    "@serviceboard/db": "workspace:*",
+    "@serviceboard/providers": "workspace:*",
+    "@serviceboard/shared": "workspace:*",
+    "@types/bun": "latest",
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

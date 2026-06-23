@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: serviceboard
+      POSTGRES_PASSWORD: serviceboard
+      POSTGRES_DB: serviceboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U serviceboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Local IMAP + SMTP for dev/testing (replaces a real mailbox).
+  # API / raw message browser: http://localhost:8080
+  greenmail:
+    image: greenmail/standalone:2.1.9
+    ports:
+      - "3025:3025"   # SMTP
+      - "3143:3143"   # IMAP
+      - "8080:8080"   # API + message browser
+    volumes:
+      - ./deploy/dev-mail/greenmail-preload:/preload:ro
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.all
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users=support:support@mail.test,customer:customer@mail.test
+        -Dgreenmail.preload.dir=/preload
+
+  # Webmail for GreenMail (dev only): http://localhost:8888
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    ports:
+      - "8888:80"
+    environment:
+      ROUNDCUBEMAIL_DEFAULT_HOST: greenmail
+      ROUNDCUBEMAIL_DEFAULT_PORT: 3143
+      ROUNDCUBEMAIL_SMTP_SERVER: greenmail
+      ROUNDCUBEMAIL_SMTP_PORT: 3025
+    volumes:
+      - ./deploy/dev-mail/roundcube/config:/var/roundcube/config:ro
+      - ./deploy/dev-mail/roundcube/plugins/greenmail_login:/var/www/html/plugins/greenmail_login:ro
+      - roundcube_data:/var/roundcube/db
+    depends_on:
+      - greenmail
+
+  # Local dev only — web UI for Postgres (not for production).
+  adminer:
+    image: adminer:4
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: nette
+
+volumes:
+  postgres_data:
+  roundcube_data:

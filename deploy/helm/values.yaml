@@ -1,0 +1,82 @@
+replicaCount: 1
+
+image:
+  repository: serviceboard
+  tag: latest
+  pullPolicy: IfNotPresent
+
+api:
+  replicaCount: 2
+  port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+web:
+  replicaCount: 2
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  host: serviceboard.example.com
+  tls:
+    enabled: true
+    secretName: serviceboard-tls
+
+postgresql:
+  enabled: true
+  auth:
+    username: serviceboard
+    password: changeme
+    database: serviceboard
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+externalDatabase:
+  enabled: false
+  url: ""
+
+env:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  OIDC_LOGIN: "true"
+  OIDC_SIGNUP: "true"
+  LOCAL_LOGIN: "false"
+  LOCAL_LOGIN_SIGNUP: "false"
+  OIDC_ISSUER: https://your-idp.example.com
+  OIDC_CLIENT_ID: serviceboard
+  OIDC_REDIRECT_URI: https://serviceboard.example.com/api/auth/callback
+  API_URL: https://serviceboard.example.com
+  WEB_URL: https://serviceboard.example.com
+  WEBHOOK_BASE_URL: https://serviceboard.example.com
+
+secrets:
+  oidcClientSecret: changeme
+  sessionSecret: changeme
+  encryptionKey: "0000000000000000000000000000000000000000000000000000000000000000"
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+migration:
+  enabled: true
