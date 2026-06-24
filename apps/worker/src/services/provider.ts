@@ -1,6 +1,6 @@
-import type { projects } from "@serviceboard/db";
-import { decrypt } from "@serviceboard/db";
-import { createProvider, toProviderConfig } from "@serviceboard/providers";
+import type { projects } from "@servicebeard/db";
+import { decrypt } from "@servicebeard/db";
+import { createProvider, toProviderConfig } from "@servicebeard/providers";
 
 type ProjectRow = typeof projects.$inferSelect;
 

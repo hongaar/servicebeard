@@ -9,7 +9,7 @@ function parseRpId(url: string): string {
 export function getWebAuthnConfig() {
   const origin = process.env.WEBAUTHN_ORIGIN ?? process.env.WEB_URL ?? "http://localhost:5173";
   const rpId = process.env.WEBAUTHN_RP_ID ?? parseRpId(origin);
-  const rpName = process.env.WEBAUTHN_RP_NAME ?? "Serviceboard";
+  const rpName = process.env.WEBAUTHN_RP_NAME ?? "Servicebeard";
 
   return {
     rpName,

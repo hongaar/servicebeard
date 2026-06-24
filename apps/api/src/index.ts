@@ -1,4 +1,4 @@
-import { formatValidationError } from "@serviceboard/shared";
+import { formatValidationError } from "@servicebeard/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";

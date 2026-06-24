@@ -1,4 +1,4 @@
-import type { IssueProvider, ProviderConfig } from "@serviceboard/providers";
+import type { IssueProvider, ProviderConfig } from "@servicebeard/providers";
 import {
     collectOutboundImageRefs,
     markdownToHtml,
@@ -7,7 +7,7 @@ import {
     replaceHtmlImageUrlsWithCid,
     replaceMarkdownImagesWithCid,
     resolveProviderImageUrl,
-} from "@serviceboard/shared/email-content";
+} from "@servicebeard/shared/email-content";
 import { randomBytes } from "node:crypto";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
@@ -85,7 +85,7 @@ export async function buildOutboundMultipartContent(
         continue;
       }
 
-      const cid = `${randomBytes(8).toString("hex")}@serviceboard.local`;
+      const cid = `${randomBytes(8).toString("hex")}@servicebeard.local`;
       registerImageCid(urlToCid, image.url, resolvedUrl, cid);
       attachments.push({
         filename: filenameFromUrl(resolvedUrl, index),

@@ -22,7 +22,7 @@ interface TeamDetail {
 }
 
 export function TeamPage() {
-  const { user, team } = useLoaderData({ from: "/teams/$teamId" }) as {
+  const { user, team } = useLoaderData({ from: "/teams/$teamId/members" }) as {
     user: { email: string; name: string | null };
     team: TeamDetail;
   };

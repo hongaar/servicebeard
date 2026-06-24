@@ -1,6 +1,6 @@
-import { getDb, projects } from "@serviceboard/db";
-import type { NormalizedWebhookEvent } from "@serviceboard/providers";
-import { setProviderLog } from "@serviceboard/providers";
+import { getDb, projects } from "@servicebeard/db";
+import type { NormalizedWebhookEvent } from "@servicebeard/providers";
+import { setProviderLog } from "@servicebeard/providers";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
 import { logExternalError } from "./lib/external-error";
@@ -25,7 +25,7 @@ export const QUEUE_NAMES = {
 const POLL_TICK_CRON = "* * * * *";
 
 const globalWorker = globalThis as typeof globalThis & {
-  __serviceboardWorkerBoss?: PgBoss;
+  __servicebeardWorkerBoss?: PgBoss;
 };
 
 function isProjectPollDue(
@@ -135,7 +135,7 @@ async function runCommentPollsForDueProjects(): Promise<void> {
 }
 
 async function stopExistingWorker(): Promise<void> {
-  const existing = globalWorker.__serviceboardWorkerBoss;
+  const existing = globalWorker.__servicebeardWorkerBoss;
   if (!existing) return;
 
   logger.info("stopping previous worker instance");
@@ -144,7 +144,7 @@ async function stopExistingWorker(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "failed to stop previous worker instance");
   } finally {
-    globalWorker.__serviceboardWorkerBoss = undefined;
+    globalWorker.__servicebeardWorkerBoss = undefined;
   }
 }
 
@@ -157,7 +157,7 @@ export async function startWorker(): Promise<PgBoss> {
 
   const connectionString =
     process.env.DATABASE_URL ??
-    "postgres://serviceboard:serviceboard@localhost:5432/serviceboard";
+    "postgres://servicebeard:servicebeard@localhost:5432/servicebeard";
 
   const boss = new PgBoss(connectionString);
   await boss.start();
@@ -231,7 +231,7 @@ export async function startWorker(): Promise<PgBoss> {
 
   await schedulePollJobs(boss);
 
-  globalWorker.__serviceboardWorkerBoss = boss;
+  globalWorker.__servicebeardWorkerBoss = boss;
 
   logger.info("Worker started");
   return boss;

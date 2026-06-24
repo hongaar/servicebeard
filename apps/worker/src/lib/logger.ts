@@ -1,4 +1,4 @@
-import { loadMonorepoEnv } from "@serviceboard/shared/env";
+import { loadMonorepoEnv } from "@servicebeard/shared/env";
 import pino from "pino";
 
 loadMonorepoEnv();

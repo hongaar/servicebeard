@@ -1,7 +1,7 @@
 import type { Context, Next } from "hono";
 import { getCookie } from "hono/cookie";
 import { getSessionUser, getSessionCookieName } from "../lib/auth";
-import type { SessionUser } from "@serviceboard/shared";
+import type { SessionUser } from "@servicebeard/shared";
 
 export type AppVariables = {
   user: SessionUser | null;

@@ -3,12 +3,12 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "serviceboard",
+      "name": "servicebeard",
       "devDependencies": {
         "@eslint/js": "^9.0.0",
-        "@serviceboard/db": "workspace:*",
-        "@serviceboard/providers": "workspace:*",
-        "@serviceboard/shared": "workspace:*",
+        "@servicebeard/db": "workspace:*",
+        "@servicebeard/providers": "workspace:*",
+        "@servicebeard/shared": "workspace:*",
         "@types/bun": "latest",
         "eslint": "^9.0.0",
         "prettier": "^3.0.0",
@@ -17,12 +17,12 @@
       },
     },
     "apps/api": {
-      "name": "@serviceboard/api",
+      "name": "@servicebeard/api",
       "version": "0.0.1",
       "dependencies": {
-        "@serviceboard/db": "workspace:*",
-        "@serviceboard/providers": "workspace:*",
-        "@serviceboard/shared": "workspace:*",
+        "@servicebeard/db": "workspace:*",
+        "@servicebeard/providers": "workspace:*",
+        "@servicebeard/shared": "workspace:*",
         "@simplewebauthn/server": "^13.3.1",
         "drizzle-orm": "^0.38.0",
         "hono": "^4.6.0",
@@ -43,14 +43,15 @@
       },
     },
     "apps/web": {
-      "name": "@serviceboard/web",
+      "name": "@servicebeard/web",
       "version": "0.0.1",
       "dependencies": {
         "@base-ui/react": "^1.0.0",
-        "@serviceboard/shared": "workspace:*",
+        "@servicebeard/shared": "workspace:*",
         "@simplewebauthn/browser": "^13.3.0",
         "@tanstack/react-query": "^5.60.0",
         "@tanstack/react-router": "^1.82.0",
+        "lucide-react": "0.468.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
       },
@@ -63,12 +64,12 @@
       },
     },
     "apps/worker": {
-      "name": "@serviceboard/worker",
+      "name": "@servicebeard/worker",
       "version": "0.0.1",
       "dependencies": {
-        "@serviceboard/db": "workspace:*",
-        "@serviceboard/providers": "workspace:*",
-        "@serviceboard/shared": "workspace:*",
+        "@servicebeard/db": "workspace:*",
+        "@servicebeard/providers": "workspace:*",
+        "@servicebeard/shared": "workspace:*",
         "drizzle-orm": "^0.38.0",
         "imapflow": "^1.0.0",
         "mailparser": "^3.7.0",
@@ -84,10 +85,10 @@
       },
     },
     "packages/db": {
-      "name": "@serviceboard/db",
+      "name": "@servicebeard/db",
       "version": "0.0.1",
       "dependencies": {
-        "@serviceboard/shared": "workspace:*",
+        "@servicebeard/shared": "workspace:*",
         "drizzle-orm": "^0.38.0",
         "postgres": "^3.4.0",
       },
@@ -97,17 +98,17 @@
       },
     },
     "packages/providers": {
-      "name": "@serviceboard/providers",
+      "name": "@servicebeard/providers",
       "version": "0.0.1",
       "dependencies": {
-        "@serviceboard/shared": "workspace:*",
+        "@servicebeard/shared": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.6.0",
       },
     },
     "packages/shared": {
-      "name": "@serviceboard/shared",
+      "name": "@servicebeard/shared",
       "version": "0.0.1",
       "dependencies": {
         "marked": "^18.0.5",
@@ -361,17 +362,17 @@
 
     "@selderee/plugin-htmlparser2": ["@selderee/plugin-htmlparser2@0.12.0", "", { "dependencies": { "domelementtype": "~2.3.0", "domhandler": "~5.0.3" }, "peerDependencies": { "selderee": "~0.12.0" } }, "sha512-oELmoyA6ML9jDRMV3kgcMQFKxUfBU0yFVn6yTctVaLT5ygXnxH52I3TZEgV9EhXJC68/uFvE5Daj1/25c0Xa/A=="],
 
-    "@serviceboard/api": ["@serviceboard/api@workspace:apps/api"],
+    "@servicebeard/api": ["@servicebeard/api@workspace:apps/api"],
 
-    "@serviceboard/db": ["@serviceboard/db@workspace:packages/db"],
+    "@servicebeard/db": ["@servicebeard/db@workspace:packages/db"],
 
-    "@serviceboard/providers": ["@serviceboard/providers@workspace:packages/providers"],
+    "@servicebeard/providers": ["@servicebeard/providers@workspace:packages/providers"],
 
-    "@serviceboard/shared": ["@serviceboard/shared@workspace:packages/shared"],
+    "@servicebeard/shared": ["@servicebeard/shared@workspace:packages/shared"],
 
-    "@serviceboard/web": ["@serviceboard/web@workspace:apps/web"],
+    "@servicebeard/web": ["@servicebeard/web@workspace:apps/web"],
 
-    "@serviceboard/worker": ["@serviceboard/worker@workspace:apps/worker"],
+    "@servicebeard/worker": ["@servicebeard/worker@workspace:apps/worker"],
 
     "@simplewebauthn/browser": ["@simplewebauthn/browser@13.3.0", "", {}, "sha512-BE/UWv6FOToAdVk0EokzkqQQDOWtNydYlY6+OrmiZ5SCNmb41VehttboTetUM3T/fr6EAFYVXjz4My2wg230rQ=="],
 
@@ -648,6 +649,8 @@
     "lodash.merge": ["lodash.merge@4.6.2", "", {}, "sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ=="],
 
     "lru-cache": ["lru-cache@5.1.1", "", { "dependencies": { "yallist": "^3.0.2" } }, "sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w=="],
+
+    "lucide-react": ["lucide-react@0.468.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc" } }, "sha512-6koYRhnM2N0GGZIdXzSeiNwguv1gt/FAjZOiPl76roBi3xKEXa4WmfpxgQwTTL4KipXjefrnf3oV4IsYhi4JFA=="],
 
     "luxon": ["luxon@3.7.2", "", {}, "sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew=="],
 

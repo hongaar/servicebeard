@@ -3,7 +3,7 @@ import {
     users,
     webauthnChallenges,
     webauthnCredentials,
-} from "@serviceboard/db";
+} from "@servicebeard/db";
 import type {
     AuthenticationResponseJSON,
     AuthenticatorTransportFuture,

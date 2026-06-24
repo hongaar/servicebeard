@@ -1,12 +1,17 @@
+import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useLoaderData, useParams } from "@tanstack/react-router";
+import { Link, useLoaderData, useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowRight, FolderPlus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
 import { ProjectSettingsForm } from "../components/ProjectSettingsForm";
+import { ProviderLogo } from "../components/ProviderLogo";
 import { api } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import { iconSm } from "../lib/icons";
 import {
     defaultProjectSettingsForm,
     formToCreateInput,
@@ -17,6 +22,7 @@ import styles from "../styles/pages.module.css";
 export function ProjectsPage() {
   const { user, projects, teamName } = useLoaderData({ from: "/teams/$teamId/projects" });
   const { teamId } = useParams({ from: "/teams/$teamId/projects" });
+  const navigate = useNavigate();
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<ProjectSettingsFormValues>({
@@ -39,6 +45,13 @@ export function ProjectsPage() {
     setForm((f) => ({ ...f, [field]: value }));
     setFieldErrors((prev) => clearFieldError(prev, field));
     setError("");
+  };
+
+  const openProject = (projectId: string) => {
+    navigate({
+      to: "/teams/$teamId/projects/$projectId/$section",
+      params: { teamId, projectId, section: "rules" },
+    });
   };
 
   return (
@@ -85,7 +98,7 @@ export function ProjectsPage() {
 
       {projects.length === 0 && !showCreate ? (
         <div className={styles.empty}>
-          <span className={styles.emptyIcon} aria-hidden>P</span>
+          <EmptyIcon icon={FolderPlus} />
           <p className={styles.emptyTitle}>No projects yet</p>
           <p className={styles.emptyHint}>
             A project links your support inbox to GitLab (or another provider) so incoming mail
@@ -99,6 +112,7 @@ export function ProjectsPage() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Inbox</th>
                 <th>Provider</th>
                 <th>Status</th>
                 <th></th>
@@ -106,11 +120,31 @@ export function ProjectsPage() {
             </thead>
             <tbody>
               {projects.map((p) => (
-                <tr key={p.id}>
+                <tr
+                  key={p.id}
+                  className={styles.tableRowClickable}
+                  onClick={() => openProject(p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openProject(p.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`Open ${p.name}`}
+                >
                   <td>
                     <strong>{p.name}</strong>
                   </td>
-                  <td>{p.provider}</td>
+                  <td>
+                    <span className={styles.inboxEmail}>
+                      {parseMailFromAddress(p.smtpFrom)}
+                    </span>
+                  </td>
+                  <td>
+                    <ProviderLogo provider={p.provider} />
+                  </td>
                   <td>
                     <span
                       className={[
@@ -121,12 +155,17 @@ export function ProjectsPage() {
                       {p.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td>
+                  <td className={styles.tableActions}>
                     <Link
-                      to="/teams/$teamId/projects/$projectId"
-                      params={{ teamId, projectId: p.id }}
+                      to="/teams/$teamId/projects/$projectId/$section"
+                      params={{ teamId, projectId: p.id, section: "rules" }}
+                      className={styles.tableRowLink}
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      Open →
+                      <span className={styles.tableRowLinkInner}>
+                        Open
+                        <ArrowRight {...iconSm} />
+                      </span>
                     </Link>
                   </td>
                 </tr>

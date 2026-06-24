@@ -13,7 +13,7 @@
 
 .card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-10);
   max-width: 440px;
@@ -23,24 +23,23 @@
 }
 
 .loginLogo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
+  display: block;
+  margin: 0 auto var(--space-4);
   border-radius: var(--radius);
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  font-weight: 700;
-  font-size: var(--text-xl);
-  margin-bottom: var(--space-4);
 }
 
 .title {
   font-size: var(--text-3xl);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: var(--space-2);
+}
+
+.titleAccent {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .subtitle {
@@ -48,6 +47,120 @@
   margin-bottom: var(--space-8);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
+}
+
+.ssoList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ssoButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    filter var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.ssoButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--shadow);
+}
+
+.ssoButton:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ssoButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ssoButtonIcon {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+}
+
+.ssoButton_github {
+  background: #24292f;
+  border-color: #1b1f23;
+}
+
+.ssoButton_gitlab {
+  background: #fc6d26;
+  border-color: #e24329;
+}
+
+.ssoButton_oidc {
+  background: var(--color-primary-deep);
+  border-color: var(--color-primary-deep);
+}
+
+.ssoButton_email {
+  background: #64748b;
+  border-color: #475569;
+}
+
+.ssoButton_passkey {
+  background: #7c3aed;
+  border-color: #6d28d9;
+}
+
+.ssoButton_back {
+  margin-top: var(--space-6);
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.ssoButton_back:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  filter: none;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.passkeyLink {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--transition-fast);
+}
+
+.passkeyLink:hover:not(:disabled) {
+  color: var(--color-primary);
+}
+
+.passkeyLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .divider {
@@ -74,15 +187,8 @@
   text-align: left;
 }
 
-.credentialAuthTitle {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  margin-bottom: var(--space-4);
-  text-align: center;
-}
-
 .credentialAuth .tabs {
-  margin-bottom: var(--space-4);
+  margin: 0 auto var(--space-5);
 }
 
 .credentialAuth .form {
@@ -99,7 +205,7 @@
   flex: 1;
   padding: var(--space-3) var(--space-4);
   background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   color: var(--color-text-muted);
   font-size: var(--text-sm);
@@ -167,7 +273,7 @@
 
 .teamCard {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   transition:
@@ -212,6 +318,8 @@
 }
 
 .teamArrow {
+  display: inline-flex;
+  align-items: center;
   color: var(--color-text-muted);
   transition: color var(--transition-fast), transform var(--transition-fast);
 }
@@ -253,7 +361,7 @@
 /* ── Tables ── */
 
 .tableWrap {
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--color-surface);
@@ -283,6 +391,36 @@
 
 .table tbody tr:hover {
   background: var(--color-surface-hover);
+}
+
+.tableRowClickable {
+  cursor: pointer;
+}
+
+.tableRowClickable:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+
+.tableActions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.tableRowLink {
+  font-weight: 700;
+}
+
+.tableRowLinkInner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.inboxEmail {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
 .table th {
@@ -379,7 +517,7 @@
   margin-bottom: var(--space-6);
   padding: var(--space-1);
   background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   width: fit-content;
 }
@@ -423,7 +561,7 @@
 
 .ruleCard {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   margin-bottom: var(--space-3);
@@ -522,7 +660,7 @@
 
 .snapshotItem {
   background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   padding: var(--space-3);
 }
@@ -545,7 +683,7 @@
 }
 
 .collapseSection {
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -581,7 +719,8 @@
 }
 
 .collapseChevron {
-  font-size: var(--text-xs);
+  display: inline-flex;
+  align-items: center;
   color: var(--color-text-muted);
   transition: transform var(--transition-fast);
 }
@@ -601,7 +740,7 @@
 .previewTableWrap {
   max-height: 240px;
   overflow: auto;
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
 }
 
@@ -699,7 +838,7 @@
 
 .debugMessageCard {
   background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   padding: var(--space-3);
 }
@@ -729,7 +868,7 @@
   margin: var(--space-2) 0 0;
   padding: var(--space-3);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   white-space: pre-wrap;
   max-height: 240px;

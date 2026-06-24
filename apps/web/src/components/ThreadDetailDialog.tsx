@@ -1,4 +1,4 @@
-import { formatAddressList } from "@serviceboard/shared/mail";
+import { formatAddressList } from "@servicebeard/shared/mail";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { api, type ThreadDetail } from "../lib/api";

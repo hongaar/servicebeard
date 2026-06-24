@@ -9,19 +9,19 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-secondary);
 }
 
 .input,
 .select,
 .textarea {
-  padding: 0.625rem 0.875rem;
+  padding: 0.75rem 1rem;
   background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   color: var(--color-text);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   outline: none;
   transition:
     border-color var(--transition-fast),
@@ -44,7 +44,7 @@
 }
 
 .textarea {
-  min-height: 96px;
+  min-height: 112px;
   resize: vertical;
   line-height: var(--leading-relaxed);
 }
@@ -53,14 +53,14 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   cursor: pointer;
 }
 
 .checkbox input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  margin-top: 2px;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 3px;
   accent-color: var(--color-primary);
   cursor: pointer;
 }
@@ -74,7 +74,7 @@
 }
 
 .error {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--color-danger);
-  font-weight: 500;
+  font-weight: 600;
 }

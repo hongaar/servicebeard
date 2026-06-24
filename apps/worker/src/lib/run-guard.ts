@@ -5,17 +5,17 @@ interface GuardState {
 }
 
 const globalGuards = globalThis as typeof globalThis & {
-  __serviceboardRunGuards?: Map<string, GuardState>;
+  __servicebeardRunGuards?: Map<string, GuardState>;
 };
 
 function getGuard(name: string): GuardState {
-  if (!globalGuards.__serviceboardRunGuards) {
-    globalGuards.__serviceboardRunGuards = new Map();
+  if (!globalGuards.__servicebeardRunGuards) {
+    globalGuards.__servicebeardRunGuards = new Map();
   }
-  let guard = globalGuards.__serviceboardRunGuards.get(name);
+  let guard = globalGuards.__servicebeardRunGuards.get(name);
   if (!guard) {
     guard = { running: false };
-    globalGuards.__serviceboardRunGuards.set(name, guard);
+    globalGuards.__servicebeardRunGuards.set(name, guard);
   }
   return guard;
 }

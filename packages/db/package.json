@@ -1,5 +1,5 @@
 {
-  "name": "@serviceboard/db",
+  "name": "@servicebeard/db",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@serviceboard/shared": "workspace:*",
+    "@servicebeard/shared": "workspace:*",
     "drizzle-orm": "^0.38.0",
     "postgres": "^3.4.0"
   },

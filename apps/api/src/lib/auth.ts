@@ -1,4 +1,4 @@
-import { getDb } from "@serviceboard/db";
+import { getDb } from "@servicebeard/db";
 import type {
     AuthenticationResponseJSON,
     RegistrationResponseJSON,
@@ -129,7 +129,7 @@ export async function auditLog(entry: {
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   const db = getDb();
-  const { auditLog: auditLogTable } = await import("@serviceboard/db");
+  const { auditLog: auditLogTable } = await import("@servicebeard/db");
   await db.insert(auditLogTable).values(entry);
   logger.info({ audit: entry }, "audit event");
 }

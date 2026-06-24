@@ -1,6 +1,6 @@
-import type { ParsedEmail } from "@serviceboard/shared";
-import { formatMailboxAddress } from "@serviceboard/shared";
-import { buildParsedEmailContent } from "@serviceboard/shared/email-content";
+import type { ParsedEmail } from "@servicebeard/shared";
+import { formatMailboxAddress } from "@servicebeard/shared";
+import { buildParsedEmailContent } from "@servicebeard/shared/email-content";
 import { ImapFlow } from "imapflow";
 import type { AddressObject } from "mailparser";
 import { simpleParser } from "mailparser";
@@ -66,7 +66,7 @@ export async function fetchRecentMessages(
 export async function parseEmail(raw: Buffer): Promise<ParsedEmail> {
   const parsed = await simpleParser(raw);
 
-  const messageId = parsed.messageId ?? `generated-${Date.now()}@serviceboard.local`;
+  const messageId = parsed.messageId ?? `generated-${Date.now()}@servicebeard.local`;
   const inReplyTo = parsed.inReplyTo ?? null;
   const references = Array.isArray(parsed.references)
     ? parsed.references

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
-import { getDb, projects } from "@serviceboard/db";
-import { createProvider } from "@serviceboard/providers";
+import { getDb, projects } from "@servicebeard/db";
+import { createProvider } from "@servicebeard/providers";
 import { getBoss, QUEUE_NAMES } from "../lib/queue";
 import { syncEventsTotal } from "../lib/metrics";
 import { logger } from "../lib/logger";

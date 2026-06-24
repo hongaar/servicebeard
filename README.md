@@ -1,10 +1,11 @@
-# Serviceboard
+# Servicebeard
 
 Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue trackers. First supported provider: **GitLab** (cloud + self-hosted).
 
 ## Features
 
 - OIDC authentication (configurable IdP via env)
+- GitHub and GitLab OAuth sign-in
 - Teams, projects, member management
 - Per-project IMAP polling + SMTP outbound
 - Rules engine (match sender/subject/body → create issue with labels/assignee)
@@ -35,7 +36,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 ```bash
 docker compose up -d
 cp .env.example .env
-# Edit .env with your OIDC settings
+# Edit .env with your login provider settings (see Authentication below)
 ```
 
 ### 2. Install & migrate
@@ -82,13 +83,70 @@ Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
 |----------|-------------|
 | `DATABASE_URL` | Postgres connection string |
 | `ENCRYPTION_KEY` | 64-char hex key for AES-256-GCM secret encryption |
-| `OIDC_ISSUER` | OIDC provider issuer URL |
-| `OIDC_CLIENT_ID` | OIDC client ID |
-| `OIDC_CLIENT_SECRET` | OIDC client secret |
-| `OIDC_REDIRECT_URI` | Callback URL (e.g. `http://localhost:3000/api/auth/callback`) |
 | `SESSION_SECRET` | Session signing secret |
 | `WEBHOOK_BASE_URL` | Public URL for GitLab webhooks |
 | `TLS_CA_BUNDLE` | Optional path to a PEM CA bundle used for all GitLab API calls (merged with per-project CA) |
+
+### Authentication
+
+Servicebeard supports multiple login providers. Enable one or more by setting the required env vars (see `.env.example`). All OAuth/OIDC providers share the same callback URL: `{API_URL}/api/auth/callback`.
+
+#### Local (development)
+
+Enabled automatically when `NODE_ENV` is not `production`. Set `LOCAL_LOGIN=false` to disable. The API seeds `dev@localhost` / `dev` on startup.
+
+| Variable | Description |
+|----------|-------------|
+| `LOCAL_LOGIN` | `true` / `false` to override auto-detection |
+| `LOCAL_LOGIN_SIGNUP` | Allow sign-up via local credentials (default: on when local login is enabled) |
+
+#### OIDC (generic IdP)
+
+Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
+
+| Variable | Description |
+|----------|-------------|
+| `OIDC_LOGIN` | `true` to require config, `false` to disable |
+| `OIDC_SIGNUP` | Allow new users on first sign-in (default: `true`) |
+| `OIDC_PROVIDER_NAME` | Display name on the login button (e.g. `Keycloak` → "Continue with Keycloak"; omit for "Continue with SSO") |
+| `OIDC_ISSUER` | Issuer URL (e.g. `https://auth.example.com/realms/myrealm`) |
+| `OIDC_CLIENT_ID` | Client ID |
+| `OIDC_CLIENT_SECRET` | Client secret |
+| `OIDC_REDIRECT_URI` | Callback URL (e.g. `http://localhost:3000/api/auth/callback`) |
+
+#### GitHub OAuth
+
+1. Go to [GitHub Developer settings → OAuth Apps](https://github.com/settings/developers) → **New OAuth App**
+2. Set **Authorization callback URL** to your API callback (e.g. `http://localhost:3000/api/auth/callback` for local dev)
+3. Copy the Client ID and generate a Client Secret into `.env`:
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_LOGIN` | `true` to require config, `false` to disable |
+| `GITHUB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
+| `GITHUB_CLIENT_ID` | OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | OAuth App client secret |
+| `GITHUB_REDIRECT_URI` | Same callback URL registered in GitHub |
+
+#### GitLab OAuth
+
+Works with GitLab.com or self-hosted GitLab.
+
+1. Create an application under **User Settings → Applications** (GitLab.com) or **Admin → Applications** (self-hosted)
+2. Set **Redirect URI** to your API callback (e.g. `http://localhost:3000/api/auth/callback`)
+3. Enable the `read_user` scope
+4. Copy Application ID and Secret into `.env`:
+
+| Variable | Description |
+|----------|-------------|
+| `GITLAB_LOGIN` | `true` to require config, `false` to disable |
+| `GITLAB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
+| `GITLAB_BASE_URL` | GitLab instance URL (default: `https://gitlab.com`) |
+| `GITLAB_CLIENT_ID` | Application ID |
+| `GITLAB_CLIENT_SECRET` | Application secret |
+| `GITLAB_REDIRECT_URI` | Same callback URL registered in GitLab |
+
+For production, use your public API URL for all `*_REDIRECT_URI` values and register the same URL in each OAuth app.
 
 ### Database UI
 
@@ -98,9 +156,9 @@ Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
 |-------|-------|
 | System | PostgreSQL |
 | Server | `postgres` (from Adminer container) or `localhost` (from host tools) |
-| Username | `serviceboard` |
-| Password | `serviceboard` |
-| Database | `serviceboard` |
+| Username | `servicebeard` |
+| Password | `servicebeard` |
+| Database | `servicebeard` |
 
 For a schema-aware view without an extra container, use Drizzle Studio:
 
@@ -198,7 +256,7 @@ Kubernetes deployment via Helm:
 
 ```bash
 helm dependency update deploy/helm
-helm install serviceboard deploy/helm \
+helm install servicebeard deploy/helm \
   --set ingress.host=your-domain.com \
   --set secrets.encryptionKey=<64-char-hex> \
   --set secrets.oidcClientSecret=<secret> \

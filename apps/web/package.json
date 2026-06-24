@@ -1,20 +1,23 @@
 {
-  "name": "@serviceboard/web",
+  "name": "@servicebeard/web",
   "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:landing": "bun run scripts/render-landing.tsx",
     "preview": "vite preview",
+    "preview:landing": "bunx serve landing-dist -p 4174",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
-    "@serviceboard/shared": "workspace:*",
+    "@servicebeard/shared": "workspace:*",
     "@simplewebauthn/browser": "^13.3.0",
     "@tanstack/react-query": "^5.60.0",
     "@tanstack/react-router": "^1.82.0",
+    "lucide-react": "0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

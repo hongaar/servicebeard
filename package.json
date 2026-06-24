@@ -1,6 +1,7 @@
 {
-  "name": "serviceboard",
+  "name": "servicebeard",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -9,21 +10,22 @@
   "scripts": {
     "dev": "docker compose up -d && bun run dev:apps",
     "dev:apps": "bun --elide-lines=50 run --filter './apps/*' dev",
-    "dev:api": "bun --elide-lines=50 run --filter @serviceboard/api dev",
-    "dev:web": "bun --elide-lines=50 run --filter @serviceboard/web dev",
-    "dev:worker": "bun --elide-lines=50 run --filter @serviceboard/worker dev",
+    "dev:api": "bun --elide-lines=50 run --filter @servicebeard/api dev",
+    "dev:web": "bun --elide-lines=50 run --filter @servicebeard/web dev",
+    "dev:worker": "bun --elide-lines=50 run --filter @servicebeard/worker dev",
     "build": "bun run --filter '*' build",
+    "build:landing": "bun run --filter @servicebeard/web build:landing",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "eslint .",
     "test": "bun test tests/",
-    "db:generate": "bun run --filter @serviceboard/db generate",
-    "db:migrate": "bun run --filter @serviceboard/db migrate",
-    "db:studio": "bun run --filter @serviceboard/db studio"
+    "db:generate": "bun run --filter @servicebeard/db generate",
+    "db:migrate": "bun run --filter @servicebeard/db migrate",
+    "db:studio": "bun run --filter @servicebeard/db studio"
   },
   "devDependencies": {
-    "@serviceboard/db": "workspace:*",
-    "@serviceboard/providers": "workspace:*",
-    "@serviceboard/shared": "workspace:*",
+    "@servicebeard/db": "workspace:*",
+    "@servicebeard/providers": "workspace:*",
+    "@servicebeard/shared": "workspace:*",
     "@types/bun": "latest",
     "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0",

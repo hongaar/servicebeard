@@ -1,4 +1,4 @@
-import { GitLabApiError } from "@serviceboard/providers";
+import { GitLabApiError } from "@servicebeard/providers";
 import { logger } from "./logger";
 
 export function logExternalError(

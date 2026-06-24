@@ -5,8 +5,8 @@ import {
     issueThreads,
     projects,
     rules,
-} from "@serviceboard/db";
-import { createProvider, toProviderConfig } from "@serviceboard/providers";
+} from "@servicebeard/db";
+import { createProvider, toProviderConfig } from "@servicebeard/providers";
 import {
     createProjectSchema,
     createRuleSchema,
@@ -16,7 +16,7 @@ import {
     testRuleSchema,
     updateProjectSchema,
     updateRuleSchema,
-} from "@serviceboard/shared";
+} from "@servicebeard/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { ImapFlow } from "imapflow";

@@ -1,7 +1,7 @@
 import type {
     LoginProviderPublicConfig,
     LoginProviderType,
-} from "@serviceboard/shared";
+} from "@servicebeard/shared";
 
 export interface LoginAdapterSettings {
   signupEnabled: boolean;

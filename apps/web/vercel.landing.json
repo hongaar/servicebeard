@@ -1,0 +1,5 @@
+{
+  "buildCommand": "bun run build:landing",
+  "outputDirectory": "landing-dist",
+  "cleanUrls": true
+}

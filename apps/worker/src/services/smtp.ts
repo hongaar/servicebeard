@@ -1,4 +1,4 @@
-import { normalizeMessageId, parseMailFromAddress } from "@serviceboard/shared";
+import { normalizeMessageId, parseMailFromAddress } from "@servicebeard/shared";
 import { randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { logExternalError } from "../lib/external-error";
@@ -42,7 +42,7 @@ export async function sendEmail(
     auth: { user: creds.smtpUser, pass: creds.smtpPassword },
   });
 
-  const domain = parseMailFromAddress(creds.smtpFrom).split("@")[1] ?? "serviceboard.local";
+  const domain = parseMailFromAddress(creds.smtpFrom).split("@")[1] ?? "servicebeard.local";
   const messageId = `<${randomBytes(16).toString("hex")}@${domain}>`;
   const inReplyTo = email.inReplyTo ? normalizeMessageId(email.inReplyTo) : undefined;
   const references = (email.references ?? []).map(normalizeMessageId);

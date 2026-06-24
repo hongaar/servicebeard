@@ -1,19 +1,23 @@
 import { createRouter } from "@tanstack/react-router";
-import { rootRoute } from "./routes/root.tsx";
 import {
-  loginRoute,
-  dashboardRoute,
-  teamRoute,
-  projectsRoute,
-  projectDetailRoute,
+    dashboardRoute,
+    loginRoute,
+    projectRedirectRoute,
+    projectSectionRoute,
+    projectsRoute,
+    teamMembersRoute,
+    teamRedirectRoute,
 } from "./routes/index";
+import { rootRoute } from "./routes/root.tsx";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
   dashboardRoute,
-  teamRoute,
+  teamRedirectRoute,
+  teamMembersRoute,
   projectsRoute,
-  projectDetailRoute,
+  projectRedirectRoute,
+  projectSectionRoute,
 ]);
 
 export const router = createRouter({ routeTree });

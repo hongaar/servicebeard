@@ -6,7 +6,7 @@ export async function getBoss(): Promise<PgBoss> {
   if (!boss) {
     const connectionString =
       process.env.DATABASE_URL ??
-      "postgres://serviceboard:serviceboard@localhost:5432/serviceboard";
+      "postgres://servicebeard:servicebeard@localhost:5432/servicebeard";
     boss = new PgBoss(connectionString);
     await boss.start();
   }

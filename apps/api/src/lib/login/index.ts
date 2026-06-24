@@ -1,3 +1,5 @@
+import { GithubLoginAdapter } from "./github";
+import { GitlabLoginAdapter } from "./gitlab";
 import { LocalLoginAdapter } from "./local";
 import { OidcLoginAdapter } from "./oidc";
 import type { LoginAdapter } from "./types";
@@ -16,6 +18,8 @@ export type {
 
 const adapters: LoginAdapter[] = [
   new OidcLoginAdapter(),
+  new GithubLoginAdapter(),
+  new GitlabLoginAdapter(),
   new LocalLoginAdapter(),
 ];
 

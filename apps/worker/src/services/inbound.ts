@@ -4,8 +4,8 @@ import {
     getDb,
     issueThreads,
     projects,
-} from "@serviceboard/db";
-import { normalizeSubject, renderInboundAckTemplate } from "@serviceboard/shared";
+} from "@servicebeard/db";
+import { normalizeSubject, renderInboundAckTemplate } from "@servicebeard/shared";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";

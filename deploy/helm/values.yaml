@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: serviceboard
+  repository: servicebeard
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -33,17 +33,17 @@ web:
 ingress:
   enabled: true
   className: nginx
-  host: serviceboard.example.com
+  host: servicebeard.example.com
   tls:
     enabled: true
-    secretName: serviceboard-tls
+    secretName: servicebeard-tls
 
 postgresql:
   enabled: true
   auth:
-    username: serviceboard
+    username: servicebeard
     password: changeme
-    database: serviceboard
+    database: servicebeard
   primary:
     persistence:
       enabled: true
@@ -56,19 +56,31 @@ externalDatabase:
 env:
   NODE_ENV: production
   LOG_LEVEL: info
-  OIDC_LOGIN: "true"
+  OIDC_LOGIN: "false"
   OIDC_SIGNUP: "true"
+  OIDC_PROVIDER_NAME: ""
+  GITHUB_LOGIN: "false"
+  GITHUB_SIGNUP: "true"
+  GITLAB_LOGIN: "false"
+  GITLAB_SIGNUP: "true"
   LOCAL_LOGIN: "false"
   LOCAL_LOGIN_SIGNUP: "false"
   OIDC_ISSUER: https://your-idp.example.com
-  OIDC_CLIENT_ID: serviceboard
-  OIDC_REDIRECT_URI: https://serviceboard.example.com/api/auth/callback
-  API_URL: https://serviceboard.example.com
-  WEB_URL: https://serviceboard.example.com
-  WEBHOOK_BASE_URL: https://serviceboard.example.com
+  OIDC_CLIENT_ID: servicebeard
+  OIDC_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
+  GITHUB_CLIENT_ID: ""
+  GITHUB_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
+  GITLAB_BASE_URL: https://gitlab.com
+  GITLAB_CLIENT_ID: ""
+  GITLAB_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
+  API_URL: https://servicebeard.example.com
+  WEB_URL: https://servicebeard.example.com
+  WEBHOOK_BASE_URL: https://servicebeard.example.com
 
 secrets:
   oidcClientSecret: changeme
+  githubClientSecret: changeme
+  gitlabClientSecret: changeme
   sessionSecret: changeme
   encryptionKey: "0000000000000000000000000000000000000000000000000000000000000000"
 

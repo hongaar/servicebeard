@@ -1,6 +1,11 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { api, ApiError } from "../lib/api";
-import { DashboardPage } from "../pages/DashboardPage";
+import {
+    DEFAULT_PROJECT_SECTION,
+    isProjectSection,
+    type ProjectSection,
+} from "../lib/navigation";
+import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { ProjectDetailPage } from "../pages/ProjectDetailPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
@@ -13,6 +18,32 @@ async function requireUser() {
   return user;
 }
 
+async function loadTeamContext(teamId: string) {
+  const user = await requireUser();
+  const team = await api.getTeam(teamId);
+  return { user, team };
+}
+
+async function loadProjectContext(teamId: string, projectId: string) {
+  const user = await requireUser();
+  try {
+    const [team, project, { threads }] = await Promise.all([
+      api.getTeam(teamId),
+      api.getProject(teamId, projectId),
+      api.getThreads(teamId, projectId),
+    ]);
+    return { user, project, threads, teamName: team.name };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      throw redirect({
+        to: "/teams/$teamId/projects",
+        params: { teamId },
+      });
+    }
+    throw err;
+  }
+}
+
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -22,21 +53,32 @@ export const loginRoute = createRoute({
 export const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: DashboardPage,
+  component: HomePage,
   loader: async () => {
-    const user = await requireUser();
+    const { user } = await api.getMe();
+    if (!user) return { user: null, teams: [] as Awaited<ReturnType<typeof api.getTeams>>["teams"] };
     const { teams } = await api.getTeams();
     return { user, teams };
   },
 });
 
-export const teamRoute = createRoute({
+export const teamRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/teams/$teamId",
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/teams/$teamId/projects",
+      params: { teamId: params.teamId },
+    });
+  },
+});
+
+export const teamMembersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/teams/$teamId/members",
   component: TeamPage,
   loader: async ({ params }) => {
-    const user = await requireUser();
-    const team = await api.getTeam(params.teamId);
+    const { user, team } = await loadTeamContext(params.teamId);
     return { user, team };
   },
 });
@@ -55,27 +97,42 @@ export const projectsRoute = createRoute({
   },
 });
 
-export const projectDetailRoute = createRoute({
+export const projectRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/teams/$teamId/projects/$projectId",
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/teams/$teamId/projects/$projectId/$section",
+      params: {
+        teamId: params.teamId,
+        projectId: params.projectId,
+        section: DEFAULT_PROJECT_SECTION,
+      },
+    });
+  },
+});
+
+export const projectSectionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/teams/$teamId/projects/$projectId/$section",
   component: ProjectDetailPage,
-  loader: async ({ params }) => {
-    const user = await requireUser();
-    try {
-      const [team, project, { threads }] = await Promise.all([
-        api.getTeam(params.teamId),
-        api.getProject(params.teamId, params.projectId),
-        api.getThreads(params.teamId, params.projectId),
-      ]);
-      return { user, project, threads, teamName: team.name };
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        throw redirect({
-          to: "/teams/$teamId/projects",
-          params: { teamId: params.teamId },
-        });
-      }
-      throw err;
+  beforeLoad: ({ params }) => {
+    if (!isProjectSection(params.section)) {
+      throw redirect({
+        to: "/teams/$teamId/projects/$projectId/$section",
+        params: {
+          teamId: params.teamId,
+          projectId: params.projectId,
+          section: DEFAULT_PROJECT_SECTION,
+        },
+      });
     }
+  },
+  loader: async ({ params }) => {
+    const data = await loadProjectContext(params.teamId, params.projectId);
+    return {
+      ...data,
+      section: params.section as ProjectSection,
+    };
   },
 });

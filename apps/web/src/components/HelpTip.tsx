@@ -1,4 +1,5 @@
 import { Tooltip } from "@base-ui/react/tooltip";
+import { CircleHelp } from "lucide-react";
 import styles from "./HelpTip.module.css";
 
 interface HelpTipProps {
@@ -16,7 +17,7 @@ export function HelpTip({ children, label = "More information" }: HelpTipProps) 
           aria-label={label}
           onClick={(e) => e.preventDefault()}
         >
-          ?
+          <CircleHelp size={12} strokeWidth={2.5} aria-hidden />
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Positioner sideOffset={6} className={styles.positioner}>

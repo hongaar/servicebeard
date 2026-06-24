@@ -1,25 +1,62 @@
-import type { LoginProviderPublicConfig } from "@serviceboard/shared/login";
+import type { LoginProviderPublicConfig, LoginProviderType } from "@servicebeard/shared/login";
 import { useNavigate } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  Fingerprint,
+  Github,
+  Gitlab,
+  KeyRound,
+  Mail,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { api } from "../lib/api";
+import { ssoIconProps as baseSsoIconProps } from "../lib/icons";
 import { authenticateWithPasskey, isPasskeySupported, registerPasskey } from "../lib/passkey";
 import styles from "../styles/pages.module.css";
 
-function RedirectLoginButton({
+const ssoIconProps = { ...baseSsoIconProps, className: styles.ssoButtonIcon };
+
+function SsoIcon({ type }: { type: LoginProviderType }) {
+  switch (type) {
+    case "github":
+      return <Github {...ssoIconProps} />;
+    case "gitlab":
+      return <Gitlab {...ssoIconProps} />;
+    case "oidc":
+      return <KeyRound {...ssoIconProps} />;
+    default:
+      return <KeyRound {...ssoIconProps} />;
+  }
+}
+
+function SsoLoginButton({
   provider,
-  loading,
+  redirectingProvider,
+  disabled,
   onStart,
 }: {
   provider: LoginProviderPublicConfig;
-  loading: boolean;
+  redirectingProvider: LoginProviderType | null;
+  disabled?: boolean;
   onStart: () => void;
 }) {
+  const isRedirecting = redirectingProvider === provider.type;
+  const isDisabled = disabled || redirectingProvider !== null;
+
   return (
-    <Button onClick={onStart} disabled={loading}>
-      {loading ? "Redirecting..." : provider.label}
-    </Button>
+    <button
+      type="button"
+      className={[styles.ssoButton, styles[`ssoButton_${provider.type}`]]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={onStart}
+      disabled={isDisabled}
+    >
+      <SsoIcon type={provider.type} />
+      <span>{isRedirecting ? "Redirecting…" : provider.label}</span>
+    </button>
   );
 }
 
@@ -32,6 +69,7 @@ function CredentialAuthForm({
   onSubmit,
   onPasskeyLogin,
   onPasskeySignup,
+  onBack,
   error,
 }: {
   provider: LoginProviderPublicConfig;
@@ -44,6 +82,7 @@ function CredentialAuthForm({
   }) => void;
   onPasskeyLogin: () => void;
   onPasskeySignup: (input: { email: string; name: string }) => void;
+  onBack?: () => void;
   error: string;
 }) {
   const [mode, setMode] = useState<CredentialMode>("login");
@@ -78,7 +117,7 @@ function CredentialAuthForm({
         <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>
       )}
 
-      {provider.signupEnabled ? (
+      {provider.signupEnabled && (
         <div className={styles.tabs}>
           <button
             type="button"
@@ -99,19 +138,6 @@ function CredentialAuthForm({
             Sign up
           </button>
         </div>
-      ) : (
-        <h2 className={styles.credentialAuthTitle}>Sign in</h2>
-      )}
-
-      {passkeySupported && mode === "login" && (
-        <>
-          <Button type="button" onClick={onPasskeyLogin} disabled={loading}>
-            {loading ? "Signing in..." : "Sign in with passkey"}
-          </Button>
-          <div className={styles.divider}>
-            <span>or</span>
-          </div>
-        </>
       )}
 
       {mode === "signup" && provider.signupEnabled ? (
@@ -132,7 +158,6 @@ function CredentialAuthForm({
 
           {passkeySupported ? (
             <>
-              <p className={styles.formHint}>Choose how to create your account:</p>
               <div className={styles.methodTabs}>
                 <button
                   type="button"
@@ -176,21 +201,22 @@ function CredentialAuthForm({
                     required
                     autoComplete="new-password"
                   />
-                  <Button type="submit" variant="secondary" disabled={loading}>
-                    {loading ? "Creating account..." : "Create account with password"}
+                  <Button type="submit" disabled={loading} className={styles.fullWidth}>
+                    {loading ? "Creating account…" : "Create account"}
                   </Button>
                 </form>
               ) : (
                 <div className={styles.form}>
                   <p className={styles.formHint}>
-                    No password needed — your device will create a passkey linked to this email.
+                    Your device will create a passkey linked to this email — no password needed.
                   </p>
                   <Button
                     type="button"
                     onClick={() => onPasskeySignup({ email, name })}
                     disabled={loading || !email || !name}
+                    className={styles.fullWidth}
                   >
-                    {loading ? "Creating account..." : "Create account with passkey"}
+                    {loading ? "Creating account…" : "Create account with passkey"}
                   </Button>
                 </div>
               )}
@@ -211,8 +237,8 @@ function CredentialAuthForm({
                 required
                 autoComplete="new-password"
               />
-              <Button type="submit" variant="secondary" disabled={loading}>
-                {loading ? "Creating account..." : "Create account"}
+              <Button type="submit" disabled={loading} className={styles.fullWidth}>
+                {loading ? "Creating account…" : "Create account"}
               </Button>
             </form>
           )}
@@ -240,10 +266,32 @@ function CredentialAuthForm({
             required
             autoComplete="current-password"
           />
-          <Button type="submit" variant="secondary" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+          <Button type="submit" disabled={loading} className={styles.fullWidth}>
+            {loading ? "Signing in…" : "Sign in"}
           </Button>
+          {passkeySupported && (
+            <button
+              type="button"
+              className={styles.passkeyLink}
+              onClick={onPasskeyLogin}
+              disabled={loading}
+            >
+              Sign in with passkey
+            </button>
+          )}
         </form>
+      )}
+
+      {onBack && (
+        <button
+          type="button"
+          className={[styles.ssoButton, styles.ssoButton_back].join(" ")}
+          onClick={onBack}
+          disabled={loading}
+        >
+          <ArrowLeft {...ssoIconProps} />
+          <span>Back to other sign-in options</span>
+        </button>
       )}
     </div>
   );
@@ -252,15 +300,22 @@ function CredentialAuthForm({
 export function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [redirectingProvider, setRedirectingProvider] =
+    useState<LoginProviderType | null>(null);
   const [providers, setProviders] = useState<LoginProviderPublicConfig[]>([]);
   const [error, setError] = useState("");
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
 
   useEffect(() => {
-    api.getAuthConfig().then((config) => setProviders(config.providers));
+    api.getAuthConfig().then((config) => {
+      setProviders(config.providers);
+      const hasSso = config.providers.some((provider) => provider.type !== "local");
+      setShowEmailLogin(!hasSso);
+    });
   }, []);
 
-  const handleRedirectLogin = (type: string) => {
-    setLoading(true);
+  const handleRedirectLogin = (type: LoginProviderType) => {
+    setRedirectingProvider(type);
     window.location.href = `/api/auth/login/${type}`;
   };
 
@@ -311,46 +366,95 @@ export function LoginPage() {
     }
   };
 
-  const redirectProviders = providers.filter((provider) => provider.type === "oidc");
+  const redirectProviders = providers.filter((provider) => provider.type !== "local");
   const credentialProviders = providers.filter((provider) => provider.type === "local");
+  const localProvider = credentialProviders[0];
+  const hasSso = redirectProviders.length > 0;
+  const hasLocal = credentialProviders.length > 0;
+  const passkeyQuickLogin =
+    hasLocal &&
+    localProvider?.passkeyEnabled &&
+    isPasskeySupported();
+  const ssoBusy = redirectingProvider !== null || loading;
 
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <div className={styles.loginLogo} aria-hidden>S</div>
-        <h1 className={styles.title}>Serviceboard</h1>
+        <img src="/favicon.png" alt="" className={styles.loginLogo} width={56} height={56} />
+        <h1 className={styles.title}>
+          Service<span className={styles.titleAccent}>Beard</span>
+        </h1>
         <p className={styles.subtitle}>
-          Turn support mail into tracked issues. Sign in to manage your teams and sync rules.
+          Turn support mail into tracked issues. Sign in — the beard approves.
         </p>
 
-        {redirectProviders.map((provider) => (
-          <RedirectLoginButton
-            key={provider.type}
-            provider={provider}
-            loading={loading}
-            onStart={() => handleRedirectLogin(provider.type)}
-          />
-        ))}
-
-        {redirectProviders.length > 0 && credentialProviders.length > 0 && (
-          <div className={styles.divider}>
-            <span>or</span>
-          </div>
+        {hasSso && !showEmailLogin && (
+          <>
+            {error && (
+              <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>
+            )}
+            <div className={styles.ssoList}>
+              {redirectProviders.map((provider) => (
+                <SsoLoginButton
+                  key={provider.type}
+                  provider={provider}
+                  redirectingProvider={redirectingProvider}
+                  disabled={loading}
+                  onStart={() => handleRedirectLogin(provider.type)}
+                />
+              ))}
+              {passkeyQuickLogin && (
+                <button
+                  type="button"
+                  className={[styles.ssoButton, styles.ssoButton_passkey].join(" ")}
+                  onClick={() => handlePasskeyLogin("local")}
+                  disabled={ssoBusy}
+                >
+                  <Fingerprint {...ssoIconProps} />
+                  <span>{loading ? "Signing in…" : "Sign in with passkey"}</span>
+                </button>
+              )}
+              {hasLocal && (
+                <button
+                  type="button"
+                  className={[styles.ssoButton, styles.ssoButton_email].join(" ")}
+                  onClick={() => {
+                    setError("");
+                    setShowEmailLogin(true);
+                  }}
+                  disabled={ssoBusy}
+                >
+                  <Mail {...ssoIconProps} />
+                  <span>Sign in with email</span>
+                </button>
+              )}
+            </div>
+          </>
         )}
 
-        {credentialProviders.map((provider) => (
-          <CredentialAuthForm
-            key={provider.type}
-            provider={provider}
-            loading={loading}
-            error={error}
-            onSubmit={(credentials) =>
-              handleCredentialLogin(provider.type, credentials)
-            }
-            onPasskeyLogin={() => handlePasskeyLogin(provider.type)}
-            onPasskeySignup={(input) => handlePasskeySignup(provider.type, input)}
-          />
-        ))}
+        {hasLocal && showEmailLogin && (
+          credentialProviders.map((provider) => (
+            <CredentialAuthForm
+              key={provider.type}
+              provider={provider}
+              loading={loading}
+              error={error}
+              onBack={
+                hasSso
+                  ? () => {
+                      setError("");
+                      setShowEmailLogin(false);
+                    }
+                  : undefined
+              }
+              onSubmit={(credentials) =>
+                handleCredentialLogin(provider.type, credentials)
+              }
+              onPasskeyLogin={() => handlePasskeyLogin(provider.type)}
+              onPasskeySignup={(input) => handlePasskeySignup(provider.type, input)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

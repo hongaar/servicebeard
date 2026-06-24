@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "serviceboard.fullname" . }}-api
+  name: {{ include "servicebeard.fullname" . }}-api
   labels:
-    {{- include "serviceboard.labels" . | nindent 4 }}
+    {{- include "servicebeard.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -12,15 +12,15 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "serviceboard.selectorLabels" . | nindent 4 }}
+    {{- include "servicebeard.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: api
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "serviceboard.fullname" . }}-web
+  name: {{ include "servicebeard.fullname" . }}-web
   labels:
-    {{- include "serviceboard.labels" . | nindent 4 }}
+    {{- include "servicebeard.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   ports:
@@ -29,5 +29,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "serviceboard.selectorLabels" . | nindent 4 }}
+    {{- include "servicebeard.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: web

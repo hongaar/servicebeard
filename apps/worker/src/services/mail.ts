@@ -1,5 +1,5 @@
-import { formatMailboxAddress, normalizeMessageId } from "@serviceboard/shared";
-import { buildParsedEmailContent } from "@serviceboard/shared/email-content";
+import { formatMailboxAddress, normalizeMessageId } from "@servicebeard/shared";
+import { buildParsedEmailContent } from "@servicebeard/shared/email-content";
 import { ImapFlow } from "imapflow";
 import type { AddressObject } from "mailparser";
 import { simpleParser } from "mailparser";
@@ -114,7 +114,7 @@ export async function parseEmail(
   const parsed = await simpleParser(raw);
 
   const messageId = normalizeMessageId(
-    parsed.messageId ?? `generated-${Date.now()}@serviceboard.local`,
+    parsed.messageId ?? `generated-${Date.now()}@servicebeard.local`,
   );
   const inReplyTo = parsed.inReplyTo ? normalizeMessageId(parsed.inReplyTo) : null;
   const references = (Array.isArray(parsed.references)

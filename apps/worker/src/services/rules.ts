@@ -1,10 +1,10 @@
-import type { ParsedEmail } from "@serviceboard/shared";
+import type { ParsedEmail } from "@servicebeard/shared";
 import {
     buildSyncMarker,
     evaluateRules,
     stripQuotedReply,
     type RuleMatchResult,
-} from "@serviceboard/shared";
+} from "@servicebeard/shared";
 
 export { evaluateRules };
 export type { ParsedEmail, RuleMatchResult };

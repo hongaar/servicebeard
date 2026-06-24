@@ -1,4 +1,6 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
+import { X } from "lucide-react";
+import { iconMd } from "../lib/icons";
 import styles from "./Dialog.module.css";
 
 interface DialogProps {
@@ -20,7 +22,7 @@ export function Dialog({ open, onOpenChange, title, wide, children }: DialogProp
             .join(" ")}
         >
           <BaseDialog.Close className={styles.dialogClose} aria-label="Close">
-            ×
+            <X {...iconMd} />
           </BaseDialog.Close>
           <BaseDialog.Title className={styles.dialogTitle}>{title}</BaseDialog.Title>
           {children}

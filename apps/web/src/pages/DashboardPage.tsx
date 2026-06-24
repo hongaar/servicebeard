@@ -1,15 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLoaderData } from "@tanstack/react-router";
+import { ChevronRight, Users } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
+import { EmptyIcon } from "../components/EmptyIcon";
 import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
 import { api } from "../lib/api";
+import { iconMd } from "../lib/icons";
 import styles from "../styles/pages.module.css";
 
 export function DashboardPage() {
-  const { user, teams } = useLoaderData({ from: "/" });
+  const data = useLoaderData({ from: "/" });
+  if (!data.user) return null;
+
+  const { user, teams } = data;
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -84,7 +90,7 @@ export function DashboardPage() {
 
         {teams.length === 0 ? (
           <div className={styles.empty}>
-            <span className={styles.emptyIcon} aria-hidden>+</span>
+            <EmptyIcon icon={Users} />
             <p className={styles.emptyTitle}>No teams yet</p>
             <p className={styles.emptyHint}>
               Create your first team to start syncing support mail with your issue board.
@@ -96,7 +102,7 @@ export function DashboardPage() {
             {teams.map((team) => (
               <Link
                 key={team.id}
-                to="/teams/$teamId"
+                to="/teams/$teamId/projects"
                 params={{ teamId: team.id }}
                 className={styles.teamCard}
               >
@@ -104,7 +110,9 @@ export function DashboardPage() {
                   <span className={styles.teamAvatar} aria-hidden>
                     {team.name.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className={styles.teamArrow} aria-hidden>→</span>
+                  <span className={styles.teamArrow} aria-hidden>
+                    <ChevronRight {...iconMd} />
+                  </span>
                 </div>
                 <div className={styles.teamName}>{team.name}</div>
                 <div className={styles.teamRole}>{team.role}</div>

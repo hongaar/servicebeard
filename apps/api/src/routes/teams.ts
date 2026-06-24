@@ -6,13 +6,13 @@ import {
     teamMembers,
     teams,
     users,
-} from "@serviceboard/db";
+} from "@servicebeard/db";
 import {
     createTeamSchema,
     inviteMemberSchema,
     updateMemberSchema,
     updateTeamSchema,
-} from "@serviceboard/shared";
+} from "@servicebeard/shared";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";

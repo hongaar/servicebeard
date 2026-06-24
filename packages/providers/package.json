@@ -1,5 +1,5 @@
 {
-  "name": "@serviceboard/providers",
+  "name": "@servicebeard/providers",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@serviceboard/shared": "workspace:*"
+    "@servicebeard/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

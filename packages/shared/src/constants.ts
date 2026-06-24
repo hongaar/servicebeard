@@ -19,14 +19,14 @@ export const JOB_TYPES = [
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
-export const SYNC_MARKER_PREFIX = "<!-- serviceboard-sync:";
+export const SYNC_MARKER_PREFIX = "<!-- servicebeard-sync:";
 export const SYNC_MARKER_SUFFIX = "-->";
 
 export function buildSyncMarker(threadId: string): string {
   return `${SYNC_MARKER_PREFIX}${threadId}${SYNC_MARKER_SUFFIX}`;
 }
 
-export function isServiceboardSyncedContent(body: string): boolean {
+export function isServicebeardSyncedContent(body: string): boolean {
   return body.includes(SYNC_MARKER_PREFIX);
 }
 

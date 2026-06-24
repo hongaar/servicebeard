@@ -4,8 +4,8 @@ import {
     hashToken,
     sessions,
     users,
-} from "@serviceboard/db";
-import type { SessionUser } from "@serviceboard/shared";
+} from "@servicebeard/db";
+import type { SessionUser } from "@servicebeard/shared";
 import { and, eq, gt } from "drizzle-orm";
 import type { LoginIdentity } from "./types";
 

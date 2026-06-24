@@ -1,5 +1,5 @@
 {
-  "name": "@serviceboard/api",
+  "name": "@servicebeard/api",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@serviceboard/db": "workspace:*",
-    "@serviceboard/providers": "workspace:*",
-    "@serviceboard/shared": "workspace:*",
+    "@servicebeard/db": "workspace:*",
+    "@servicebeard/providers": "workspace:*",
+    "@servicebeard/shared": "workspace:*",
     "@simplewebauthn/server": "^13.3.1",
     "drizzle-orm": "^0.38.0",
     "hono": "^4.6.0",

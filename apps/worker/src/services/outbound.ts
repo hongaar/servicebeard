@@ -4,10 +4,10 @@ import {
     getDb,
     issueThreads,
     projects,
-} from "@serviceboard/db";
-import type { NormalizedWebhookEvent } from "@serviceboard/providers";
-import { GitLabApiError } from "@serviceboard/providers";
-import { isServiceboardSyncedContent } from "@serviceboard/shared";
+} from "@servicebeard/db";
+import type { NormalizedWebhookEvent } from "@servicebeard/providers";
+import { GitLabApiError } from "@servicebeard/providers";
+import { isServicebeardSyncedContent } from "@servicebeard/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
@@ -67,7 +67,7 @@ function outboundSkipReason(
 ): string | null {
   if (internal) return "internal";
   if (system) return "system";
-  if (isServiceboardSyncedContent(noteBody)) return "sync_marker";
+  if (isServicebeardSyncedContent(noteBody)) return "sync_marker";
   if (project.providerBotUserId && authorId === project.providerBotUserId) {
     return "bot_author";
   }

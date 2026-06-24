@@ -11,7 +11,7 @@ export function createDb(connectionString?: string) {
   const url =
     connectionString ??
     process.env.DATABASE_URL ??
-    "postgres://serviceboard:serviceboard@localhost:5432/serviceboard";
+    "postgres://servicebeard:servicebeard@localhost:5432/servicebeard";
 
   const pgClient = postgres(url, { max: 10 });
   const database = drizzle(pgClient, { schema });

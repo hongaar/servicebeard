@@ -1,4 +1,4 @@
-import { parseGitLabUploadPath } from "@serviceboard/shared/email-content";
+import { parseGitLabUploadPath } from "@servicebeard/shared/email-content";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {

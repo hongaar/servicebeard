@@ -24,6 +24,11 @@ async function getOidcConfig(): Promise<client.Configuration> {
   return oidcConfig;
 }
 
+function getOidcLabel(): string {
+  const name = process.env.OIDC_PROVIDER_NAME?.trim();
+  return name ? `Continue with ${name}` : "Continue with SSO";
+}
+
 function isOidcSignupEnabled(): boolean {
   if (process.env.OIDC_SIGNUP === "false") return false;
   return true;
@@ -31,7 +36,7 @@ function isOidcSignupEnabled(): boolean {
 
 export class OidcLoginAdapter implements RedirectLoginAdapter {
   readonly type = "oidc" as const;
-  readonly label = "Sign in with OIDC";
+  readonly label = getOidcLabel();
   readonly settings = { signupEnabled: isOidcSignupEnabled() };
 
   isEnabled(): boolean {
@@ -41,7 +46,7 @@ export class OidcLoginAdapter implements RedirectLoginAdapter {
   toPublicConfig() {
     return {
       type: this.type,
-      label: this.label,
+      label: getOidcLabel(),
       signupEnabled: this.settings.signupEnabled,
     };
   }

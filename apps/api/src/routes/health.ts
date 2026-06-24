@@ -1,4 +1,4 @@
-import { getDb } from "@serviceboard/db";
+import { getDb } from "@servicebeard/db";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { register } from "../lib/metrics";

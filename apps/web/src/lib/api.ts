@@ -1,4 +1,4 @@
-import type { AuthConfigResponse } from "@serviceboard/shared/login";
+import type { AuthConfigResponse } from "@servicebeard/shared/login";
 import type {
     AuthenticationResponseJSON,
     PublicKeyCredentialCreationOptionsJSON,

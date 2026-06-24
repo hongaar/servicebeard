@@ -1,4 +1,4 @@
-import { getDb, users } from "@serviceboard/db";
+import { getDb, users } from "@servicebeard/db";
 import { eq } from "drizzle-orm";
 import { isLocalLoginEnabled } from "../env";
 import { logger } from "../logger";

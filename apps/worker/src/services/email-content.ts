@@ -1,11 +1,11 @@
-import type { IssueProvider } from "@serviceboard/providers";
-import type { ParsedEmail } from "@serviceboard/shared";
+import type { IssueProvider } from "@servicebeard/providers";
+import type { ParsedEmail } from "@servicebeard/shared";
 import {
     extractDataUriImagesFromMarkdown,
     normalizeContentId,
     replaceCidImagesInMarkdown,
     replaceImagePlaceholdersInMarkdown,
-} from "@serviceboard/shared/email-content";
+} from "@servicebeard/shared/email-content";
 import { logExternalError } from "../lib/external-error";
 
 async function uploadInlineImage(

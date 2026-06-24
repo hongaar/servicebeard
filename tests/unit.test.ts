@@ -1,5 +1,5 @@
-import type { ParsedEmail, Rule } from "@serviceboard/shared";
-import { evaluateRules, normalizeSubject } from "@serviceboard/shared";
+import type { ParsedEmail, Rule } from "@servicebeard/shared";
+import { evaluateRules, normalizeSubject } from "@servicebeard/shared";
 import { beforeAll, describe, expect, test } from "bun:test";
 import { isEmailEligibleForInboundSync } from "../apps/worker/src/services/inbound";
 import { formatCommentBody, formatIssueDescription } from "../apps/worker/src/services/rules";
@@ -150,7 +150,7 @@ describe("issue description formatting", () => {
     );
     expect(desc).toContain("**Message from User <user@example.com>**");
     expect(desc).toContain("Something broke");
-    expect(desc).toContain("<!-- serviceboard-sync:thread-123-->");
+    expect(desc).toContain("<!-- servicebeard-sync:thread-123-->");
     expect(desc).not.toContain("Email metadata");
   });
 });
@@ -169,7 +169,7 @@ On 2026-06-23 22:02, support@mail.test wrote:
 
     const comment = formatCommentBody(testEmail({
       messageId: "<reply@mail.test>",
-      inReplyTo: "<parent@serviceboard.local>",
+      inReplyTo: "<parent@servicebeard.local>",
       references: [],
       toAddresses: [],
       ccAddresses: [],
@@ -204,25 +204,25 @@ On 2026-06-23 22:02, support@mail.test wrote:
     }));
 
     expect(comment).toContain("First message with no quotes");
-    expect(comment).toContain("<!-- serviceboard-sync:email:<m@mail.test>-->");
+    expect(comment).toContain("<!-- servicebeard-sync:email:<m@mail.test>-->");
   });
 });
 
 describe("loop prevention markers", () => {
-  test("detects serviceboard-sync content", async () => {
-    const { buildSyncMarker, isServiceboardSyncedContent } = await import(
-      "@serviceboard/shared"
+  test("detects servicebeard-sync content", async () => {
+    const { buildSyncMarker, isServicebeardSyncedContent } = await import(
+      "@servicebeard/shared"
     );
     const marker = buildSyncMarker("email:<m@mail.test>");
-    expect(isServiceboardSyncedContent(`Reply text\n\n${marker}`)).toBe(true);
-    expect(isServiceboardSyncedContent("Regular agent reply")).toBe(false);
+    expect(isServicebeardSyncedContent(`Reply text\n\n${marker}`)).toBe(true);
+    expect(isServicebeardSyncedContent("Regular agent reply")).toBe(false);
   });
 });
 
 describe("email content conversion", () => {
   test("converts html email bodies to markdown", async () => {
     const { htmlToMarkdown, buildParsedEmailContent } = await import(
-      "@serviceboard/shared/email-content"
+      "@servicebeard/shared/email-content"
     );
     expect(htmlToMarkdown("<p>Hello <strong>world</strong></p>")).toContain(
       "**world**",
@@ -239,7 +239,7 @@ describe("email content conversion", () => {
 
   test("replaces cid image refs in markdown", async () => {
     const { replaceCidImagesInMarkdown } = await import(
-      "@serviceboard/shared/email-content"
+      "@servicebeard/shared/email-content"
     );
     const map = new Map([["img001@mail.test", "![logo](/uploads/logo.png)"]]);
     const result = replaceCidImagesInMarkdown(
@@ -251,7 +251,7 @@ describe("email content conversion", () => {
 
   test("converts markdown to html for outbound email", async () => {
     const { markdownToHtml, markdownToPlainText } = await import(
-      "@serviceboard/shared/email-content"
+      "@servicebeard/shared/email-content"
     );
     const markdown = "Hello **team**\n\n![shot](https://example.com/a.png)";
     expect(markdownToHtml(markdown)).toContain("<strong>team</strong>");
@@ -264,7 +264,7 @@ describe("email content conversion", () => {
       imagePlaceholder,
       replaceHtmlImagesWithPlaceholders,
       replaceImagePlaceholdersInMarkdown,
-    } = await import("@serviceboard/shared/email-content");
+    } = await import("@servicebeard/shared/email-content");
 
     const tinyPng =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -311,7 +311,7 @@ describe("email content conversion", () => {
 
   test("strips data-uri images from html before markdown conversion", async () => {
     const { buildParsedEmailContent, imagePlaceholder } = await import(
-      "@serviceboard/shared/email-content"
+      "@servicebeard/shared/email-content"
     );
     const tinyPng =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -333,7 +333,7 @@ describe("email content conversion", () => {
       isResolvableImageUrl,
       collectOutboundImageRefs,
       prepareGitLabNoteForOutboundEmail,
-    } = await import("@serviceboard/shared/email-content");
+    } = await import("@servicebeard/shared/email-content");
     expect(
       resolveProviderImageUrl(
         "/uploads/abc123/photo.jpg",
@@ -359,7 +359,7 @@ describe("email content conversion", () => {
 
   test("parses gitlab upload paths into secret and filename", async () => {
     const { parseGitLabUploadPath } = await import(
-      "@serviceboard/shared/email-content"
+      "@servicebeard/shared/email-content"
     );
     expect(
       parseGitLabUploadPath(
@@ -382,14 +382,14 @@ describe("email content conversion", () => {
 
 describe("stripQuotedReply", () => {
   test("removes On ... wrote blocks", async () => {
-    const { stripQuotedReply } = await import("@serviceboard/shared");
+    const { stripQuotedReply } = await import("@servicebeard/shared");
     expect(
       stripQuotedReply("Hello\n\nOn Mon, Jun 1, 2026, Jane wrote:\n> old"),
     ).toBe("Hello");
   });
 
   test("removes outlook original message blocks", async () => {
-    const { stripQuotedReply } = await import("@serviceboard/shared");
+    const { stripQuotedReply } = await import("@servicebeard/shared");
     expect(
       stripQuotedReply("Thanks\n\n-----Original Message-----\nFrom: a@b.com"),
     ).toBe("Thanks");
@@ -426,19 +426,19 @@ describe("inbound sync window", () => {
 
 describe("mail from validation", () => {
   test("accepts localhost addresses", async () => {
-    const { isValidMailFrom } = await import("@serviceboard/shared");
+    const { isValidMailFrom } = await import("@servicebeard/shared");
     expect(isValidMailFrom("support@localhost")).toBe(true);
     expect(isValidMailFrom("Support <support@localhost>")).toBe(true);
   });
 
   test("rejects invalid from values", async () => {
-    const { isValidMailFrom } = await import("@serviceboard/shared");
+    const { isValidMailFrom } = await import("@servicebeard/shared");
     expect(isValidMailFrom("not-an-email")).toBe(false);
     expect(isValidMailFrom("missing <angle>")).toBe(false);
   });
 
   test("parses address from display name format", async () => {
-    const { parseMailFromAddress } = await import("@serviceboard/shared");
+    const { parseMailFromAddress } = await import("@servicebeard/shared");
     expect(parseMailFromAddress("Support <support@mail.test>")).toBe(
       "support@mail.test",
     );
@@ -448,13 +448,13 @@ describe("mail from validation", () => {
 
 describe("email threading helpers", () => {
   test("normalizes message IDs to angle-bracket form", async () => {
-    const { normalizeMessageId } = await import("@serviceboard/shared");
+    const { normalizeMessageId } = await import("@servicebeard/shared");
     expect(normalizeMessageId("abc@mail.test")).toBe("<abc@mail.test>");
     expect(normalizeMessageId("<abc@mail.test>")).toBe("<abc@mail.test>");
   });
 
   test("builds references chain with parent message", async () => {
-    const { buildReferencesChain } = await import("@serviceboard/shared");
+    const { buildReferencesChain } = await import("@servicebeard/shared");
     expect(
       buildReferencesChain(["<a@x>"], "<b@x>"),
     ).toEqual(["<a@x>", "<b@x>"]);
@@ -462,7 +462,7 @@ describe("email threading helpers", () => {
   });
 
   test("formats quoted reply body", async () => {
-    const { formatQuotedReply } = await import("@serviceboard/shared");
+    const { formatQuotedReply } = await import("@servicebeard/shared");
     const body = formatQuotedReply("Thanks for your message.", {
       fromName: "Jane",
       fromEmail: "jane@example.com",
@@ -475,7 +475,7 @@ describe("email threading helpers", () => {
   });
 
   test("resolves support mailbox cc", async () => {
-    const { supportMailboxCc } = await import("@serviceboard/shared");
+    const { supportMailboxCc } = await import("@servicebeard/shared");
     expect(supportMailboxCc("support@mail.test", "customer@mail.test")).toBe(
       "support@mail.test",
     );
@@ -485,7 +485,7 @@ describe("email threading helpers", () => {
 
 describe("inbound ack template", () => {
   test("replaces placeholders", async () => {
-    const { renderInboundAckTemplate } = await import("@serviceboard/shared");
+    const { renderInboundAckTemplate } = await import("@servicebeard/shared");
     const result = renderInboundAckTemplate(
       "Hi {{senderName}}, we got your email about {{subject}}. Issue #{{issueNumber}}: {{issueUrl}}",
       {
@@ -503,7 +503,7 @@ describe("inbound ack template", () => {
   });
 
   test("leaves unknown placeholders unchanged", async () => {
-    const { renderInboundAckTemplate } = await import("@serviceboard/shared");
+    const { renderInboundAckTemplate } = await import("@servicebeard/shared");
     const result = renderInboundAckTemplate("{{unknown}}", {
       senderName: "Jane",
       senderEmail: "jane@example.com",
@@ -524,8 +524,8 @@ describe("normalizeSubject", () => {
 
 describe("validation errors", () => {
   test("formatValidationError maps zod issues to field errors", async () => {
-    const { formatValidationError } = await import("@serviceboard/shared");
-    const { createProjectSchema } = await import("@serviceboard/shared");
+    const { formatValidationError } = await import("@servicebeard/shared");
+    const { createProjectSchema } = await import("@servicebeard/shared");
     try {
       createProjectSchema.parse({ name: "", providerToken: "" });
     } catch (err) {
@@ -536,7 +536,7 @@ describe("validation errors", () => {
   });
 
   test("updateProjectSchema strips empty secret fields", async () => {
-    const { updateProjectSchema } = await import("@serviceboard/shared");
+    const { updateProjectSchema } = await import("@servicebeard/shared");
     const parsed = updateProjectSchema.parse({
       name: "Updated",
       providerToken: "",
@@ -555,7 +555,7 @@ describe("crypto", () => {
   });
 
   test("encrypt/decrypt roundtrip", async () => {
-    const { encrypt, decrypt } = await import("@serviceboard/db");
+    const { encrypt, decrypt } = await import("@servicebeard/db");
     const plaintext = "secret-token-12345";
     const encrypted = encrypt(plaintext);
     expect(encrypted).not.toBe(plaintext);
@@ -563,7 +563,7 @@ describe("crypto", () => {
   });
 
   test("hashToken is deterministic", async () => {
-    const { hashToken } = await import("@serviceboard/db");
+    const { hashToken } = await import("@servicebeard/db");
     expect(hashToken("abc")).toBe(hashToken("abc"));
     expect(hashToken("abc")).not.toBe(hashToken("def"));
   });
@@ -571,7 +571,7 @@ describe("crypto", () => {
 
 describe("GitLab webhook parsing", () => {
   test("parses note event", async () => {
-    const { GitLabProvider } = await import("@serviceboard/providers");
+    const { GitLabProvider } = await import("@servicebeard/providers");
     const provider = new GitLabProvider({
       baseUrl: "https://gitlab.com",
       projectId: "1",
@@ -601,7 +601,7 @@ describe("GitLab webhook parsing", () => {
   });
 
   test("skips system notes", async () => {
-    const { GitLabProvider } = await import("@serviceboard/providers");
+    const { GitLabProvider } = await import("@servicebeard/providers");
     const provider = new GitLabProvider({
       baseUrl: "https://gitlab.com",
       projectId: "1",
@@ -625,7 +625,7 @@ describe("GitLab webhook parsing", () => {
   });
 
   test("skips non-issue notes", async () => {
-    const { GitLabProvider } = await import("@serviceboard/providers");
+    const { GitLabProvider } = await import("@servicebeard/providers");
     const provider = new GitLabProvider({
       baseUrl: "https://gitlab.com",
       projectId: "1",

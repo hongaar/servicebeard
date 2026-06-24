@@ -1,15 +1,19 @@
+import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation } from "@tanstack/react-query";
 import { useLoaderData, useNavigate, useParams } from "@tanstack/react-router";
+import { MessagesSquare, Scissors, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Dialog } from "../components/Dialog";
+import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
 import { ProjectSettingsForm } from "../components/ProjectSettingsForm";
 import { RuleForm } from "../components/RuleForm";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
 import { api, type CreateRuleInput, type Rule } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import type { ProjectSection } from "../lib/navigation";
 import {
     formToUpdateInput,
     projectToSettingsForm,
@@ -17,19 +21,17 @@ import {
 } from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 
-type Tab = "rules" | "threads" | "settings";
-
-const TAB_INFO: Record<Tab, { label: string; description: string }> = {
+const SECTION_INFO: Record<ProjectSection, { description: string }> = {
   rules: {
-    label: "Rules",
     description: "Define how incoming emails are matched and what happens on your issue board.",
   },
-  threads: {
-    label: "Threads",
-    description: "View conversations that have been synced between mail and issues.",
+  status: {
+    description: "View conversations synced between mail and issues — the pulse of your inbox.",
+  },
+  templates: {
+    description: "Reusable reply templates for your team. Coming soon — we're combing them out.",
   },
   settings: {
-    label: "Settings",
     description: "Mailbox credentials, provider config, and project options.",
   },
 };
@@ -50,12 +52,11 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, threads, teamName } = useLoaderData({
-    from: "/teams/$teamId/projects/$projectId",
+  const { user, project, threads, teamName, section } = useLoaderData({
+    from: "/teams/$teamId/projects/$projectId/$section",
   });
-  const { teamId } = useParams({ from: "/teams/$teamId/projects/$projectId" });
+  const { teamId, projectId } = useParams({ from: "/teams/$teamId/projects/$projectId/$section" });
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("rules");
   const [showRuleForm, setShowRuleForm] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -137,27 +138,16 @@ export function ProjectDetailPage() {
   return (
     <Layout
       title={project.name}
-      description="Configure mail sync rules, view synced threads, and manage project settings."
+      description={SECTION_INFO[section].description}
       user={user}
       teamId={teamId}
       teamName={teamName}
+      projectId={projectId}
+      projectName={project.name}
+      section={section}
+      inboxEmail={parseMailFromAddress(project.smtpFrom)}
     >
-      <div className={styles.tabs} role="tablist" aria-label="Project sections">
-        {(["rules", "threads", "settings"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            className={[styles.tab, tab === t ? styles.tabActive : ""].join(" ")}
-            onClick={() => setTab(t)}
-          >
-            {TAB_INFO[t].label}
-          </button>
-        ))}
-      </div>
-      <p className={styles.tabDescription}>{TAB_INFO[tab].description}</p>
-
-      {tab === "rules" && (
+      {section === "rules" && (
         <>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionHeaderText}>
@@ -194,10 +184,10 @@ export function ProjectDetailPage() {
 
           {project.rules.length === 0 && !showRuleForm ? (
             <div className={styles.empty}>
-              <span className={styles.emptyIcon} aria-hidden>R</span>
+              <EmptyIcon icon={SlidersHorizontal} />
               <p className={styles.emptyTitle}>No rules yet</p>
               <p className={styles.emptyHint}>
-                Add a rule to tell Serviceboard how to handle incoming emails — for example,
+                Add a rule to tell Servicebeard how to handle incoming emails — for example,
                 create an issue when mail arrives from a VIP sender.
               </p>
               <Button onClick={() => setShowRuleForm(true)}>Add your first rule</Button>
@@ -268,11 +258,11 @@ export function ProjectDetailPage() {
         </>
       )}
 
-      {tab === "threads" && (
-        <Card title="Synced threads" subtitle="Email conversations linked to issues">
+      {section === "status" && (
+        <Card title="Synced status" subtitle="Email conversations linked to issues">
           {threads.length === 0 ? (
             <div className={styles.empty}>
-              <span className={styles.emptyIcon} aria-hidden>T</span>
+              <EmptyIcon icon={MessagesSquare} />
               <p className={styles.emptyTitle}>No synced conversations yet</p>
               <p className={styles.emptyHint}>
                 Once mail starts flowing and rules match, synced threads will appear here.
@@ -338,7 +328,17 @@ export function ProjectDetailPage() {
         </Card>
       )}
 
-      {tab === "settings" && (
+      {section === "templates" && (
+        <div className={styles.empty}>
+          <EmptyIcon icon={Scissors} />
+          <p className={styles.emptyTitle}>Templates are on the way</p>
+          <p className={styles.emptyHint}>
+            Save canned replies for your team — less typing, more beard-stroking contemplation.
+          </p>
+        </div>
+      )}
+
+      {section === "settings" && (
         <>
           <Card title="Project settings">
             {settingsError && (

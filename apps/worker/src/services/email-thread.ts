@@ -1,4 +1,4 @@
-import type { emailMessages, issueThreads, projects } from "@serviceboard/db";
+import type { emailMessages, issueThreads, projects } from "@servicebeard/db";
 import {
     buildReferencesChain,
     formatMailboxAddress,
@@ -7,7 +7,7 @@ import {
     parseMailFromAddress,
     supportMailboxCc,
     type QuotedEmail,
-} from "@serviceboard/shared";
+} from "@servicebeard/shared";
 import type { ParsedEmail } from "./rules";
 
 type StoredEmailMessage = typeof emailMessages.$inferSelect;

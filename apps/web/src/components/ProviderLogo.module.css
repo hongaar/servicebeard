@@ -1,0 +1,21 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 1.375rem;
+}
+
+.gitlab {
+  color: #fc6d26;
+}
+
+.github {
+  color: var(--color-text);
+}
+
+.fallback {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}

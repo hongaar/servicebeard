@@ -1,3 +1,3 @@
-import { loadMonorepoEnv } from "@serviceboard/shared/env";
+import { loadMonorepoEnv } from "@servicebeard/shared/env";
 
 loadMonorepoEnv();

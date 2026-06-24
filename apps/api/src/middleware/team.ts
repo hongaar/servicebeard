@@ -1,4 +1,4 @@
-import { getDb, teamMembers } from "@serviceboard/db";
+import { getDb, teamMembers } from "@servicebeard/db";
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import type { AppVariables } from "./auth";

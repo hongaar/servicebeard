@@ -1,11 +1,13 @@
-import { evaluateDraftRule } from "@serviceboard/shared/rules";
+import { evaluateDraftRule } from "@servicebeard/shared/rules";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
     api,
     type CreateRuleInput,
     type ProviderOptions,
 } from "../lib/api";
+import { iconSm } from "../lib/icons";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
 import { Card } from "./Card";
@@ -217,7 +219,7 @@ export function RuleForm({
             <span className={styles.collapseTitle}>Match preview</span>
             <span className={styles.collapseSummary}>{previewSummary}</span>
             <span className={styles.collapseChevron} data-expanded={previewExpanded}>
-              ▾
+              <ChevronDown {...iconSm} />
             </span>
           </button>
 

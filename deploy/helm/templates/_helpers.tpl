@@ -1,8 +1,8 @@
-{{- define "serviceboard.name" -}}
+{{- define "servicebeard.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "serviceboard.fullname" -}}
+{{- define "servicebeard.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -15,17 +15,17 @@
 {{- end }}
 {{- end }}
 
-{{- define "serviceboard.labels" -}}
-helm.sh/chart: {{ include "serviceboard.chart" . }}
-{{ include "serviceboard.selectorLabels" . }}
+{{- define "servicebeard.labels" -}}
+helm.sh/chart: {{ include "servicebeard.chart" . }}
+{{ include "servicebeard.selectorLabels" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{- define "serviceboard.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "serviceboard.name" . }}
+{{- define "servicebeard.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "servicebeard.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "serviceboard.chart" -}}
+{{- define "servicebeard.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}

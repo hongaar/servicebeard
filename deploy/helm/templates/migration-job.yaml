@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "serviceboard.fullname" . }}-migrate
+  name: {{ include "servicebeard.fullname" . }}-migrate
   labels:
-    {{- include "serviceboard.labels" . | nindent 4 }}
+    {{- include "servicebeard.labels" . | nindent 4 }}
   annotations:
     helm.sh/hook: pre-install,pre-upgrade
     helm.sh/hook-weight: "-1"
@@ -20,5 +20,5 @@ spec:
           workingDir: /app
           envFrom:
             - secretRef:
-                name: {{ include "serviceboard.fullname" . }}-secrets
+                name: {{ include "servicebeard.fullname" . }}-secrets
 {{- end }}

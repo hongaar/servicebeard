@@ -1,5 +1,7 @@
 node_modules/
 dist/
+landing-dist/
+.landing-build-tmp/
 .env
 .env.local
 *.log
