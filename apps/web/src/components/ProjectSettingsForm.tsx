@@ -265,7 +265,7 @@ export function ProjectSettingsForm({
           value={values.imapPollIntervalSeconds}
           error={fieldErrors?.imapPollIntervalSeconds}
           onChange={(e) => set("imapPollIntervalSeconds")(Number(e.target.value))}
-          hint="Minimum 30 seconds."
+          hint="Minimum 60 seconds (poll scheduler runs once per minute)."
         />
         <Input
           label="Comment poll interval (seconds)"
@@ -273,7 +273,7 @@ export function ProjectSettingsForm({
           value={values.commentPollIntervalSeconds}
           error={fieldErrors?.commentPollIntervalSeconds}
           onChange={(e) => set("commentPollIntervalSeconds")(Number(e.target.value))}
-          hint="Fallback when webhooks are unavailable. Minimum 30 seconds."
+          hint="Fallback when webhooks are unavailable. Minimum 60 seconds (poll scheduler runs once per minute)."
         />
       </div>
 

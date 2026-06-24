@@ -9,7 +9,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 - Per-project IMAP polling + SMTP outbound
 - Rules engine (match sender/subject/body → create issue with labels/assignee)
 - Bidirectional sync: email → issue/comment, issue comment → email reply
-- Loop prevention via GitLab internal notes
+- Loop prevention via bot-user filtering, sync markers, and note deduplication
 - Webhook + polling fallback for outbound comments
 - Kubernetes deployment via Helm
 
@@ -49,14 +49,15 @@ bun run db:migrate
 ### 3. Run dev servers
 
 ```bash
-# Terminal 1 - API
-bun run dev:api
+bun run dev
+```
 
-# Terminal 2 - Worker
-bun run dev:worker
+This starts Docker services (Postgres, GreenMail, Roundcube, Adminer) and runs the API, worker, and web UI in one terminal.
 
-# Terminal 3 - Web UI
-bun run dev:web
+To run only the app servers (when Docker is already up):
+
+```bash
+bun run dev:apps
 ```
 
 Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
@@ -113,14 +114,14 @@ bun run db:studio
 
 1. Worker polls IMAP for unseen messages per active project
 2. Thread match via `Message-ID` / `References` / subject+sender
-3. Existing thread → append as internal comment on issue
+3. Existing thread → append as public comment on issue
 4. New thread → evaluate rules → create GitLab issue with metadata
 5. Optional acknowledgement email to the original sender (project setting)
 
 **Outbound (comment → email)**
 
 1. GitLab `note_events` webhook (or polling fallback)
-2. Skip internal notes and bot-authored notes
+2. Skip email-synced comments (sync marker), bot-authored notes, and already-processed notes
 3. Send threaded reply email via project SMTP
 
 ### Testing

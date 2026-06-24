@@ -1,19 +1,112 @@
 :root {
-  --color-bg: #0f1117;
-  --color-surface: #1a1d27;
-  --color-surface-hover: #222633;
-  --color-border: #2d3348;
-  --color-text: #e8eaed;
-  --color-text-muted: #9aa0b4;
-  --color-primary: #6c8cff;
-  --color-primary-hover: #5a7af5;
-  --color-success: #4ade80;
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
-  --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-  --radius: 8px;
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  color-scheme: light dark;
+
+  /* Typography */
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.7;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+
+  /* Sidebar */
+  --sidebar-width: 260px;
+}
+
+/* Light theme (default for prefers-color-scheme: light) */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg: #f4f6fb;
+    --color-bg-subtle: #eef1f8;
+    --color-surface: #ffffff;
+    --color-surface-raised: #ffffff;
+    --color-surface-hover: #f0f3fa;
+    --color-surface-active: #e8ecf6;
+    --color-border: #dde3ef;
+    --color-border-strong: #c5cfe0;
+    --color-text: #111827;
+    --color-text-secondary: #374151;
+    --color-text-muted: #6b7280;
+    --color-primary: #4f46e5;
+    --color-primary-hover: #4338ca;
+    --color-primary-subtle: rgba(79, 70, 229, 0.1);
+    --color-primary-text: #ffffff;
+    --color-success: #059669;
+    --color-success-subtle: rgba(5, 150, 105, 0.1);
+    --color-danger: #dc2626;
+    --color-danger-subtle: rgba(220, 38, 38, 0.08);
+    --color-warning: #d97706;
+    --color-warning-subtle: rgba(217, 119, 6, 0.1);
+    --color-accent: #0ea5e9;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+    --overlay: rgba(15, 23, 42, 0.4);
+    --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);
+  }
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0c0e14;
+    --color-bg-subtle: #12151e;
+    --color-surface: #161a24;
+    --color-surface-raised: #1c2130;
+    --color-surface-hover: #222838;
+    --color-surface-active: #2a3144;
+    --color-border: #2d3548;
+    --color-border-strong: #3d4660;
+    --color-text: #f1f3f9;
+    --color-text-secondary: #c8cede;
+    --color-text-muted: #8b95ad;
+    --color-primary: #818cf8;
+    --color-primary-hover: #6366f1;
+    --color-primary-subtle: rgba(129, 140, 248, 0.14);
+    --color-primary-text: #ffffff;
+    --color-success: #34d399;
+    --color-success-subtle: rgba(52, 211, 153, 0.12);
+    --color-danger: #f87171;
+    --color-danger-subtle: rgba(248, 113, 113, 0.1);
+    --color-warning: #fbbf24;
+    --color-warning-subtle: rgba(251, 191, 36, 0.12);
+    --color-accent: #38bdf8;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+    --overlay: rgba(0, 0, 0, 0.65);
+    --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.4);
+  }
 }
 
 *,
@@ -32,19 +125,23 @@ body,
 
 body {
   font-family: var(--font-sans);
+  font-size: var(--text-base);
   background: var(--color-bg);
   color: var(--color-text);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
   color: var(--color-primary);
   text-decoration: none;
+  font-weight: 500;
+  transition: color var(--transition-fast);
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--color-primary-hover);
 }
 
 button {
@@ -57,4 +154,14 @@ select,
 textarea {
   font-family: inherit;
   font-size: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: var(--color-primary-subtle);
+  color: var(--color-text);
 }

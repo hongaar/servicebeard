@@ -317,9 +317,10 @@ export function LoginPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
+        <div className={styles.loginLogo} aria-hidden>S</div>
         <h1 className={styles.title}>Serviceboard</h1>
         <p className={styles.subtitle}>
-          Sync your mailbox with issue boards. Sign in to get started.
+          Turn support mail into tracked issues. Sign in to manage your teams and sync rules.
         </p>
 
         {redirectProviders.map((provider) => (

@@ -1,13 +1,16 @@
-import type { ProviderConfig } from "@serviceboard/providers";
-import { providerFetch } from "@serviceboard/providers";
+import type { IssueProvider, ProviderConfig } from "@serviceboard/providers";
 import {
-    extractMarkdownImages,
+    collectOutboundImageRefs,
     markdownToHtml,
     markdownToPlainText,
+    prepareGitLabNoteForOutboundEmail,
     replaceHtmlImageUrlsWithCid,
     replaceMarkdownImagesWithCid,
+    resolveProviderImageUrl,
 } from "@serviceboard/shared/email-content";
 import { randomBytes } from "node:crypto";
+import { logExternalError } from "../lib/external-error";
+import { logger } from "../lib/logger";
 
 export interface OutboundMultipartContent {
   text: string;
@@ -26,27 +29,38 @@ function filenameFromUrl(url: string, index: number): string {
     const base = pathname.split("/").pop();
     if (base) return base;
   } catch {
-    // fall through
+    const base = url.split("/").pop();
+    if (base) return base;
   }
   return `image-${index + 1}.png`;
 }
 
-function isFetchableImageUrl(url: string): boolean {
-  return /^https?:\/\//i.test(url);
+function registerImageCid(
+  urlToCid: Map<string, string>,
+  originalUrl: string,
+  resolvedUrl: string,
+  cid: string,
+): void {
+  urlToCid.set(originalUrl, cid);
+  urlToCid.set(resolvedUrl, cid);
+  if (originalUrl !== resolvedUrl) {
+    urlToCid.set(originalUrl.replace(/^\//, ""), cid);
+  }
 }
 
 export async function buildOutboundMultipartContent(
   markdown: string,
+  provider?: IssueProvider,
   providerConfig?: ProviderConfig,
 ): Promise<OutboundMultipartContent> {
-  const images = extractMarkdownImages(markdown).filter((image) =>
-    isFetchableImageUrl(image.url),
-  );
+  const baseUrl = providerConfig?.baseUrl ?? "";
+  const preparedMarkdown = prepareGitLabNoteForOutboundEmail(markdown);
+  const images = collectOutboundImageRefs(preparedMarkdown, baseUrl);
 
   if (images.length === 0) {
     return {
-      text: markdownToPlainText(markdown),
-      html: markdownToHtml(markdown),
+      text: markdownToPlainText(preparedMarkdown),
+      html: markdownToHtml(preparedMarkdown),
       attachments: [],
     };
   }
@@ -55,41 +69,74 @@ export async function buildOutboundMultipartContent(
   const attachments: OutboundMultipartContent["attachments"] = [];
 
   for (const [index, image] of images.entries()) {
-    if (urlToCid.has(image.url)) continue;
+    const resolvedUrl = resolveProviderImageUrl(image.url, baseUrl);
+    if (!resolvedUrl) continue;
+    if (urlToCid.has(image.url) || urlToCid.has(resolvedUrl)) continue;
 
     try {
-      const response = providerConfig
-        ? await providerFetch(providerConfig, image.url)
-        : await fetch(image.url);
-      if (!response.ok) continue;
+      const downloaded = provider
+        ? await provider.downloadFile(resolvedUrl)
+        : await downloadFileAnonymously(resolvedUrl);
+      if (!downloaded) {
+        logger.warn(
+          { url: resolvedUrl, originalUrl: image.url },
+          "skipping outbound email image, download failed",
+        );
+        continue;
+      }
 
-      const contentType =
-        response.headers.get("content-type") ?? "application/octet-stream";
-      if (!contentType.toLowerCase().startsWith("image/")) continue;
-
-      const buffer = Buffer.from(await response.arrayBuffer());
       const cid = `${randomBytes(8).toString("hex")}@serviceboard.local`;
-      urlToCid.set(image.url, cid);
+      registerImageCid(urlToCid, image.url, resolvedUrl, cid);
       attachments.push({
-        filename: filenameFromUrl(image.url, index),
-        content: buffer,
-        contentType,
+        filename: filenameFromUrl(resolvedUrl, index),
+        content: downloaded.content,
+        contentType: downloaded.contentType,
         cid,
       });
-    } catch {
-      // Keep remote URL when fetch fails.
+    } catch (err) {
+      logExternalError("outbound-email", "download-image", err, {
+        url: resolvedUrl,
+        originalUrl: image.url,
+      });
     }
   }
 
-  const markdownWithCid = replaceMarkdownImagesWithCid(markdown, urlToCid);
+  const markdownWithCid = replaceMarkdownImagesWithCid(
+    preparedMarkdown,
+    urlToCid,
+    baseUrl,
+  );
   const html = replaceHtmlImageUrlsWithCid(
     markdownToHtml(markdownWithCid),
     urlToCid,
+    baseUrl,
   );
 
   return {
     text: markdownToPlainText(markdownWithCid),
     html,
     attachments,
+  };
+}
+
+async function downloadFileAnonymously(
+  url: string,
+): Promise<{ content: Buffer; contentType: string } | null> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    logger.warn(
+      { url, status: response.status },
+      "failed to download outbound email image",
+    );
+    return null;
+  }
+
+  const contentType =
+    response.headers.get("content-type") ?? "application/octet-stream";
+  if (contentType.toLowerCase().includes("text/html")) return null;
+
+  return {
+    content: Buffer.from(await response.arrayBuffer()),
+    contentType,
   };
 }

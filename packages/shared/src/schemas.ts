@@ -54,8 +54,8 @@ export const createProjectSchema = z
       .min(1)
       .max(50)
       .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
-    imapPollIntervalSeconds: z.number().int().min(30).default(60),
-    commentPollIntervalSeconds: z.number().int().min(30).default(120),
+    imapPollIntervalSeconds: z.number().int().min(60).default(60),
+    commentPollIntervalSeconds: z.number().int().min(60).default(120),
   })
   .merge(providerConfigSchema)
   .merge(mailConfigSchema);

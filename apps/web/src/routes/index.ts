@@ -47,8 +47,11 @@ export const projectsRoute = createRoute({
   component: ProjectsPage,
   loader: async ({ params }) => {
     const user = await requireUser();
-    const { projects } = await api.getProjects(params.teamId);
-    return { user, projects };
+    const [team, { projects }] = await Promise.all([
+      api.getTeam(params.teamId),
+      api.getProjects(params.teamId),
+    ]);
+    return { user, projects, teamName: team.name };
   },
 });
 
@@ -59,9 +62,12 @@ export const projectDetailRoute = createRoute({
   loader: async ({ params }) => {
     const user = await requireUser();
     try {
-      const project = await api.getProject(params.teamId, params.projectId);
-      const { threads } = await api.getThreads(params.teamId, params.projectId);
-      return { user, project, threads };
+      const [team, project, { threads }] = await Promise.all([
+        api.getTeam(params.teamId),
+        api.getProject(params.teamId, params.projectId),
+        api.getThreads(params.teamId, params.projectId),
+      ]);
+      return { user, project, threads, teamName: team.name };
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
         throw redirect({

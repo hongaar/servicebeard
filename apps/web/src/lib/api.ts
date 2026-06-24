@@ -101,7 +101,8 @@ export const api = {
   createTeam: (data: { name: string; slug: string }) =>
     request("/teams", { method: "POST", body: JSON.stringify(data) }),
 
-  getTeam: (teamId: string) => request(`/teams/${teamId}`),
+  getTeam: (teamId: string) =>
+    request<{ id: string; name: string; slug: string; members: unknown[] }>(`/teams/${teamId}`),
 
   getProjects: (teamId: string) =>
     request<{ projects: Project[] }>(`/teams/${teamId}/projects`),

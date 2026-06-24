@@ -26,6 +26,10 @@ export function buildSyncMarker(threadId: string): string {
   return `${SYNC_MARKER_PREFIX}${threadId}${SYNC_MARKER_SUFFIX}`;
 }
 
+export function isServiceboardSyncedContent(body: string): boolean {
+  return body.includes(SYNC_MARKER_PREFIX);
+}
+
 export function normalizeSubject(subject: string): string {
   return subject
     .replace(/^(re|fwd|fw):\s*/gi, "")

@@ -1,6 +1,7 @@
 import { normalizeMessageId, parseMailFromAddress } from "@serviceboard/shared";
 import { randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
+import { logExternalError } from "../lib/external-error";
 
 export interface SmtpCredentials {
   smtpHost: string;
@@ -46,23 +47,33 @@ export async function sendEmail(
   const inReplyTo = email.inReplyTo ? normalizeMessageId(email.inReplyTo) : undefined;
   const references = (email.references ?? []).map(normalizeMessageId);
 
-  await transporter.sendMail({
-    from: creds.smtpFrom,
-    to: email.toName ? `"${email.toName}" <${email.to}>` : email.to,
-    cc: email.cc,
-    subject: email.subject.startsWith("Re:") ? email.subject : `Re: ${email.subject}`,
-    text: email.body,
-    html: email.bodyHtml,
-    attachments: email.attachments?.map((attachment) => ({
-      filename: attachment.filename,
-      content: attachment.content,
-      contentType: attachment.contentType,
-      cid: attachment.cid,
-    })),
-    messageId,
-    inReplyTo,
-    references: references.length > 0 ? references.join(" ") : undefined,
-  });
+  try {
+    await transporter.sendMail({
+      from: creds.smtpFrom,
+      to: email.toName ? `"${email.toName}" <${email.to}>` : email.to,
+      cc: email.cc,
+      subject: email.subject.startsWith("Re:") ? email.subject : `Re: ${email.subject}`,
+      text: email.body,
+      html: email.bodyHtml,
+      attachments: email.attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.content,
+        contentType: attachment.contentType,
+        cid: attachment.cid,
+      })),
+      messageId,
+      inReplyTo,
+      references: references.length > 0 ? references.join(" ") : undefined,
+    });
+  } catch (err) {
+    logExternalError("smtp", "send-mail", err, {
+      host: creds.smtpHost,
+      port: creds.smtpPort,
+      to: email.to,
+      subject: email.subject,
+    });
+    throw err;
+  }
 
   return messageId;
 }

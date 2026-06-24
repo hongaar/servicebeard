@@ -1,5 +1,10 @@
 import type { ParsedEmail } from "@serviceboard/shared";
-import { evaluateRules, stripQuotedReply, type RuleMatchResult } from "@serviceboard/shared";
+import {
+    buildSyncMarker,
+    evaluateRules,
+    stripQuotedReply,
+    type RuleMatchResult,
+} from "@serviceboard/shared";
 
 export { evaluateRules };
 export type { ParsedEmail, RuleMatchResult };
@@ -15,14 +20,11 @@ export function formatIssueDescription(
 
   const body = bodyMarkdown ?? email.bodyMarkdown ?? email.body;
 
-  return `${body}
+  return `**Message from ${sender}**
 
----
-**Email metadata**
-- From: ${sender}
-- Subject: ${email.subject}
-- Message-ID: ${email.messageId}
-<!-- serviceboard-sync:${threadId} -->`;
+${body}
+
+${buildSyncMarker(threadId)}`;
 }
 
 export function formatCommentBody(
@@ -37,5 +39,7 @@ export function formatCommentBody(
 
   return `**Reply from ${sender}**
 
-${body}`;
+${body}
+
+${buildSyncMarker(`email:${email.messageId}`)}`;
 }

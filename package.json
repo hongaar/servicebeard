@@ -7,10 +7,11 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '*' dev",
-    "dev:api": "bun run --filter @serviceboard/api dev",
-    "dev:web": "bun run --filter @serviceboard/web dev",
-    "dev:worker": "bun run --filter @serviceboard/worker dev",
+    "dev": "docker compose up -d && bun run dev:apps",
+    "dev:apps": "bun --elide-lines=50 run --filter './apps/*' dev",
+    "dev:api": "bun --elide-lines=50 run --filter @serviceboard/api dev",
+    "dev:web": "bun --elide-lines=50 run --filter @serviceboard/web dev",
+    "dev:worker": "bun --elide-lines=50 run --filter @serviceboard/worker dev",
     "build": "bun run --filter '*' build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "eslint .",

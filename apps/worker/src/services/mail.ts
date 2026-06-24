@@ -3,6 +3,7 @@ import { buildParsedEmailContent } from "@serviceboard/shared/email-content";
 import { ImapFlow } from "imapflow";
 import type { AddressObject } from "mailparser";
 import { simpleParser } from "mailparser";
+import { logExternalError } from "../lib/external-error";
 import type { ParsedEmail } from "./rules";
 
 function addressesFromField(field?: AddressObject | AddressObject[]): string[] {
@@ -38,27 +39,36 @@ export async function fetchUnseenMessages(
 
   const messages: Array<{ uid: number; raw: Buffer; internalDate: Date }> = [];
 
-  await client.connect();
-  const lock = await client.getMailboxLock("INBOX");
-
   try {
-    for await (const msg of client.fetch(
-      { seen: false },
-      { source: true, uid: true, internalDate: true },
-    )) {
-      if (msg.source && msg.uid) {
-        const internalDate =
-          msg.internalDate instanceof Date
-            ? msg.internalDate
-            : msg.internalDate
-              ? new Date(msg.internalDate)
-              : new Date();
-        messages.push({ uid: msg.uid, raw: msg.source, internalDate });
+    await client.connect();
+    const lock = await client.getMailboxLock("INBOX");
+
+    try {
+      for await (const msg of client.fetch(
+        { seen: false },
+        { source: true, uid: true, internalDate: true },
+      )) {
+        if (msg.source && msg.uid) {
+          const internalDate =
+            msg.internalDate instanceof Date
+              ? msg.internalDate
+              : msg.internalDate
+                ? new Date(msg.internalDate)
+                : new Date();
+          messages.push({ uid: msg.uid, raw: msg.source, internalDate });
+        }
       }
+    } finally {
+      lock.release();
+      await client.logout();
     }
-  } finally {
-    lock.release();
-    await client.logout();
+  } catch (err) {
+    logExternalError("imap", "fetch-unseen", err, {
+      host: creds.imapHost,
+      port: creds.imapPort,
+      user: creds.imapUser,
+    });
+    throw err;
   }
 
   return messages;
@@ -76,14 +86,24 @@ export async function markMessageSeen(
     logger: false,
   });
 
-  await client.connect();
-  const lock = await client.getMailboxLock("INBOX");
-
   try {
-    await client.messageFlagsAdd({ uid }, ["\\Seen"], { uid: true });
-  } finally {
-    lock.release();
-    await client.logout();
+    await client.connect();
+    const lock = await client.getMailboxLock("INBOX");
+
+    try {
+      await client.messageFlagsAdd({ uid }, ["\\Seen"], { uid: true });
+    } finally {
+      lock.release();
+      await client.logout();
+    }
+  } catch (err) {
+    logExternalError("imap", "mark-seen", err, {
+      host: creds.imapHost,
+      port: creds.imapPort,
+      user: creds.imapUser,
+      uid,
+    });
+    throw err;
   }
 }
 

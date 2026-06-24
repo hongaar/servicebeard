@@ -52,7 +52,13 @@ export function TeamPage() {
   });
 
   return (
-    <Layout title={team.name} user={user} teamId={team.id}>
+    <Layout
+      title={team.name}
+      description="Manage who has access to this team and its projects."
+      user={user}
+      teamId={team.id}
+      teamName={team.name}
+    >
       {message && (
         <div
           className={[styles.alert, isError ? styles.alertError : styles.alertSuccess].join(" ")}
@@ -61,44 +67,46 @@ export function TeamPage() {
         </div>
       )}
 
-      <Card title="Members" subtitle={`${team.members.length} member(s)`}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {team.members.map((m) => (
-              <tr key={m.id}>
-                <td>{m.user.name ?? "—"}</td>
-                <td>{m.user.email}</td>
-                <td style={{ textTransform: "capitalize" }}>{m.role}</td>
-                <td>
-                  {m.role !== "owner" && (
-                    <Button
-                      variant="danger"
-                      size="small"
-                      onClick={() => removeMember.mutate(m.id)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </td>
+      <Card title="Members" subtitle={`${team.members.length} people on this team`}>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {team.members.map((m) => (
+                <tr key={m.id}>
+                  <td>{m.user.name ?? "—"}</td>
+                  <td>{m.user.email}</td>
+                  <td style={{ textTransform: "capitalize" }}>{m.role}</td>
+                  <td>
+                    {m.role !== "owner" && (
+                      <Button
+                        variant="danger"
+                        size="small"
+                        onClick={() => removeMember.mutate(m.id)}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
-      <Card title="Invite Member" className={styles.section}>
+      <Card title="Invite someone" subtitle="They'll receive an email to join this team" className={styles.section}>
         <div className={styles.form}>
           <div className={styles.row}>
             <Input
-              label="Email"
+              label="Email address"
               type="email"
               value={email}
               error={fieldErrors.email}
@@ -113,14 +121,14 @@ export function TeamPage() {
               value={role}
               onChange={(e) => setRole(e.target.value)}
               options={[
-                { value: "member", label: "Member" },
-                { value: "admin", label: "Admin" },
+                { value: "member", label: "Member — can view and manage projects" },
+                { value: "admin", label: "Admin — can invite and remove members" },
               ]}
             />
           </div>
           <div className={styles.formActions}>
             <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending}>
-              Send Invite
+              {invite.isPending ? "Sending…" : "Send invite"}
             </Button>
           </div>
         </div>

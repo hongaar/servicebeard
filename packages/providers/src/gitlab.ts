@@ -1,8 +1,11 @@
+import { parseGitLabUploadPath } from "@serviceboard/shared/email-content";
 import { providerFetch } from "./http";
+import { logProvider } from "./log";
 import type {
     AddCommentResult,
     CreateIssueInput,
     CreateIssueResult,
+    DownloadedFile,
     IssueProvider,
     NormalizedWebhookEvent,
     ProviderConfig,
@@ -14,6 +17,7 @@ import type {
 interface GitLabUser {
   id: number;
   username: string;
+  name?: string;
 }
 
 interface GitLabIssue {
@@ -25,9 +29,10 @@ interface GitLabIssue {
 interface GitLabNote {
   id: number;
   body: string;
-  author: { id: number; username: string };
+  author: { id: number; username: string; name?: string };
   confidential?: boolean;
   internal?: boolean;
+  system?: boolean;
   created_at: string;
 }
 
@@ -63,12 +68,44 @@ interface GitLabWebhookPayload {
     noteable_type?: string;
     confidential?: boolean;
     internal?: boolean;
+    system?: boolean;
     created_at?: string;
     url?: string;
   };
-  user?: { id: number; username: string };
+  user?: { id: number; username: string; name?: string };
   project?: { id: number };
   issue?: { id: number; iid: number };
+}
+
+export class GitLabApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "GitLabApiError";
+    this.status = status;
+  }
+}
+
+function inferImageContentTypeFromUrl(url: string): string | null {
+  const ext = url.split("?")[0]?.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    case "bmp":
+      return "image/bmp";
+    default:
+      return null;
+  }
 }
 
 export class GitLabProvider implements IssueProvider {
@@ -84,6 +121,7 @@ export class GitLabProvider implements IssueProvider {
     method: string,
     path: string,
     body?: unknown,
+    options?: { quiet404?: boolean },
   ): Promise<T> {
     const url = `${this.apiBase}${path}`;
     const response = await providerFetch(this.config, url, {
@@ -97,7 +135,16 @@ export class GitLabProvider implements IssueProvider {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`GitLab API error ${response.status}: ${text}`);
+      const status = response.status;
+      if (!(options?.quiet404 && status === 404)) {
+        logProvider(status === 404 ? "debug" : "error", "GitLab API request failed", {
+          method,
+          path,
+          status,
+          bodyPreview: text.slice(0, 500),
+        });
+      }
+      throw new GitLabApiError(status, `GitLab API error ${status}: ${text}`);
     }
 
     if (response.status === 204) {
@@ -353,7 +400,7 @@ export class GitLabProvider implements IssueProvider {
       },
     );
 
-    return { noteId: String(note.id) };
+    return { noteId: String(note.id), createdAt: new Date(note.created_at) };
   }
 
   async uploadFile(
@@ -379,7 +426,14 @@ export class GitLabProvider implements IssueProvider {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`GitLab upload error ${response.status}: ${text}`);
+      logProvider("error", "GitLab file upload failed", {
+        status: response.status,
+        bodyPreview: text.slice(0, 500),
+      });
+      throw new GitLabApiError(
+        response.status,
+        `GitLab upload error ${response.status}: ${text}`,
+      );
     }
 
     const data = (await response.json()) as {
@@ -398,34 +452,152 @@ export class GitLabProvider implements IssueProvider {
     };
   }
 
+  async downloadFile(url: string): Promise<DownloadedFile | null> {
+    const upload = parseGitLabUploadPath(url);
+    if (upload) {
+      const viaApi = await this.downloadProjectUpload(upload.secret, upload.filename);
+      if (viaApi) return viaApi;
+    }
+
+    return this.downloadFileFromWeb(url);
+  }
+
+  private async downloadProjectUpload(
+    secret: string,
+    filename: string,
+  ): Promise<DownloadedFile | null> {
+    const apiUrl = `${this.apiBase}/projects/${this.encodeProjectId()}/uploads/${encodeURIComponent(secret)}/${encodeURIComponent(filename)}`;
+    const response = await providerFetch(this.config, apiUrl, {
+      headers: {
+        "PRIVATE-TOKEN": this.config.token,
+      },
+    });
+
+    if (!response.ok) {
+      logProvider("warn", "GitLab upload API download failed", {
+        secret,
+        filename,
+        status: response.status,
+      });
+      return null;
+    }
+
+    return this.readDownloadedFile(response, filename);
+  }
+
+  private async downloadFileFromWeb(url: string): Promise<DownloadedFile | null> {
+    const absoluteUrl = url.startsWith("http")
+      ? url
+      : `${this.config.baseUrl.replace(/\/$/, "")}${url}`;
+
+    const response = await providerFetch(this.config, absoluteUrl, {
+      headers: {
+        "PRIVATE-TOKEN": this.config.token,
+      },
+    });
+
+    if (!response.ok) {
+      logProvider("warn", "GitLab file download failed", {
+        url: absoluteUrl,
+        status: response.status,
+      });
+      return null;
+    }
+
+    return this.readDownloadedFile(response, absoluteUrl);
+  }
+
+  private async readDownloadedFile(
+    response: Response,
+    nameForTypeInference: string,
+  ): Promise<DownloadedFile | null> {
+    const headerType =
+      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ??
+      "application/octet-stream";
+    const content = Buffer.from(await response.arrayBuffer());
+
+    if (headerType.includes("text/html") || content.length === 0) {
+      logProvider("warn", "GitLab file download returned non-image payload", {
+        nameForTypeInference,
+        contentType: headerType,
+        bytes: content.length,
+      });
+      return null;
+    }
+
+    const contentType =
+      headerType.startsWith("image/")
+        ? headerType
+        : inferImageContentTypeFromUrl(nameForTypeInference);
+
+    if (!contentType) {
+      logProvider("debug", "GitLab file download skipped, unknown image type", {
+        nameForTypeInference,
+        contentType: headerType,
+      });
+      return null;
+    }
+
+    return { content, contentType };
+  }
+
   async addReaction(
     issueIid: number,
     noteId: string,
     emoji: string,
   ): Promise<void> {
-    await this.request(
-      "POST",
-      `/projects/${this.encodeProjectId()}/issues/${issueIid}/notes/${noteId}/award_emoji`,
-      { name: emoji },
-    );
+    try {
+      await this.request(
+        "POST",
+        `/projects/${this.encodeProjectId()}/issues/${issueIid}/notes/${noteId}/award_emoji`,
+        { name: emoji },
+        { quiet404: true },
+      );
+    } catch (err) {
+      if (
+        err instanceof GitLabApiError &&
+        (err.status === 404 || err.status === 403)
+      ) {
+        // Emoji reactions are optional; unsupported on some GitLab versions/work items.
+        return;
+      }
+      logProvider("warn", "GitLab emoji reaction failed", {
+        issueIid,
+        noteId,
+        emoji,
+        status: err instanceof GitLabApiError ? err.status : undefined,
+      });
+    }
   }
 
-  async listCommentsSince(issueIid: number, since: Date): Promise<ProviderNote[]> {
-    const notes = await this.request<GitLabNote[]>(
-      "GET",
-      `/projects/${this.encodeProjectId()}/issues/${issueIid}/notes?sort=asc&per_page=100`,
-    );
+  async listCommentsSince(
+    issueIid: number,
+    since: Date,
+  ): Promise<ProviderNote[] | null> {
+    try {
+      const notes = await this.request<GitLabNote[]>(
+        "GET",
+        `/projects/${this.encodeProjectId()}/issues/${issueIid}/notes?sort=asc&per_page=100`,
+      );
 
-    return notes
-      .filter((n) => new Date(n.created_at) > since)
-      .map((n) => ({
-        id: String(n.id),
-        body: n.body,
-        authorId: String(n.author.id),
-        authorUsername: n.author.username,
-        internal: n.internal ?? n.confidential ?? false,
-        createdAt: new Date(n.created_at),
-      }));
+      return notes
+        .filter((n) => new Date(n.created_at).getTime() >= since.getTime())
+        .map((n) => ({
+          id: String(n.id),
+          body: n.body,
+          authorId: String(n.author.id),
+          authorName: n.author.name?.trim() || null,
+          authorUsername: n.author.username,
+          internal: n.internal ?? n.confidential ?? false,
+          system: n.system ?? false,
+          createdAt: new Date(n.created_at),
+        }));
+    } catch (err) {
+      if (err instanceof GitLabApiError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
   }
 
   verifyWebhook(
@@ -445,6 +617,7 @@ export class GitLabProvider implements IssueProvider {
     if (data.object_kind !== "note") return null;
     if (data.object_attributes?.noteable_type !== "Issue") return null;
     if (!data.issue || !data.object_attributes?.id) return null;
+    if (data.object_attributes.system) return null;
 
     return {
       type: "note_created",
@@ -453,11 +626,13 @@ export class GitLabProvider implements IssueProvider {
       noteId: String(data.object_attributes.id),
       noteBody: data.object_attributes.note ?? "",
       authorId: String(data.user?.id ?? 0),
+      authorName: data.user?.name?.trim() || null,
       authorUsername: data.user?.username ?? "unknown",
       internal:
         data.object_attributes.internal ??
         data.object_attributes.confidential ??
         false,
+      system: data.object_attributes.system ?? false,
       createdAt: new Date(data.object_attributes.created_at ?? Date.now()),
     };
   }

@@ -7,6 +7,7 @@ import {
 } from "@serviceboard/db";
 import { normalizeSubject, renderInboundAckTemplate } from "@serviceboard/shared";
 import { and, eq, inArray, or } from "drizzle-orm";
+import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
 import {
@@ -51,7 +52,14 @@ export async function processImapPoll(projectId: string): Promise<void> {
     imapPassword: decrypt(project.imapPasswordEncrypted),
   };
 
-  const messages = await fetchUnseenMessages(creds);
+  let messages;
+  try {
+    messages = await fetchUnseenMessages(creds);
+  } catch (err) {
+    logExternalError("imap", "poll", err, { projectId });
+    throw err;
+  }
+
   logger.info({ projectId, count: messages.length }, "fetched unseen messages");
 
   for (const { uid, raw, internalDate } of messages) {
@@ -70,7 +78,7 @@ export async function processImapPoll(projectId: string): Promise<void> {
       await processInboundEmail(projectId, email);
       await markMessageSeen(creds, uid);
     } catch (err) {
-      logger.error({ err, projectId, uid }, "failed to process message");
+      logExternalError("inbound", "process-message", err, { projectId, uid });
     }
   }
 
@@ -115,7 +123,7 @@ export async function processInboundEmail(
     const markdownBody = await resolveEmailMarkdown(email, provider);
     const commentBody = formatCommentBody(email, markdownBody);
     const result = await provider.addComment(thread.issueIid, commentBody, {
-      internal: true,
+      internal: false,
     });
 
     await db.insert(emailMessages).values({
@@ -133,7 +141,7 @@ export async function processInboundEmail(
 
     await db
       .update(issueThreads)
-      .set({ updatedAt: new Date() })
+      .set({ lastSeenNoteAt: result.createdAt, updatedAt: new Date() })
       .where(eq(issueThreads.id, thread.id));
 
     logger.info({ threadId: thread.id, messageId: email.messageId }, "added comment to existing thread");

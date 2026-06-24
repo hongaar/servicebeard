@@ -2,31 +2,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1rem;
-  height: 1rem;
+  width: 1.125rem;
+  height: 1.125rem;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  background: var(--color-bg-subtle);
   color: var(--color-text-muted);
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: 0.625rem;
+  font-weight: 700;
   line-height: 1;
   cursor: help;
   transition:
-    color 0.15s,
-    border-color 0.15s;
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .trigger:hover,
 .trigger[data-popup-open] {
-  color: var(--color-text);
+  color: var(--color-primary);
   border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
 }
 
 .trigger:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
+  box-shadow: var(--focus-ring);
 }
 
 .positioner {
@@ -34,25 +35,25 @@
 }
 
 .popup {
-  max-width: 280px;
-  padding: 0.5rem 0.625rem;
+  max-width: 300px;
+  padding: var(--space-3) var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
   color: var(--color-text);
-  font-size: 0.75rem;
+  font-size: var(--text-sm);
   font-weight: 400;
-  line-height: 1.5;
+  line-height: var(--leading-relaxed);
 }
 
 .popup code {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   padding: 0.05rem 0.25rem;
-  background: var(--color-bg);
+  background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .popup a {

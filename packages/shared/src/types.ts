@@ -5,6 +5,8 @@ export interface EmailInlineImage {
   contentType: string;
   content: Buffer;
   contentId: string | null;
+  /** Marker left in markdown where the image appeared in the HTML body. */
+  placeholder?: string | null;
 }
 
 export interface User {

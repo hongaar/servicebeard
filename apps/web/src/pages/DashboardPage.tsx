@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Link, useLoaderData } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Layout } from "../components/Layout";
+import { Link, useLoaderData } from "@tanstack/react-router";
+import { useState } from "react";
 import { Button } from "../components/Button";
 import { Dialog } from "../components/Dialog";
 import { Input } from "../components/Input";
+import { Layout } from "../components/Layout";
 import { api } from "../lib/api";
 import styles from "../styles/pages.module.css";
 
@@ -26,33 +26,56 @@ export function DashboardPage() {
   });
 
   return (
-    <Layout title="Dashboard" user={user}>
+    <Layout
+      title="Dashboard"
+      description="Your teams and projects live here. Open a team to invite members and connect mailboxes."
+      user={user}
+    >
       <div className={styles.section}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-          <h2 className={styles.sectionTitle}>Your Teams</h2>
-          <Button variant="secondary" size="small" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? "Cancel" : "Create Team"}
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderText}>
+            <h2 className={styles.sectionTitle}>Your teams</h2>
+            <p className={styles.sectionDescription}>
+              Each team has its own members and mail-sync projects.
+            </p>
+          </div>
+          <Button onClick={() => setShowCreate(!showCreate)}>
+            {showCreate ? "Cancel" : "Create team"}
           </Button>
         </div>
 
         {showCreate && (
-          <Dialog open={showCreate} onOpenChange={setShowCreate} title="New Team">
+          <Dialog open={showCreate} onOpenChange={setShowCreate} title="Create a team">
+            <p className={styles.formHint} style={{ marginTop: 0, marginBottom: "1rem" }}>
+              Teams group people and projects together. Pick a short, URL-friendly slug.
+            </p>
             <div className={styles.form}>
               <Input
-                label="Team Name"
+                label="Team name"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
+                  setSlug(
+                    e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")
+                      .replace(/[^a-z0-9-]/g, ""),
+                  );
                 }}
               />
               <Input label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
               <div className={styles.formActions}>
                 <Button
+                  variant="secondary"
+                  onClick={() => setShowCreate(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
                   onClick={() => createTeam.mutate()}
                   disabled={!name || !slug || createTeam.isPending}
                 >
-                  Create
+                  {createTeam.isPending ? "Creating…" : "Create team"}
                 </Button>
               </div>
             </div>
@@ -60,7 +83,14 @@ export function DashboardPage() {
         )}
 
         {teams.length === 0 ? (
-          <div className={styles.empty}>No teams yet. Create one to get started.</div>
+          <div className={styles.empty}>
+            <span className={styles.emptyIcon} aria-hidden>+</span>
+            <p className={styles.emptyTitle}>No teams yet</p>
+            <p className={styles.emptyHint}>
+              Create your first team to start syncing support mail with your issue board.
+            </p>
+            <Button onClick={() => setShowCreate(true)}>Create your first team</Button>
+          </div>
         ) : (
           <div className={styles.grid}>
             {teams.map((team) => (
@@ -70,6 +100,12 @@ export function DashboardPage() {
                 params={{ teamId: team.id }}
                 className={styles.teamCard}
               >
+                <div className={styles.teamCardTop}>
+                  <span className={styles.teamAvatar} aria-hidden>
+                    {team.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className={styles.teamArrow} aria-hidden>→</span>
+                </div>
                 <div className={styles.teamName}>{team.name}</div>
                 <div className={styles.teamRole}>{team.role}</div>
               </Link>

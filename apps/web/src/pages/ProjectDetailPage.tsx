@@ -10,10 +10,29 @@ import { RuleForm } from "../components/RuleForm";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
 import { api, type CreateRuleInput, type Rule } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
-import { formToUpdateInput, projectToSettingsForm, type ProjectSettingsFormValues } from "../lib/projectForm";
+import {
+    formToUpdateInput,
+    projectToSettingsForm,
+    type ProjectSettingsFormValues,
+} from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 
 type Tab = "rules" | "threads" | "settings";
+
+const TAB_INFO: Record<Tab, { label: string; description: string }> = {
+  rules: {
+    label: "Rules",
+    description: "Define how incoming emails are matched and what happens on your issue board.",
+  },
+  threads: {
+    label: "Threads",
+    description: "View conversations that have been synced between mail and issues.",
+  },
+  settings: {
+    label: "Settings",
+    description: "Mailbox credentials, provider config, and project options.",
+  },
+};
 
 function ruleToFormInput(rule: Rule): CreateRuleInput {
   return {
@@ -31,7 +50,7 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, threads } = useLoaderData({
+  const { user, project, threads, teamName } = useLoaderData({
     from: "/teams/$teamId/projects/$projectId",
   });
   const { teamId } = useParams({ from: "/teams/$teamId/projects/$projectId" });
@@ -116,31 +135,44 @@ export function ProjectDetailPage() {
   };
 
   return (
-    <Layout title={project.name} user={user} teamId={teamId}>
-      <div className={styles.tabs}>
+    <Layout
+      title={project.name}
+      description="Configure mail sync rules, view synced threads, and manage project settings."
+      user={user}
+      teamId={teamId}
+      teamName={teamName}
+    >
+      <div className={styles.tabs} role="tablist" aria-label="Project sections">
         {(["rules", "threads", "settings"] as Tab[]).map((t) => (
           <button
             key={t}
+            role="tab"
+            aria-selected={tab === t}
             className={[styles.tab, tab === t ? styles.tabActive : ""].join(" ")}
             onClick={() => setTab(t)}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {TAB_INFO[t].label}
           </button>
         ))}
       </div>
+      <p className={styles.tabDescription}>{TAB_INFO[tab].description}</p>
 
       {tab === "rules" && (
         <>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionHeaderText}>
+              <h2 className={styles.sectionTitle}>Automation rules</h2>
+              <p className={styles.sectionDescription}>
+                Rules run in priority order. The first match wins.
+              </p>
+            </div>
             <Button
-              variant="secondary"
-              size="small"
               onClick={() => {
                 setEditingRuleId(null);
                 setShowRuleForm(!showRuleForm);
               }}
             >
-              {showRuleForm ? "Cancel" : "Add Rule"}
+              {showRuleForm ? "Cancel" : "Add rule"}
             </Button>
           </div>
 
@@ -149,8 +181,8 @@ export function ProjectDetailPage() {
               key="new-rule"
               teamId={teamId}
               projectId={project.id}
-              title="New Rule"
-              submitLabel={createRule.isPending ? "Saving…" : "Save Rule"}
+              title="New rule"
+              submitLabel={createRule.isPending ? "Saving…" : "Save rule"}
               isPending={createRule.isPending}
               formError={ruleFormError}
               fieldErrors={ruleFieldErrors}
@@ -161,7 +193,15 @@ export function ProjectDetailPage() {
           )}
 
           {project.rules.length === 0 && !showRuleForm ? (
-            <div className={styles.empty}>No rules configured.</div>
+            <div className={styles.empty}>
+              <span className={styles.emptyIcon} aria-hidden>R</span>
+              <p className={styles.emptyTitle}>No rules yet</p>
+              <p className={styles.emptyHint}>
+                Add a rule to tell Serviceboard how to handle incoming emails — for example,
+                create an issue when mail arrives from a VIP sender.
+              </p>
+              <Button onClick={() => setShowRuleForm(true)}>Add your first rule</Button>
+            </div>
           ) : (
             project.rules
               .sort((a, b) => a.priority - b.priority)
@@ -172,8 +212,8 @@ export function ProjectDetailPage() {
                     teamId={teamId}
                     projectId={project.id}
                     initial={ruleToFormInput(rule)}
-                    title={`Edit Rule: ${rule.name}`}
-                    submitLabel={updateRule.isPending ? "Saving…" : "Save Changes"}
+                    title={`Edit rule: ${rule.name}`}
+                    submitLabel={updateRule.isPending ? "Saving…" : "Save changes"}
                     isPending={updateRule.isPending}
                     formError={ruleFormError}
                     fieldErrors={ruleFieldErrors}
@@ -186,7 +226,11 @@ export function ProjectDetailPage() {
                     <div className={styles.ruleHeader}>
                       <span className={styles.ruleName}>
                         {rule.name}
-                        {!rule.isEnabled && " (disabled)"}
+                        {!rule.isEnabled && (
+                          <span className={[styles.badge, styles.badgeInactive].join(" ")} style={{ marginLeft: "0.5rem" }}>
+                            Disabled
+                          </span>
+                        )}
                       </span>
                       <div className={styles.ruleActions}>
                         <Button
@@ -225,56 +269,64 @@ export function ProjectDetailPage() {
       )}
 
       {tab === "threads" && (
-        <Card title="Synced Threads">
+        <Card title="Synced threads" subtitle="Email conversations linked to issues">
           {threads.length === 0 ? (
-            <div className={styles.empty}>No synced conversations yet.</div>
+            <div className={styles.empty}>
+              <span className={styles.emptyIcon} aria-hidden>T</span>
+              <p className={styles.emptyTitle}>No synced conversations yet</p>
+              <p className={styles.emptyHint}>
+                Once mail starts flowing and rules match, synced threads will appear here.
+              </p>
+            </div>
           ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Issue</th>
-                  <th>Sender</th>
-                  <th>Messages</th>
-                  <th>Updated</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {threads.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      <a href={t.issueUrl} target="_blank" rel="noreferrer">
-                        #{t.issueIid}
-                      </a>
-                    </td>
-                    <td>
-                      {t.originalSenderName ? (
-                        <>
-                          {t.originalSenderName}{" "}
-                          <span className={styles.ruleMeta}>&lt;{t.originalSenderEmail}&gt;</span>
-                        </>
-                      ) : (
-                        t.originalSenderEmail
-                      )}
-                    </td>
-                    <td>{t.messages.length}</td>
-                    <td>{new Date(t.updatedAt).toLocaleString()}</td>
-                    <td>
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        onClick={() => {
-                          setSelectedThreadId(t.id);
-                          setSelectedThreadLabel(`#${t.issueIid}`);
-                        }}
-                      >
-                        Details
-                      </Button>
-                    </td>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Issue</th>
+                    <th>Sender</th>
+                    <th>Messages</th>
+                    <th>Updated</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {threads.map((t) => (
+                    <tr key={t.id}>
+                      <td>
+                        <a href={t.issueUrl} target="_blank" rel="noreferrer">
+                          #{t.issueIid}
+                        </a>
+                      </td>
+                      <td>
+                        {t.originalSenderName ? (
+                          <>
+                            {t.originalSenderName}{" "}
+                            <span className={styles.ruleMeta}>&lt;{t.originalSenderEmail}&gt;</span>
+                          </>
+                        ) : (
+                          t.originalSenderEmail
+                        )}
+                      </td>
+                      <td>{t.messages.length}</td>
+                      <td>{new Date(t.updatedAt).toLocaleString()}</td>
+                      <td>
+                        <Button
+                          variant="secondary"
+                          size="small"
+                          onClick={() => {
+                            setSelectedThreadId(t.id);
+                            setSelectedThreadLabel(`#${t.issueIid}`);
+                          }}
+                        >
+                          Details
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <ThreadDetailDialog
             teamId={teamId}
@@ -288,7 +340,7 @@ export function ProjectDetailPage() {
 
       {tab === "settings" && (
         <>
-          <Card title="Project Settings">
+          <Card title="Project settings">
             {settingsError && (
               <div className={[styles.alert, styles.alertError].join(" ")}>{settingsError}</div>
             )}
@@ -297,7 +349,7 @@ export function ProjectDetailPage() {
               values={settingsForm}
               onChange={updateSettings}
               onSubmit={() => saveSettings.mutate()}
-              submitLabel={saveSettings.isPending ? "Saving…" : "Save Settings"}
+              submitLabel={saveSettings.isPending ? "Saving…" : "Save settings"}
               isPending={saveSettings.isPending}
               fieldErrors={settingsFieldErrors}
               webhookUrl={project.webhookUrl}
@@ -307,8 +359,8 @@ export function ProjectDetailPage() {
             />
           </Card>
 
-          <Card title="Danger zone" className={styles.section}>
-            <p className={styles.formHint}>
+          <Card title="Danger zone" subtitle="Irreversible actions" className={[styles.section, styles.dangerZone].join(" ")}>
+            <p className={styles.formHint} style={{ marginTop: 0 }}>
               Permanently delete this project, including all rules, synced threads, and message
               history. This cannot be undone.
             </p>
@@ -328,7 +380,7 @@ export function ProjectDetailPage() {
             }}
             title="Delete project?"
           >
-            <p className={styles.formHint}>
+            <p className={styles.formHint} style={{ marginTop: 0 }}>
               Are you sure you want to delete <strong>{project.name}</strong>? All rules, synced
               threads, and message history will be permanently removed.
             </p>

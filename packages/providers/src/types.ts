@@ -2,8 +2,10 @@ export interface ProviderNote {
   id: string;
   body: string;
   authorId: string;
+  authorName: string | null;
   authorUsername: string;
   internal: boolean;
+  system: boolean;
   createdAt: Date;
 }
 
@@ -45,6 +47,7 @@ export interface CreateIssueResult {
 
 export interface AddCommentResult {
   noteId: string;
+  createdAt: Date;
 }
 
 export interface NormalizedWebhookEvent {
@@ -54,8 +57,10 @@ export interface NormalizedWebhookEvent {
   noteId: string;
   noteBody: string;
   authorId: string;
+  authorName: string | null;
   authorUsername: string;
   internal: boolean;
+  system: boolean;
   createdAt: Date;
 }
 
@@ -74,6 +79,11 @@ export interface UploadFileResult {
   markdown: string;
 }
 
+export interface DownloadedFile {
+  content: Buffer;
+  contentType: string;
+}
+
 export interface IssueProvider {
   readonly name: string;
   createIssue(input: CreateIssueInput): Promise<CreateIssueResult>;
@@ -87,8 +97,9 @@ export interface IssueProvider {
     content: Buffer,
     mimeType: string,
   ): Promise<UploadFileResult>;
+  downloadFile(url: string): Promise<DownloadedFile | null>;
   addReaction(issueIid: number, noteId: string, emoji: string): Promise<void>;
-  listCommentsSince(issueIid: number, since: Date): Promise<ProviderNote[]>;
+  listCommentsSince(issueIid: number, since: Date): Promise<ProviderNote[] | null>;
   listProjectOptions(): Promise<ProviderOptions>;
   verifyWebhook(headers: Record<string, string>, body: string, secret: string): boolean;
   parseWebhook(payload: unknown): NormalizedWebhookEvent | null;

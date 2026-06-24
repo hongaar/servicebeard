@@ -6,7 +6,10 @@ import {
     projects,
 } from "@serviceboard/db";
 import type { NormalizedWebhookEvent } from "@serviceboard/providers";
-import { and, eq } from "drizzle-orm";
+import { GitLabApiError } from "@serviceboard/providers";
+import { isServiceboardSyncedContent } from "@serviceboard/shared";
+import { and, eq, isNull } from "drizzle-orm";
+import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import {
@@ -20,6 +23,64 @@ import {
 import { createProjectProvider, projectProviderConfig } from "./provider";
 import { sendEmail } from "./smtp";
 
+async function advanceLastSeenNoteAt(
+  threadId: string,
+  noteCreatedAt: Date,
+): Promise<void> {
+  const db = getDb();
+  const thread = await db.query.issueThreads.findFirst({
+    where: eq(issueThreads.id, threadId),
+  });
+  if (!thread) return;
+
+  const current = thread.lastSeenNoteAt;
+  if (current && current.getTime() >= noteCreatedAt.getTime()) return;
+
+  await db
+    .update(issueThreads)
+    .set({ lastSeenNoteAt: noteCreatedAt, updatedAt: new Date() })
+    .where(eq(issueThreads.id, threadId));
+}
+
+async function advanceLastSeenNoteAtForIssue(
+  projectId: string,
+  issueExternalId: string,
+  noteCreatedAt: Date,
+): Promise<void> {
+  const db = getDb();
+  const thread = await db.query.issueThreads.findFirst({
+    where: and(
+      eq(issueThreads.projectId, projectId),
+      eq(issueThreads.externalIssueId, issueExternalId),
+    ),
+  });
+  if (!thread) return;
+  await advanceLastSeenNoteAt(thread.id, noteCreatedAt);
+}
+
+function outboundSkipReason(
+  project: typeof projects.$inferSelect,
+  noteBody: string,
+  authorId: string,
+  internal: boolean,
+  system: boolean,
+): string | null {
+  if (internal) return "internal";
+  if (system) return "system";
+  if (isServiceboardSyncedContent(noteBody)) return "sync_marker";
+  if (project.providerBotUserId && authorId === project.providerBotUserId) {
+    return "bot_author";
+  }
+  return null;
+}
+
+function commentAuthorDisplayName(event: {
+  authorName: string | null;
+  authorUsername: string;
+}): string {
+  return event.authorName?.trim() || event.authorUsername;
+}
+
 export async function processOutboundComment(
   projectId: string,
   event: NormalizedWebhookEvent,
@@ -29,15 +90,62 @@ export async function processOutboundComment(
     where: eq(projects.id, projectId),
   });
 
-  if (!project || !project.isActive) return;
+  logger.debug(
+    {
+      projectId,
+      noteId: event.noteId,
+      issueIid: event.issueIid,
+      issueExternalId: event.issueExternalId,
+      authorId: event.authorId,
+      authorUsername: event.authorUsername,
+      internal: event.internal,
+      system: event.system,
+      createdAt: event.createdAt,
+      bodyPreview: event.noteBody.slice(0, 120),
+    },
+    "processing outbound comment",
+  );
 
-  if (event.internal) {
-    logger.debug({ noteId: event.noteId }, "skipping internal note");
+  if (!project || !project.isActive) {
+    logger.debug({ projectId, noteId: event.noteId }, "skipping outbound comment, project inactive or missing");
     return;
   }
 
-  if (project.providerBotUserId && event.authorId === project.providerBotUserId) {
-    logger.debug({ noteId: event.noteId }, "skipping bot-authored note");
+  if (event.internal) {
+    logger.debug({ noteId: event.noteId }, "skipping internal note");
+    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    return;
+  }
+
+  if (event.system) {
+    logger.debug({ noteId: event.noteId }, "skipping system note");
+    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    return;
+  }
+
+  const skipReason = outboundSkipReason(
+    project,
+    event.noteBody,
+    event.authorId,
+    event.internal,
+    event.system,
+  );
+  if (skipReason === "sync_marker") {
+    logger.debug({ noteId: event.noteId }, "skipping email-synced comment");
+    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    return;
+  }
+
+  if (skipReason === "bot_author") {
+    logger.debug(
+      {
+        noteId: event.noteId,
+        authorId: event.authorId,
+        providerBotUserId: project.providerBotUserId,
+      },
+      "skipping bot-authored note",
+    );
+    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
     return;
   }
 
@@ -50,6 +158,7 @@ export async function processOutboundComment(
 
   if (existing) {
     logger.debug({ noteId: event.noteId }, "note already processed");
+    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
     return;
   }
 
@@ -72,10 +181,12 @@ export async function processOutboundComment(
     return;
   }
 
+  const provider = createProjectProvider(project);
+
   const replyIntro = `${event.noteBody}
 
 ---
-Reply from ${event.authorUsername} on issue #${thread.issueIid}
+Reply from ${commentAuthorDisplayName(event)} on issue #${thread.issueIid}
 ${thread.issueUrl}`;
   const body = replyBodyWithQuote(
     replyIntro,
@@ -83,6 +194,7 @@ ${thread.issueUrl}`;
   );
   const multipart = await buildOutboundMultipartContent(
     body,
+    provider,
     projectProviderConfig(project),
   );
   const { inReplyTo, references } = threadingForParent(
@@ -132,17 +244,9 @@ ${thread.issueUrl}`;
     ...addresses,
   });
 
-  await db
-    .update(issueThreads)
-    .set({ lastSeenNoteAt: event.createdAt, updatedAt: new Date() })
-    .where(eq(issueThreads.id, thread.id));
+  await advanceLastSeenNoteAt(thread.id, event.createdAt);
 
-  try {
-    const provider = createProjectProvider(project);
-    await provider.addReaction(event.issueIid, event.noteId, "e-mail");
-  } catch (err) {
-    logger.warn({ err, noteId: event.noteId }, "failed to add email reaction to comment");
-  }
+  await provider.addReaction(event.issueIid, event.noteId, "e-mail");
 
   logger.info(
     { threadId: thread.id, noteId: event.noteId, inReplyTo, cc },
@@ -161,18 +265,125 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
   const provider = createProjectProvider(project);
 
   const threads = await db.query.issueThreads.findMany({
-    where: eq(issueThreads.projectId, projectId),
+    where: and(
+      eq(issueThreads.projectId, projectId),
+      isNull(issueThreads.issueMissingAt),
+    ),
   });
+
+  logger.info(
+    { projectId, threadCount: threads.length },
+    "polling gitlab comments",
+  );
+
+  let notesChecked = 0;
+  let notesSkipped = 0;
+  let notesProcessed = 0;
+  let threadsIssueMissing = 0;
+
+  logger.debug(
+    {
+      projectId,
+      providerBotUserId: project.providerBotUserId,
+      threadCount: threads.length,
+    },
+    "starting gitlab comment poll for project",
+  );
 
   for (const thread of threads) {
     const since = thread.lastSeenNoteAt ?? thread.createdAt;
-    const notes = await provider.listCommentsSince(thread.issueIid, since);
+
+    let notes;
+    try {
+      notes = await provider.listCommentsSince(thread.issueIid, since);
+    } catch (err) {
+      if (!(err instanceof GitLabApiError)) {
+        logExternalError("gitlab", "list-comments", err, {
+          projectId,
+          threadId: thread.id,
+          issueIid: thread.issueIid,
+        });
+      }
+      continue;
+    }
+
+    if (notes === null) {
+      threadsIssueMissing++;
+      await db
+        .update(issueThreads)
+        .set({ issueMissingAt: new Date(), updatedAt: new Date() })
+        .where(eq(issueThreads.id, thread.id));
+      logger.warn(
+        {
+          projectId,
+          threadId: thread.id,
+          issueIid: thread.issueIid,
+          externalIssueId: thread.externalIssueId,
+        },
+        "gitlab issue deleted or inaccessible, archived thread",
+      );
+      continue;
+    }
+
+    notesChecked += notes.length;
+
+    logger.debug(
+      {
+        projectId,
+        threadId: thread.id,
+        issueIid: thread.issueIid,
+        externalIssueId: thread.externalIssueId,
+        since,
+        lastSeenNoteAt: thread.lastSeenNoteAt,
+        threadCreatedAt: thread.createdAt,
+        noteCount: notes.length,
+      },
+      "listed gitlab comments for thread",
+    );
 
     for (const note of notes) {
-      if (note.internal) continue;
-      if (project.providerBotUserId && note.authorId === project.providerBotUserId) {
+      const skipReason = outboundSkipReason(
+        project,
+        note.body,
+        note.authorId,
+        note.internal,
+        note.system,
+      );
+
+      if (skipReason) {
+        notesSkipped++;
+        logger.debug(
+          {
+            projectId,
+            threadId: thread.id,
+            issueIid: thread.issueIid,
+            noteId: note.id,
+            authorId: note.authorId,
+            authorUsername: note.authorUsername,
+            createdAt: note.createdAt,
+            internal: note.internal,
+            system: note.system,
+            skipReason,
+            bodyPreview: note.body.slice(0, 120),
+          },
+          "skipping note in comment poll",
+        );
+        await advanceLastSeenNoteAt(thread.id, note.createdAt);
         continue;
       }
+
+      logger.debug(
+        {
+          projectId,
+          threadId: thread.id,
+          issueIid: thread.issueIid,
+          noteId: note.id,
+          authorId: note.authorId,
+          authorUsername: note.authorUsername,
+          createdAt: note.createdAt,
+        },
+        "processing note from comment poll",
+      );
 
       const event: NormalizedWebhookEvent = {
         type: "note_created",
@@ -181,14 +392,29 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
         noteId: note.id,
         noteBody: note.body,
         authorId: note.authorId,
+        authorName: note.authorName,
         authorUsername: note.authorUsername,
         internal: note.internal,
+        system: note.system,
         createdAt: note.createdAt,
       };
 
       await processOutboundComment(projectId, event);
+      notesProcessed++;
     }
   }
+
+  logger.info(
+    {
+      projectId,
+      threadCount: threads.length,
+      notesChecked,
+      notesSkipped,
+      notesProcessed,
+      threadsIssueMissing,
+    },
+    "comment poll finished",
+  );
 }
 
 export async function ensureWebhookForProject(projectId: string): Promise<void> {

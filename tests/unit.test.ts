@@ -131,7 +131,7 @@ describe("rules engine", () => {
 });
 
 describe("issue description formatting", () => {
-  test("includes metadata and sync marker", () => {
+  test("includes sender header and sync marker", () => {
     const desc = formatIssueDescription(
       testEmail({
         messageId: "<abc@mail.com>",
@@ -148,9 +148,10 @@ describe("issue description formatting", () => {
       }),
       "thread-123",
     );
+    expect(desc).toContain("**Message from User <user@example.com>**");
     expect(desc).toContain("Something broke");
-    expect(desc).toContain("user@example.com");
-    expect(desc).toContain("<!-- serviceboard-sync:thread-123 -->");
+    expect(desc).toContain("<!-- serviceboard-sync:thread-123-->");
+    expect(desc).not.toContain("Email metadata");
   });
 });
 
@@ -203,6 +204,18 @@ On 2026-06-23 22:02, support@mail.test wrote:
     }));
 
     expect(comment).toContain("First message with no quotes");
+    expect(comment).toContain("<!-- serviceboard-sync:email:<m@mail.test>-->");
+  });
+});
+
+describe("loop prevention markers", () => {
+  test("detects serviceboard-sync content", async () => {
+    const { buildSyncMarker, isServiceboardSyncedContent } = await import(
+      "@serviceboard/shared"
+    );
+    const marker = buildSyncMarker("email:<m@mail.test>");
+    expect(isServiceboardSyncedContent(`Reply text\n\n${marker}`)).toBe(true);
+    expect(isServiceboardSyncedContent("Regular agent reply")).toBe(false);
   });
 });
 
@@ -243,6 +256,127 @@ describe("email content conversion", () => {
     const markdown = "Hello **team**\n\n![shot](https://example.com/a.png)";
     expect(markdownToHtml(markdown)).toContain("<strong>team</strong>");
     expect(markdownToPlainText(markdown)).toContain("Hello team");
+  });
+
+  test("preserves inline image position with placeholders", async () => {
+    const {
+      buildParsedEmailContent,
+      imagePlaceholder,
+      replaceHtmlImagesWithPlaceholders,
+      replaceImagePlaceholdersInMarkdown,
+    } = await import("@serviceboard/shared/email-content");
+
+    const tinyPng =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const html = `<p>hallo,</p><p><img src="cid:img@test" alt="" /></p><p>kennen jullie deze persoon?</p>`;
+    const { html: withPlaceholders, slots } =
+      replaceHtmlImagesWithPlaceholders(html);
+
+    expect(withPlaceholders).toContain(imagePlaceholder(0));
+    expect(slots).toHaveLength(1);
+    expect(slots[0]?.contentId).toBe("img@test");
+
+    const content = buildParsedEmailContent(
+      "hallo,\n\nkennen jullie deze persoon?",
+      html,
+      [
+        {
+          filename: "photo.png",
+          contentType: "image/png",
+          content: Buffer.from(tinyPng, "base64"),
+          cid: "img@test",
+        },
+      ],
+    );
+
+    expect(content.bodyMarkdown).toContain("hallo,");
+    expect(content.bodyMarkdown).toContain("kennen jullie deze persoon?");
+    expect(content.bodyMarkdown).toContain(imagePlaceholder(0));
+    expect(content.bodyMarkdown.indexOf(imagePlaceholder(0))).toBeGreaterThan(
+      content.bodyMarkdown.indexOf("hallo,"),
+    );
+    expect(content.bodyMarkdown.indexOf(imagePlaceholder(0))).toBeLessThan(
+      content.bodyMarkdown.indexOf("kennen jullie"),
+    );
+
+    const resolved = replaceImagePlaceholdersInMarkdown(content.bodyMarkdown, new Map([
+      [imagePlaceholder(0), "![photo](/uploads/abc/photo.png)"],
+    ]));
+    expect(resolved).toContain("![photo](/uploads/abc/photo.png)");
+    expect(resolved.indexOf("![photo]")).toBeGreaterThan(resolved.indexOf("hallo,"));
+    expect(resolved.indexOf("![photo]")).toBeLessThan(
+      resolved.indexOf("kennen jullie"),
+    );
+  });
+
+  test("strips data-uri images from html before markdown conversion", async () => {
+    const { buildParsedEmailContent, imagePlaceholder } = await import(
+      "@serviceboard/shared/email-content"
+    );
+    const tinyPng =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const content = buildParsedEmailContent(
+      false,
+      `<p>Look</p><img src="data:image/png;base64,${tinyPng}" alt="dot">`,
+      [],
+    );
+
+    expect(content.bodyMarkdown).not.toContain("data:image");
+    expect(content.bodyMarkdown).toContain(imagePlaceholder(0));
+    expect(content.inlineImages).toHaveLength(1);
+    expect(content.inlineImages[0]?.contentType).toBe("image/png");
+  });
+
+  test("resolves gitlab upload paths to absolute urls", async () => {
+    const {
+      resolveProviderImageUrl,
+      isResolvableImageUrl,
+      collectOutboundImageRefs,
+      prepareGitLabNoteForOutboundEmail,
+    } = await import("@serviceboard/shared/email-content");
+    expect(
+      resolveProviderImageUrl(
+        "/uploads/abc123/photo.jpg",
+        "https://gitlab.example.com",
+      ),
+    ).toBe("https://gitlab.example.com/uploads/abc123/photo.jpg");
+    expect(isResolvableImageUrl("/uploads/abc123/photo.jpg", "https://gitlab.example.com")).toBe(
+      true,
+    );
+    expect(isResolvableImageUrl("/uploads/abc123/photo.jpg")).toBe(false);
+
+    const note =
+      'oh nice\n\n![Screenshot](/uploads/06a8c6da28f76281b6f75d59bad2859c/Screenshot_2026-06-24_at_15.07.36.png){width=328 height=321}\n\ncan you see it?';
+    const prepared = prepareGitLabNoteForOutboundEmail(note);
+    expect(prepared).not.toContain("{width=328");
+    const images = collectOutboundImageRefs(
+      note,
+      "https://gitlab.example.com",
+    );
+    expect(images).toHaveLength(1);
+    expect(images[0]?.url).toContain("/uploads/");
+  });
+
+  test("parses gitlab upload paths into secret and filename", async () => {
+    const { parseGitLabUploadPath } = await import(
+      "@serviceboard/shared/email-content"
+    );
+    expect(
+      parseGitLabUploadPath(
+        "/uploads/297cf8e52cbd85a440cd6f299ad200c2/emojis.com_toucan-_nose-bird_-emoji.png",
+      ),
+    ).toEqual({
+      secret: "297cf8e52cbd85a440cd6f299ad200c2",
+      filename: "emojis.com_toucan-_nose-bird_-emoji.png",
+    });
+    expect(
+      parseGitLabUploadPath(
+        "https://gitlab-host/uploads/297cf8e52cbd85a440cd6f299ad200c2/photo.png",
+      ),
+    ).toEqual({
+      secret: "297cf8e52cbd85a440cd6f299ad200c2",
+      filename: "photo.png",
+    });
   });
 });
 
@@ -453,14 +587,41 @@ describe("GitLab webhook parsing", () => {
         internal: false,
         created_at: "2026-01-01T12:00:00Z",
       },
-      user: { id: 5, username: "agent" },
+      user: { id: 5, username: "agent", name: "Support Agent" },
       issue: { id: 100, iid: 7 },
     });
 
     expect(event).not.toBeNull();
     expect(event!.noteId).toBe("42");
     expect(event!.issueIid).toBe(7);
+    expect(event!.authorName).toBe("Support Agent");
+    expect(event!.authorUsername).toBe("agent");
     expect(event!.internal).toBe(false);
+    expect(event!.system).toBe(false);
+  });
+
+  test("skips system notes", async () => {
+    const { GitLabProvider } = await import("@serviceboard/providers");
+    const provider = new GitLabProvider({
+      baseUrl: "https://gitlab.com",
+      projectId: "1",
+      token: "token",
+    });
+
+    const event = provider.parseWebhook({
+      object_kind: "note",
+      object_attributes: {
+        id: 43,
+        note: "assigned to @agent",
+        noteable_type: "Issue",
+        system: true,
+        created_at: "2026-01-01T12:00:00Z",
+      },
+      user: { id: 5, username: "agent", name: "Support Agent" },
+      issue: { id: 100, iid: 7 },
+    });
+
+    expect(event).toBeNull();
   });
 
   test("skips non-issue notes", async () => {
