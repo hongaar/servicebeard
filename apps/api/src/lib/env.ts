@@ -25,8 +25,7 @@ export function isOidcLoginEnabled(): boolean {
 export function isLocalLoginEnabled(): boolean {
   const flag = parseEnvFlag(process.env.LOCAL_LOGIN);
   if (flag === false) return false;
-  if (flag === true) return true;
-  return process.env.NODE_ENV !== "production";
+  return true;
 }
 
 function isGithubConfigured(): boolean {

@@ -1,4 +1,8 @@
-# Servicebeard
+<p align="center">
+  <img src="apps/web/public/favicon.png" alt="ServiceBeard" width="72" height="72" />
+</p>
+
+# ServiceBeard
 
 Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue trackers. First supported provider: **GitLab** (cloud + self-hosted).
 
@@ -91,14 +95,14 @@ Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
 
 Servicebeard supports multiple login providers. Enable one or more by setting the required env vars (see `.env.example`). All OAuth/OIDC providers share the same callback URL: `{API_URL}/api/auth/callback`.
 
-#### Local (development)
+#### Local (email/password & passkey)
 
-Enabled automatically when `NODE_ENV` is not `production`. Set `LOCAL_LOGIN=false` to disable. The API seeds `dev@localhost` / `dev` on startup.
+Enabled by default (`LOCAL_LOGIN=true`). Supports credential sign-in and passkeys without an external IdP. Set `LOCAL_LOGIN=false` to disable. In development, the API also seeds `dev@localhost` / `dev` on startup for quick testing.
 
 | Variable | Description |
 |----------|-------------|
-| `LOCAL_LOGIN` | `true` / `false` to override auto-detection |
-| `LOCAL_LOGIN_SIGNUP` | Allow sign-up via local credentials (default: on when local login is enabled) |
+| `LOCAL_LOGIN` | `true` (default) or `false` |
+| `LOCAL_LOGIN_SIGNUP` | Allow sign-up via local credentials (default: `true` when local login is enabled) |
 
 #### OIDC (generic IdP)
 

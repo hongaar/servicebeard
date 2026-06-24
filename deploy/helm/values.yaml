@@ -63,8 +63,8 @@ env:
   GITHUB_SIGNUP: "true"
   GITLAB_LOGIN: "false"
   GITLAB_SIGNUP: "true"
-  LOCAL_LOGIN: "false"
-  LOCAL_LOGIN_SIGNUP: "false"
+  LOCAL_LOGIN: "true"
+  LOCAL_LOGIN_SIGNUP: "true"
   OIDC_ISSUER: https://your-idp.example.com
   OIDC_CLIENT_ID: servicebeard
   OIDC_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
