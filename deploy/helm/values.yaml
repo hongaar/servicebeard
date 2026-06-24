@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: servicebeard
+  repository: hongaar/servicebeard
   tag: latest
   pullPolicy: IfNotPresent
 
