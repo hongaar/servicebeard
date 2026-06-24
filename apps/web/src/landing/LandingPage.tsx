@@ -8,7 +8,7 @@ import { ServiceBeardWordmark } from "./ServiceBeardWordmark";
 export type LandingPageProps = {
   /** `app` — shown inside the SPA when signed out; `static` — exported HTML for Vercel. */
   variant?: "app" | "static";
-  /** Show sign-in links (local dev only in the app). */
+  /** Show sign-in links on the marketing landing page. */
   showSignIn?: boolean;
   /** Logo image URL. Defaults to `/favicon.png`. */
   logoSrc?: string;
@@ -46,7 +46,7 @@ export function LandingPage({
           <img src={logoSrc} alt="" className={styles.heroLogo} width={72} height={72} />
           <ServiceBeardWordmark as="p" size="brand" />
           <h1 className={styles.headline}>Turn support mailboxes into tracked issues.</h1>
-          <p className={styles.subtitle}>Open source — Self-hosted — Cloud coming soon</p>
+          <p className={styles.subtitle}>Open source — Self-hosted — Cloud coming soon.</p>
           <div className={styles.ctaRow}>
             {signInBtn([btn.button, btn.primary].join(" "))}
             <a
