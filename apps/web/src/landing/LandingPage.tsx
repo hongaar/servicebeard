@@ -45,8 +45,11 @@ export function LandingPage({
         <header className={styles.hero}>
           <img src={logoSrc} alt="" className={styles.heroLogo} width={72} height={72} />
           <ServiceBeardWordmark as="p" size="brand" />
-          <h1 className={styles.headline}>Turn support mailboxes into tracked issues.</h1>
-          <p className={styles.subtitle}>Open source — Self-hosted — Cloud coming soon.</p>
+          <h1 className={styles.headline}>
+            Turn support mailboxes <br />
+            into issue <s>beards</s> boards.
+          </h1>
+          <p className={styles.subtitle}>Open source — Self-hosted — Cloud coming soon</p>
           <div className={styles.ctaRow}>
             {signInBtn([btn.button, btn.primary].join(" "))}
             <a

@@ -96,4 +96,4 @@ await rm(tmpDir, { recursive: true, force: true });
 
 console.log(`Wrote ${join(outDir, "index.html")}`);
 console.log(`Wrote ${join(outDir, "favicon.png")}`);
-console.log("Deploy: vercel (repo root vercel.json) or cd apps/web && vercel");
+console.log("Deploy: cd apps/web && vercel");
