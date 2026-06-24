@@ -256,7 +256,22 @@ The worker should append this as a comment on the existing issue instead of open
 
 ## Deploy
 
-Kubernetes deployment via Helm:
+Container images and the Helm chart are published to [GHCR](https://github.com/hongaar/servicebeard/pkgs).
+
+**From GHCR (recommended):**
+
+```bash
+helm install servicebeard oci://ghcr.io/hongaar/servicebeard-helm \
+  --version 0.1.0 \
+  --set ingress.host=your-domain.com \
+  --set secrets.encryptionKey=<64-char-hex> \
+  --set secrets.oidcClientSecret=<secret> \
+  --set secrets.sessionSecret=<secret>
+```
+
+The chart defaults to `ghcr.io/hongaar/servicebeard-{api,worker,web}:latest`. Pin a specific release with `--set image.tag=<git-sha>`.
+
+**From this repo (local chart):**
 
 ```bash
 helm dependency update deploy/helm

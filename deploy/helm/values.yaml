@@ -1,5 +1,7 @@
 replicaCount: 1
 
+nameOverride: servicebeard
+
 image:
   repository: ghcr.io/hongaar/servicebeard
   tag: latest

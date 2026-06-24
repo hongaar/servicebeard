@@ -1,5 +1,5 @@
 apiVersion: v2
-name: servicebeard
+name: servicebeard-helm
 description: Mail to issue board sync application
 type: application
 version: 0.1.0
