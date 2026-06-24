@@ -385,7 +385,7 @@ export function LoginPage() {
           Service<span className={styles.titleAccent}>Beard</span>
         </h1>
         <p className={styles.subtitle}>
-          Turn support mail into tracked issues. Sign in — the beard approves.
+          Turn support mailboxes into issue boards.
         </p>
 
         {hasSso && !showEmailLogin && (
