@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "build:landing": "bun run scripts/render-landing.tsx",
     "preview": "vite preview",
-    "preview:landing": "bunx serve landing-dist -p 4174",
+    "preview:landing": "bun run build:landing && bunx serve landing-dist -p 4174",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

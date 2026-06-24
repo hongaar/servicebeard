@@ -94,18 +94,6 @@ await writeFile(join(outDir, "index.html"), html, "utf8");
 await copyFile(join(webRoot, "public", "favicon.png"), join(outDir, "favicon.png"));
 await rm(tmpDir, { recursive: true, force: true });
 
-const vercelConfig = {
-  buildCommand: "bun run build:landing",
-  outputDirectory: "landing-dist",
-  cleanUrls: true,
-};
-
-await writeFile(
-  join(webRoot, "vercel.landing.json"),
-  `${JSON.stringify(vercelConfig, null, 2)}\n`,
-  "utf8",
-);
-
 console.log(`Wrote ${join(outDir, "index.html")}`);
 console.log(`Wrote ${join(outDir, "favicon.png")}`);
-console.log("Deploy: cd apps/web && vercel --local-config vercel.landing.json");
+console.log("Deploy: vercel (repo root vercel.json) or cd apps/web && vercel");
