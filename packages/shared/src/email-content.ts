@@ -352,10 +352,8 @@ export function extractDataUriImagesFromMarkdown(markdown: string): Array<{
   }> = [];
   const pattern = new RegExp(DATA_URI_IMAGE_MD.source, "gi");
   let match: RegExpExecArray | null;
-  let index = 0;
 
   while ((match = pattern.exec(markdown)) !== null) {
-    index += 1;
     const subtype = match[3] ?? "png";
     const base64 = match[4] ?? "";
     images.push({
