@@ -20,6 +20,14 @@ export class ApiError extends Error {
   }
 }
 
+type ConnectionTestResult = {
+  ok: boolean;
+  error?: string;
+  status?: number;
+  responseBody?: string;
+  user?: { id: string; username: string };
+};
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -99,10 +107,22 @@ export const api = {
     request<{ teams: Array<{ id: string; name: string; slug: string; role: string }> }>("/teams"),
 
   createTeam: (data: { name: string; slug: string }) =>
-    request("/teams", { method: "POST", body: JSON.stringify(data) }),
+    request<{ id: string; name: string; slug: string }>("/teams", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   getTeam: (teamId: string) =>
     request<{ id: string; name: string; slug: string; members: unknown[] }>(`/teams/${teamId}`),
+
+  updateTeam: (teamId: string, data: { name?: string; slug?: string }) =>
+    request<{ id: string; name: string; slug: string }>(`/teams/${teamId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteTeam: (teamId: string) =>
+    request<{ ok: boolean }>(`/teams/${teamId}`, { method: "DELETE" }),
 
   getProjects: (teamId: string) =>
     request<{ projects: Project[] }>(`/teams/${teamId}/projects`),
@@ -111,7 +131,10 @@ export const api = {
     request<Project & { rules: Rule[] }>(`/teams/${teamId}/projects/${projectId}`),
 
   createProject: (teamId: string, data: CreateProjectInput) =>
-    request(`/teams/${teamId}/projects`, { method: "POST", body: JSON.stringify(data) }),
+    request<Project>(`/teams/${teamId}/projects`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   updateProject: (teamId: string, projectId: string, data: UpdateProjectInput) =>
     request(`/teams/${teamId}/projects/${projectId}`, {
@@ -123,16 +146,62 @@ export const api = {
     request(`/teams/${teamId}/projects/${projectId}`, { method: "DELETE" }),
 
   testMail: (teamId: string, projectId: string, data: MailConfig) =>
-    request(`/teams/${teamId}/projects/${projectId}/test-mail`, {
+    request<ConnectionTestResult>(
+      `/teams/${teamId}/projects/${projectId}/test-mail`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
+
+  testMailForTeam: (teamId: string, data: MailConfig) =>
+    request<ConnectionTestResult>(`/teams/${teamId}/test-mail`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   testProvider: (teamId: string, projectId: string, data: ProviderConfig) =>
-    request(`/teams/${teamId}/projects/${projectId}/test-provider`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    request<ConnectionTestResult>(
+      `/teams/${teamId}/projects/${projectId}/test-provider`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
+
+  testProviderForTeam: (teamId: string, data: ProviderConfig) =>
+    request<ConnectionTestResult>(
+      `/teams/${teamId}/test-provider`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
+
+  getGithubAppConfig: () =>
+    request<GithubAppConfig>("/github-app/config"),
+
+  githubAppInstallPath(
+    teamId: string,
+    baseUrl: string,
+    options?: { popup?: boolean; returnTo?: string },
+  ) {
+    const params = new URLSearchParams({ baseUrl });
+    if (options?.popup) params.set("popup", "1");
+    else if (options?.returnTo) params.set("returnTo", options.returnTo);
+    return `/api/teams/${encodeURIComponent(teamId)}/github-app/install?${params.toString()}`;
+  },
+
+  lookupGithubRepositoryInstallation: (
+    teamId: string,
+    baseUrl: string,
+    repository: string,
+  ) => {
+    const params = new URLSearchParams({ baseUrl, repository });
+    return request<GithubRepositoryInstallationLookup>(
+      `/teams/${teamId}/github-app/repository-installation?${params.toString()}`,
+    );
+  },
 
   getRules: (teamId: string, projectId: string) =>
     request<{ rules: Rule[] }>(`/teams/${teamId}/projects/${projectId}/rules`),
@@ -176,6 +245,23 @@ export const api = {
   getThreads: (teamId: string, projectId: string) =>
     request<{ threads: Thread[] }>(`/teams/${teamId}/projects/${projectId}/threads`),
 
+  getSyncErrors: (teamId: string, projectId: string) =>
+    request<{ errors: ProjectSyncError[] }>(
+      `/teams/${teamId}/projects/${projectId}/sync-errors`,
+    ),
+
+  dismissSyncError: (teamId: string, projectId: string, errorId: string) =>
+    request<{ ok: boolean }>(
+      `/teams/${teamId}/projects/${projectId}/sync-errors/${errorId}/dismiss`,
+      { method: "POST" },
+    ),
+
+  dismissAllSyncErrors: (teamId: string, projectId: string) =>
+    request<{ ok: boolean; dismissed: number }>(
+      `/teams/${teamId}/projects/${projectId}/sync-errors/dismiss-all`,
+      { method: "POST" },
+    ),
+
   getThread: (teamId: string, projectId: string, threadId: string) =>
     request<{ thread: ThreadDetail }>(
       `/teams/${teamId}/projects/${projectId}/threads/${threadId}`,
@@ -188,6 +274,19 @@ export const api = {
     request(`/teams/${teamId}/members/${memberId}`, { method: "DELETE" }),
 };
 
+export interface GithubAppConfig {
+  enabled: boolean;
+  configured: boolean;
+}
+
+export interface GithubRepositoryInstallationLookup {
+  installed: boolean;
+  repository?: string;
+  installationId?: string;
+  accountLogin?: string | null;
+  settingsUrl?: string;
+}
+
 export interface Project {
   id: string;
   teamId: string;
@@ -196,6 +295,7 @@ export interface Project {
   provider: string;
   providerBaseUrl: string;
   providerProjectId: string;
+  providerGithubInstallationId?: string | null;
   providerTlsInsecure: boolean;
   imapHost: string;
   imapPort: number;
@@ -206,13 +306,16 @@ export interface Project {
   smtpSecure: boolean;
   smtpUser: string;
   smtpFrom: string;
-  imapPollIntervalSeconds: number;
-  commentPollIntervalSeconds: number;
-  webhookEnabled: boolean;
   webhookUrl: string;
   isActive: boolean;
   inboundAckEnabled: boolean;
+  inboundAckCcMailbox: boolean;
   inboundAckTemplate: string;
+  outboundCommentTemplate: string;
+  outboundCommentCcMailbox: boolean;
+  inboundIssueTemplate: string;
+  inboundCommentTemplate: string;
+  imapMarkIngestedAsSeen: boolean;
 }
 
 export interface Rule {
@@ -275,6 +378,19 @@ export interface ThreadDetail {
   messages: ThreadMessageDetail[];
 }
 
+export interface ProjectSyncError {
+  id: string;
+  projectId: string;
+  category: "mail" | "provider";
+  operation: string;
+  message: string;
+  status: number | null;
+  responseBody: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  dismissedAt: string | null;
+}
+
 export interface MailConfig {
   imapHost: string;
   imapPort: number;
@@ -289,11 +405,15 @@ export interface MailConfig {
   smtpFrom: string;
 }
 
+export type GithubProviderAuthType = "pat" | "github_app";
+
 export interface ProviderConfig {
   provider: string;
   providerBaseUrl: string;
   providerProjectId: string;
-  providerToken: string;
+  providerToken?: string;
+  providerGithubAuthType?: GithubProviderAuthType;
+  providerGithubInstallationId?: string;
   providerTlsInsecure?: boolean;
   providerCaCert?: string | null;
 }
@@ -301,15 +421,18 @@ export interface ProviderConfig {
 export interface CreateProjectInput extends MailConfig, ProviderConfig {
   name: string;
   slug: string;
-  imapPollIntervalSeconds?: number;
-  commentPollIntervalSeconds?: number;
 }
 
 export interface UpdateProjectInput extends Partial<CreateProjectInput> {
   isActive?: boolean;
-  webhookEnabled?: boolean;
   inboundAckEnabled?: boolean;
+  inboundAckCcMailbox?: boolean;
   inboundAckTemplate?: string;
+  outboundCommentTemplate?: string;
+  outboundCommentCcMailbox?: boolean;
+  inboundIssueTemplate?: string;
+  inboundCommentTemplate?: string;
+  imapMarkIngestedAsSeen?: boolean;
 }
 
 export interface CreateRuleInput {

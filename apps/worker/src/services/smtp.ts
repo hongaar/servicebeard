@@ -34,6 +34,7 @@ export interface OutboundEmail {
 export async function sendEmail(
   creds: SmtpCredentials,
   email: OutboundEmail,
+  context?: { projectId?: string },
 ): Promise<string> {
   const transporter = nodemailer.createTransport({
     host: creds.smtpHost,
@@ -67,6 +68,7 @@ export async function sendEmail(
     });
   } catch (err) {
     logExternalError("smtp", "send-mail", err, {
+      projectId: context?.projectId,
       host: creds.smtpHost,
       port: creds.smtpPort,
       to: email.to,

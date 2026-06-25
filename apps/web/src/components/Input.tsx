@@ -5,16 +5,20 @@ interface FieldProps {
   label: string;
   error?: string;
   hint?: React.ReactNode;
+  labelAction?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export function Field({ label, error, hint, children }: FieldProps) {
+export function Field({ label, error, hint, labelAction, children }: FieldProps) {
   return (
     <div className={styles.field}>
-      <label className={styles.label}>
-        <span>{label}</span>
-        {hint && <HelpTip label={`Help: ${label}`}>{hint}</HelpTip>}
-      </label>
+      <div className={styles.labelRow}>
+        <label className={styles.label}>
+          <span>{label}</span>
+          {hint && <HelpTip label={`Help: ${label}`}>{hint}</HelpTip>}
+        </label>
+        {labelAction}
+      </div>
       {children}
       {error && <span className={styles.error}>{error}</span>}
     </div>
@@ -39,11 +43,12 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   label: string;
   error?: string;
   hint?: React.ReactNode;
+  labelAction?: React.ReactNode;
 }
 
-export function Textarea({ label, error, hint, className, ...props }: TextareaProps) {
+export function Textarea({ label, error, hint, labelAction, className, ...props }: TextareaProps) {
   return (
-    <Field label={label} error={error} hint={hint}>
+    <Field label={label} error={error} hint={hint} labelAction={labelAction}>
       <textarea
         className={[styles.textarea, className].filter(Boolean).join(" ")}
         {...props}
@@ -78,15 +83,22 @@ export function Checkbox({
   checked,
   onChange,
   hint,
+  disabled,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   hint?: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <label className={styles.checkbox}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       <span className={styles.checkboxLabel}>
         {label}
         {hint && <HelpTip label={`Help: ${label}`}>{hint}</HelpTip>}

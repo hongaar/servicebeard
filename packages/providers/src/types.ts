@@ -68,6 +68,8 @@ export interface ProviderConfig {
   baseUrl: string;
   projectId: string;
   token: string;
+  /** When set, mint short-lived installation tokens via the configured GitHub App. */
+  githubInstallationId?: string | null;
   webhookUrl?: string;
   webhookSecret?: string;
   tlsInsecure?: boolean;

@@ -1,0 +1,17 @@
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}

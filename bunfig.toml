@@ -1,3 +1,0 @@
-[run]
-# Show full script output when using `bun run --filter` (default is 10 lines).
-elide-lines = 50

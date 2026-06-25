@@ -1,0 +1,92 @@
+import { recordProjectSyncError } from "@servicebeard/db";
+import { providerErrorDetails } from "@servicebeard/providers";
+import { logger } from "./logger";
+
+function projectIdFromContext(context?: Record<string, unknown>): string | undefined {
+  return typeof context?.projectId === "string" ? context.projectId : undefined;
+}
+
+function persistProjectSyncError(
+  service: string,
+  operation: string,
+  err: unknown,
+  context?: Record<string, unknown>,
+): void {
+  const projectId = projectIdFromContext(context);
+  if (!projectId) return;
+
+  const providerError = providerErrorDetails(err);
+  if (providerError?.status === 404) return;
+
+  void recordProjectSyncError({
+    projectId,
+    service,
+    operation,
+    message: providerError?.message ?? (err instanceof Error ? err.message : String(err)),
+    status: providerError?.status,
+    responseBody: providerError?.responseBody,
+    metadata: context,
+  }).catch((persistErr) => {
+    logger.warn({ persistErr, projectId, service, operation }, "failed to record project sync error");
+  });
+}
+
+export function logExternalError(
+  service: string,
+  operation: string,
+  err: unknown,
+  context?: Record<string, unknown>,
+): void {
+  const providerError = providerErrorDetails(err);
+  if (providerError) {
+    const level = providerError.status === 404 ? "debug" : "error";
+    logger[level](
+      {
+        service,
+        operation,
+        provider: providerError.name,
+        status: providerError.status,
+        message: providerError.message,
+        responseBody: providerError.responseBody,
+        ...context,
+      },
+      "external service error",
+    );
+    if (providerError.status !== 404) {
+      persistProjectSyncError(service, operation, err, context);
+    }
+    return;
+  }
+
+  logger.error(
+    {
+      service,
+      operation,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      ...context,
+    },
+    "external service error",
+  );
+  persistProjectSyncError(service, operation, err, context);
+}
+
+export function providerFailureResponse(
+  operation: string,
+  err: unknown,
+  context?: { projectId?: string },
+): {
+  ok: false;
+  error: string;
+  status?: number;
+  responseBody?: string;
+} {
+  logExternalError("api", operation, err, context);
+  const details = providerErrorDetails(err);
+  return {
+    ok: false,
+    error: err instanceof Error ? err.message : "Connection failed",
+    status: details?.status,
+    responseBody: details?.responseBody,
+  };
+}

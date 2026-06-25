@@ -131,6 +131,7 @@ export const projects = pgTable(
     providerBaseUrl: text("provider_base_url").notNull(),
     providerProjectId: text("provider_project_id").notNull(),
     providerTokenEncrypted: text("provider_token_encrypted").notNull(),
+    providerGithubInstallationId: text("provider_github_installation_id"),
     providerBotUserId: text("provider_bot_user_id"),
     providerTlsInsecure: boolean("provider_tls_insecure").notNull().default(false),
     providerCaCertEncrypted: text("provider_ca_cert_encrypted"),
@@ -147,9 +148,8 @@ export const projects = pgTable(
     smtpFrom: text("smtp_from").notNull(),
     webhookSecret: text("webhook_secret").notNull(),
     webhookEnabled: boolean("webhook_enabled").notNull().default(true),
-    imapPollIntervalSeconds: integer("imap_poll_interval_seconds").notNull().default(60),
-    commentPollIntervalSeconds: integer("comment_poll_interval_seconds").notNull().default(120),
     inboundAckEnabled: boolean("inbound_ack_enabled").notNull().default(true),
+    inboundAckCcMailbox: boolean("inbound_ack_cc_mailbox").notNull().default(false),
     inboundAckTemplate: text("inbound_ack_template").notNull().default(
       `Thank you for contacting us.
 
@@ -157,6 +157,26 @@ We have received your email regarding "{{subject}}" and created issue #{{issueNu
 
 Reference: {{issueUrl}}`,
     ),
+    outboundCommentTemplate: text("outbound_comment_template").notNull().default(
+      `{{commentBody}}
+
+---
+Reply from {{authorName}} on issue #{{issueNumber}}
+{{issueUrl}}`,
+    ),
+    outboundCommentCcMailbox: boolean("outbound_comment_cc_mailbox").notNull().default(false),
+    inboundIssueTemplate: text("inbound_issue_template").notNull().default(
+      `**Message from {{sender}}**
+
+{{body}}`,
+    ),
+    inboundCommentTemplate: text("inbound_comment_template").notNull().default(
+      `**Reply from {{sender}}**
+
+{{body}}`,
+    ),
+    imapMarkIngestedAsSeen: boolean("imap_mark_ingested_as_seen").notNull().default(true),
+    imapIngestedThrough: timestamp("imap_ingested_through", { withTimezone: true }),
     lastImapPollAt: timestamp("last_imap_poll_at", { withTimezone: true }),
     lastCommentPollAt: timestamp("last_comment_poll_at", { withTimezone: true }),
     isActive: boolean("is_active").notNull().default(true),
@@ -214,6 +234,29 @@ export const issueThreads = pgTable(
     index("issue_threads_project_id_idx").on(table.projectId),
     index("issue_threads_external_issue_id_idx").on(table.externalIssueId),
     index("issue_threads_subject_normalized_idx").on(table.projectId, table.subjectNormalized),
+  ],
+);
+
+export const projectImapIngestedMessages = pgTable(
+  "project_imap_ingested_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    messageId: text("message_id").notNull(),
+    ingestedAt: timestamp("ingested_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("project_imap_ingested_messages_project_message_idx").on(
+      table.projectId,
+      table.messageId,
+    ),
+    index("project_imap_ingested_messages_project_id_idx").on(table.projectId),
+    index("project_imap_ingested_messages_project_ingested_at_idx").on(
+      table.projectId,
+      table.ingestedAt,
+    ),
   ],
 );
 
@@ -287,6 +330,28 @@ export const jobRuns = pgTable(
   ],
 );
 
+export const projectSyncErrors = pgTable(
+  "project_sync_errors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    operation: text("operation").notNull(),
+    message: text("message").notNull(),
+    status: integer("status"),
+    responseBody: text("response_body"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("project_sync_errors_project_id_idx").on(table.projectId),
+    index("project_sync_errors_project_created_idx").on(table.projectId, table.createdAt),
+  ],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   teamMembers: many(teamMembers),
@@ -320,7 +385,19 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   team: one(teams, { fields: [projects.teamId], references: [teams.id] }),
   rules: many(rules),
   threads: many(issueThreads),
+  syncErrors: many(projectSyncErrors),
+  imapIngestedMessages: many(projectImapIngestedMessages),
 }));
+
+export const projectImapIngestedMessagesRelations = relations(
+  projectImapIngestedMessages,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [projectImapIngestedMessages.projectId],
+      references: [projects.id],
+    }),
+  }),
+);
 
 export const rulesRelations = relations(rules, ({ one }) => ({
   project: one(projects, { fields: [rules.projectId], references: [projects.id] }),
@@ -338,6 +415,13 @@ export const emailMessagesRelations = relations(emailMessages, ({ one }) => ({
   }),
   project: one(projects, {
     fields: [emailMessages.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const projectSyncErrorsRelations = relations(projectSyncErrors, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectSyncErrors.projectId],
     references: [projects.id],
   }),
 }));

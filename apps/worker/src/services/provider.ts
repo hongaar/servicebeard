@@ -12,6 +12,7 @@ export function projectProviderConfig(
     baseUrl: project.providerBaseUrl,
     projectId: project.providerProjectId,
     token: decrypt(project.providerTokenEncrypted),
+    githubInstallationId: project.providerGithubInstallationId,
     tlsInsecure: project.providerTlsInsecure,
     caCert: project.providerCaCertEncrypted
       ? decrypt(project.providerCaCertEncrypted)

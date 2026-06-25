@@ -1,6 +1,7 @@
 import { getDb, projects } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
 import { setProviderLog } from "@servicebeard/providers";
+import { getCommentPollIntervalSeconds, getImapPollIntervalSeconds } from "@servicebeard/shared";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
 import "./lib/env-loader";
@@ -39,6 +40,7 @@ function isProjectPollDue(
 
 async function runImapPollsForDueProjects(): Promise<void> {
   const db = getDb();
+  const imapPollIntervalSeconds = getImapPollIntervalSeconds();
   const activeProjects = await db.query.projects.findMany({
     where: eq(projects.isActive, true),
   });
@@ -47,13 +49,13 @@ async function runImapPollsForDueProjects(): Promise<void> {
   let skippedNotDue = 0;
 
   for (const project of activeProjects) {
-    if (!isProjectPollDue(project.lastImapPollAt, project.imapPollIntervalSeconds)) {
+    if (!isProjectPollDue(project.lastImapPollAt, imapPollIntervalSeconds)) {
       skippedNotDue++;
       logger.debug(
         {
           projectId: project.id,
           lastImapPollAt: project.lastImapPollAt,
-          intervalSeconds: project.imapPollIntervalSeconds,
+          intervalSeconds: imapPollIntervalSeconds,
         },
         "imap poll not due yet",
       );
@@ -82,6 +84,7 @@ async function runImapPollsForDueProjects(): Promise<void> {
 
 async function runCommentPollsForDueProjects(): Promise<void> {
   const db = getDb();
+  const commentPollIntervalSeconds = getCommentPollIntervalSeconds();
   const activeProjects = await db.query.projects.findMany({
     where: eq(projects.isActive, true),
   });
@@ -93,7 +96,7 @@ async function runCommentPollsForDueProjects(): Promise<void> {
     if (
       !isProjectPollDue(
         project.lastCommentPollAt,
-        project.commentPollIntervalSeconds,
+        commentPollIntervalSeconds,
       )
     ) {
       skippedNotDue++;
@@ -101,7 +104,7 @@ async function runCommentPollsForDueProjects(): Promise<void> {
         {
           projectId: project.id,
           lastCommentPollAt: project.lastCommentPollAt,
-          intervalSeconds: project.commentPollIntervalSeconds,
+          intervalSeconds: commentPollIntervalSeconds,
         },
         "comment poll not due yet",
       );
@@ -225,7 +228,6 @@ export async function startWorker(): Promise<PgBoss> {
         logExternalError("pg-boss", "ensure-webhook", err, {
           projectId: job!.data.projectId,
         });
-        throw err;
       }
     },
   );

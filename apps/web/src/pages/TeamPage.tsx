@@ -22,18 +22,22 @@ interface TeamDetail {
 }
 
 export function TeamPage() {
-  const { user, team } = useLoaderData({ from: "/teams/$teamId/members" }) as {
+  const { user, team, role } = useLoaderData({ from: "/teams/$teamId/members" }) as {
     user: { email: string; name: string | null };
     team: TeamDetail;
+    role: string;
   };
+
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("member");
+  const [inviteRole, setInviteRole] = useState("member");
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const isAdmin = role === "admin" || role === "owner";
+
   const invite = useMutation({
-    mutationFn: () => api.inviteMember(team.id, { email, role }),
+    mutationFn: () => api.inviteMember(team.id, { email, role: inviteRole }),
     onSuccess: () => {
       setMessage(`Invite sent to ${email}`);
       setIsError(false);
@@ -53,7 +57,7 @@ export function TeamPage() {
 
   return (
     <Layout
-      title={team.name}
+      title="Members"
       description="Manage who has access to this team and its projects."
       user={user}
       teamId={team.id}
@@ -85,7 +89,7 @@ export function TeamPage() {
                   <td>{m.user.email}</td>
                   <td style={{ textTransform: "capitalize" }}>{m.role}</td>
                   <td>
-                    {m.role !== "owner" && (
+                    {isAdmin && m.role !== "owner" && (
                       <Button
                         variant="danger"
                         size="small"
@@ -102,37 +106,46 @@ export function TeamPage() {
         </div>
       </Card>
 
-      <Card title="Invite someone" subtitle="They'll receive an email to join this team" className={styles.section}>
-        <div className={styles.form}>
-          <div className={styles.row}>
-            <Input
-              label="Email address"
-              type="email"
-              value={email}
-              error={fieldErrors.email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setFieldErrors((prev) => clearFieldError(prev, "email"));
-                setMessage("");
-              }}
-            />
-            <Select
-              label="Role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              options={[
-                { value: "member", label: "Member — can view and manage projects" },
-                { value: "admin", label: "Admin — can invite and remove members" },
-              ]}
-            />
-          </div>
-          <div className={styles.formActions}>
-            <Button onClick={() => invite.mutate()} disabled={!email || invite.isPending}>
-              {invite.isPending ? "Sending…" : "Send invite"}
-            </Button>
-          </div>
-        </div>
-      </Card>
+      {isAdmin && (
+        <Card title="Invite someone" subtitle="They'll receive an email to join this team" className={styles.section}>
+          <form
+            className={styles.form}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!email || invite.isPending) return;
+              invite.mutate();
+            }}
+          >
+            <div className={styles.row}>
+              <Input
+                label="Email address"
+                type="email"
+                value={email}
+                error={fieldErrors.email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFieldErrors((prev) => clearFieldError(prev, "email"));
+                  setMessage("");
+                }}
+              />
+              <Select
+                label="Role"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                options={[
+                  { value: "member", label: "Member — can view and manage projects" },
+                  { value: "admin", label: "Admin — can invite and remove members" },
+                ]}
+              />
+            </div>
+            <div className={styles.formActions}>
+              <Button type="submit" disabled={!email || invite.isPending}>
+                {invite.isPending ? "Sending…" : "Send invite"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
     </Layout>
   );
 }

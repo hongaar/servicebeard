@@ -106,13 +106,17 @@
 }
 
 .menuActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   padding: var(--space-2);
 }
 
-.signOut {
+.menuAction {
   width: 100%;
   justify-content: flex-start !important;
   gap: var(--space-2);
+  text-decoration: none;
 }
 
 .menu {

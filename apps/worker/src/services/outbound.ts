@@ -6,15 +6,19 @@ import {
     projects,
 } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
-import { GitLabApiError } from "@servicebeard/providers";
-import { isServicebeardSyncedContent } from "@servicebeard/shared";
+import { ProviderApiError } from "@servicebeard/providers";
+import {
+    isServicebeardInternalContent,
+    isServicebeardSyncedContent,
+    renderOutboundCommentTemplate,
+} from "@servicebeard/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import {
-    customerOutboundCc,
     latestThreadMessage,
+    outboundCommentCc,
     outboundEmailAddresses,
     quotedEmailFromStored,
     replyBodyWithQuote,
@@ -59,18 +63,16 @@ async function advanceLastSeenNoteAtForIssue(
 }
 
 function outboundSkipReason(
-  project: typeof projects.$inferSelect,
+  _project: typeof projects.$inferSelect,
   noteBody: string,
-  authorId: string,
+  _authorId: string,
   internal: boolean,
   system: boolean,
 ): string | null {
   if (internal) return "internal";
   if (system) return "system";
+  if (isServicebeardInternalContent(noteBody)) return "internal_marker";
   if (isServicebeardSyncedContent(noteBody)) return "sync_marker";
-  if (project.providerBotUserId && authorId === project.providerBotUserId) {
-    return "bot_author";
-  }
   return null;
 }
 
@@ -130,21 +132,14 @@ export async function processOutboundComment(
     event.internal,
     event.system,
   );
-  if (skipReason === "sync_marker") {
-    logger.debug({ noteId: event.noteId }, "skipping email-synced comment");
+  if (skipReason === "internal_marker") {
+    logger.debug({ noteId: event.noteId }, "skipping internal marker comment");
     await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
     return;
   }
 
-  if (skipReason === "bot_author") {
-    logger.debug(
-      {
-        noteId: event.noteId,
-        authorId: event.authorId,
-        providerBotUserId: project.providerBotUserId,
-      },
-      "skipping bot-authored note",
-    );
+  if (skipReason === "sync_marker") {
+    logger.debug({ noteId: event.noteId }, "skipping email-synced comment");
     await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
     return;
   }
@@ -183,11 +178,12 @@ export async function processOutboundComment(
 
   const provider = createProjectProvider(project);
 
-  const replyIntro = `${event.noteBody}
-
----
-Reply from ${commentAuthorDisplayName(event)} on issue #${thread.issueIid}
-${thread.issueUrl}`;
+  const replyIntro = renderOutboundCommentTemplate(project.outboundCommentTemplate, {
+    commentBody: event.noteBody,
+    authorName: commentAuthorDisplayName(event),
+    issueNumber: thread.issueIid,
+    issueUrl: thread.issueUrl,
+  });
   const body = replyBodyWithQuote(
     replyIntro,
     quotedEmailFromStored(parent, thread, project.smtpFrom),
@@ -201,7 +197,7 @@ ${thread.issueUrl}`;
     parent.messageId,
     parent.references,
   );
-  const cc = customerOutboundCc(project, thread.originalSenderEmail);
+  const cc = outboundCommentCc(project, thread.originalSenderEmail);
   const addresses = outboundEmailAddresses(
     project.smtpFrom,
     thread.originalSenderEmail,
@@ -229,6 +225,7 @@ ${thread.issueUrl}`;
       inReplyTo,
       references,
     },
+    { projectId },
   );
 
   await db.insert(emailMessages).values({
@@ -273,7 +270,7 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
 
   logger.info(
     { projectId, threadCount: threads.length },
-    "polling gitlab comments",
+    "polling issue comments",
   );
 
   let notesChecked = 0;
@@ -287,7 +284,7 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
       providerBotUserId: project.providerBotUserId,
       threadCount: threads.length,
     },
-    "starting gitlab comment poll for project",
+    "starting issue comment poll for project",
   );
 
   for (const thread of threads) {
@@ -297,8 +294,8 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
     try {
       notes = await provider.listCommentsSince(thread.issueIid, since);
     } catch (err) {
-      if (!(err instanceof GitLabApiError)) {
-        logExternalError("gitlab", "list-comments", err, {
+      if (!(err instanceof ProviderApiError)) {
+        logExternalError(project.provider, "list-comments", err, {
           projectId,
           threadId: thread.id,
           issueIid: thread.issueIid,
@@ -338,7 +335,7 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
         threadCreatedAt: thread.createdAt,
         noteCount: notes.length,
       },
-      "listed gitlab comments for thread",
+      "listed issue comments for thread",
     );
 
     for (const note of notes) {
@@ -426,7 +423,7 @@ export async function ensureWebhookForProject(projectId: string): Promise<void> 
   if (!project) return;
 
   const webhookBase = process.env.WEBHOOK_BASE_URL ?? process.env.API_URL ?? "http://localhost:3000";
-  const webhookUrl = `${webhookBase}/webhooks/gitlab/${projectId}`;
+  const webhookUrl = `${webhookBase.replace(/\/$/, "")}/webhooks/${project.provider}/${projectId}`;
 
   const provider = createProjectProvider(project, {
     webhookUrl,

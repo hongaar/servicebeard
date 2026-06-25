@@ -1,7 +1,42 @@
+export const SYNC_ERROR_CATEGORIES = ["mail", "provider"] as const;
+export type SyncErrorCategory = (typeof SYNC_ERROR_CATEGORIES)[number];
+
+export function classifySyncError(
+  service: string,
+  operation: string,
+): SyncErrorCategory | null {
+  if (
+    service === "imap" ||
+    service === "smtp" ||
+    operation === "test-mail" ||
+    operation === "imap-poll-project"
+  ) {
+    return "mail";
+  }
+
+  if (
+    service === "gitlab" ||
+    service === "github" ||
+    service === "inbound" ||
+    service === "outbound-email" ||
+    operation === "test-provider" ||
+    operation === "ensure-webhook" ||
+    operation === "process-message" ||
+    operation === "list-comments" ||
+    operation === "send-email" ||
+    operation === "comment-poll-project" ||
+    operation === "upload-inline-image"
+  ) {
+    return "provider";
+  }
+
+  return null;
+}
+
 export const TEAM_ROLES = ["owner", "admin", "member"] as const;
 export type TeamRole = (typeof TEAM_ROLES)[number];
 
-export const PROVIDERS = ["gitlab"] as const;
+export const PROVIDERS = ["gitlab", "github"] as const;
 export type ProviderType = (typeof PROVIDERS)[number];
 
 export const RULE_MATCH_FIELDS = ["sender", "subject", "body"] as const;

@@ -1,22 +1,30 @@
-import { Hono } from "hono";
-import { eq } from "drizzle-orm";
 import { getDb, projects } from "@servicebeard/db";
 import { createProvider } from "@servicebeard/providers";
-import { getBoss, QUEUE_NAMES } from "../lib/queue";
-import { syncEventsTotal } from "../lib/metrics";
+import { eq } from "drizzle-orm";
+import type { Context } from "hono";
+import { Hono } from "hono";
 import { logger } from "../lib/logger";
+import { syncEventsTotal } from "../lib/metrics";
+import { getBoss, QUEUE_NAMES } from "../lib/queue";
 
 const webhookRoutes = new Hono();
 
-webhookRoutes.post("/gitlab/:projectId", async (c) => {
+async function handleProviderWebhook(c: Context, expectedProvider: string) {
   const projectId = c.req.param("projectId");
+  if (!projectId) {
+    return c.json({ error: "Not found" }, 404);
+  }
   const db = getDb();
 
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
 
-  if (!project || !project.isActive || !project.webhookEnabled) {
+  if (
+    !project ||
+    !project.isActive ||
+    project.provider !== expectedProvider
+  ) {
     return c.json({ error: "Not found" }, 404);
   }
 
@@ -33,7 +41,7 @@ webhookRoutes.post("/gitlab/:projectId", async (c) => {
   });
 
   if (!provider.verifyWebhook(headers, body, project.webhookSecret)) {
-    logger.warn({ projectId }, "webhook verification failed");
+    logger.warn({ projectId, provider: expectedProvider }, "webhook verification failed");
     return c.json({ error: "Unauthorized" }, 401);
   }
 
@@ -54,6 +62,9 @@ webhookRoutes.post("/gitlab/:projectId", async (c) => {
   syncEventsTotal.inc({ direction: "outbound", status: "queued" });
 
   return c.json({ ok: true });
-});
+}
+
+webhookRoutes.post("/gitlab/:projectId", (c) => handleProviderWebhook(c, "gitlab"));
+webhookRoutes.post("/github/:projectId", (c) => handleProviderWebhook(c, "github"));
 
 export { webhookRoutes };

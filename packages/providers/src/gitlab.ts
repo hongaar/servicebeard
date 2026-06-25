@@ -1,4 +1,5 @@
 import { parseGitLabUploadPath } from "@servicebeard/shared/email-content";
+import { ProviderApiError } from "./errors";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {
@@ -77,13 +78,9 @@ interface GitLabWebhookPayload {
   issue?: { id: number; iid: number };
 }
 
-export class GitLabApiError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "GitLabApiError";
-    this.status = status;
+export class GitLabApiError extends ProviderApiError {
+  constructor(status: number, message: string, responseBody?: string) {
+    super(status, message, "GitLabApiError", responseBody);
   }
 }
 
@@ -144,7 +141,7 @@ export class GitLabProvider implements IssueProvider {
           bodyPreview: text.slice(0, 500),
         });
       }
-      throw new GitLabApiError(status, `GitLab API error ${status}: ${text}`);
+      throw new GitLabApiError(status, `GitLab API error ${status}: ${text}`, text);
     }
 
     if (response.status === 204) {
@@ -433,6 +430,7 @@ export class GitLabProvider implements IssueProvider {
       throw new GitLabApiError(
         response.status,
         `GitLab upload error ${response.status}: ${text}`,
+        text,
       );
     }
 
@@ -665,17 +663,5 @@ export class GitLabProvider implements IssueProvider {
       enable_ssl_verification: true,
       token: config.webhookSecret,
     });
-  }
-}
-
-export function createProvider(
-  type: string,
-  config: ProviderConfig,
-): IssueProvider {
-  switch (type) {
-    case "gitlab":
-      return new GitLabProvider(config);
-    default:
-      throw new Error(`Unknown provider: ${type}`);
   }
 }

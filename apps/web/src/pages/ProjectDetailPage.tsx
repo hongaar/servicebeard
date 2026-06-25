@@ -1,17 +1,22 @@
+import { providerIssuesWebUrl } from "@servicebeard/shared";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
-import { useMutation } from "@tanstack/react-query";
-import { useLoaderData, useNavigate, useParams } from "@tanstack/react-router";
-import { MessagesSquare, Scissors, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useLoaderData, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { MessagesSquare, SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-import { Dialog } from "../components/Dialog";
+import { DestructiveConfirmDialog } from "../components/DestructiveConfirmDialog";
 import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
 import { ProjectSettingsForm } from "../components/ProjectSettingsForm";
+import { ProjectTemplatesForm } from "../components/ProjectTemplatesForm";
+import { RuleActionsCell } from "../components/RuleActionsCell";
 import { RuleForm } from "../components/RuleForm";
+import { SyncErrorDetailDialog } from "../components/SyncErrorDetailDialog";
+import { TableRowAction } from "../components/TableRowAction";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
-import { api, type CreateRuleInput, type Rule } from "../lib/api";
+import { api, type CreateRuleInput, type ProjectSyncError, type Rule } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import type { ProjectSection } from "../lib/navigation";
 import {
@@ -19,6 +24,12 @@ import {
     projectToSettingsForm,
     type ProjectSettingsFormValues,
 } from "../lib/projectForm";
+import {
+    formToTemplatesUpdateInput,
+    projectToTemplatesForm,
+    type ProjectTemplatesFormValues,
+} from "../lib/projectTemplatesForm";
+import { formatRuleMatch } from "../lib/ruleDisplay";
 import styles from "../styles/pages.module.css";
 
 const SECTION_INFO: Record<ProjectSection, { description: string }> = {
@@ -26,10 +37,11 @@ const SECTION_INFO: Record<ProjectSection, { description: string }> = {
     description: "Define how incoming emails are matched and what happens on your issue board.",
   },
   status: {
-    description: "View conversations synced between mail and issues — the pulse of your inbox.",
+    description:
+      "Conversations, plus recent mailbox and issue-provider errors for this project.",
   },
   templates: {
-    description: "Reusable reply templates for your team. Coming soon — we're combing them out.",
+    description: "Email and issue tracker templates for customer-facing messages.",
   },
   settings: {
     description: "Mailbox credentials, provider config, and project options.",
@@ -52,11 +64,26 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, threads, teamName, section } = useLoaderData({
+  const { user, project, threads, syncErrors, teamName, section } = useLoaderData({
     from: "/teams/$teamId/projects/$projectId/$section",
   });
   const { teamId, projectId } = useParams({ from: "/teams/$teamId/projects/$projectId/$section" });
+  const search = useSearch({ strict: false }) as {
+    githubInstallationId?: string;
+    githubAppError?: string;
+  };
   const navigate = useNavigate();
+  const { data: githubApp } = useQuery({
+    queryKey: ["github-app-config"],
+    queryFn: () => api.getGithubAppConfig(),
+    staleTime: 60_000,
+  });
+  const providerOptions = useQuery({
+    queryKey: ["provider-options", teamId, projectId],
+    queryFn: () => api.getProviderOptions(teamId, projectId),
+    enabled: section === "rules",
+    staleTime: 60_000,
+  });
   const [showRuleForm, setShowRuleForm] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -64,12 +91,83 @@ export function ProjectDetailPage() {
   const [settingsForm, setSettingsForm] = useState<ProjectSettingsFormValues>(() =>
     projectToSettingsForm(project),
   );
+  const [templatesForm, setTemplatesForm] = useState<ProjectTemplatesFormValues>(() =>
+    projectToTemplatesForm(project),
+  );
   const [settingsError, setSettingsError] = useState("");
+  const [templatesError, setTemplatesError] = useState("");
   const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
+  const [templatesFieldErrors, setTemplatesFieldErrors] = useState<Record<string, string>>({});
   const [ruleFormError, setRuleFormError] = useState("");
   const [ruleFieldErrors, setRuleFieldErrors] = useState<Record<string, string>>({});
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedThreadLabel, setSelectedThreadLabel] = useState("");
+  const [selectedSyncErrorId, setSelectedSyncErrorId] = useState<string | null>(null);
+
+  const selectedSyncError =
+    syncErrors.find((error) => error.id === selectedSyncErrorId) ?? null;
+
+  useEffect(() => {
+    setSettingsForm(projectToSettingsForm(project));
+    setTemplatesForm(projectToTemplatesForm(project));
+    setSettingsError("");
+    setTemplatesError("");
+    setSettingsFieldErrors({});
+    setTemplatesFieldErrors({});
+    setShowRuleForm(false);
+    setEditingRuleId(null);
+    setRuleFormError("");
+    setRuleFieldErrors({});
+    setSelectedThreadId(null);
+    setSelectedThreadLabel("");
+    setSelectedSyncErrorId(null);
+    setShowDeleteDialog(false);
+    setDeleteError("");
+  }, [project.id]);
+
+  useEffect(() => {
+    if (!search.githubInstallationId && !search.githubAppError) return;
+
+    if (section !== "settings") {
+      navigate({
+        to: "/teams/$teamId/projects/$projectId/$section",
+        params: { teamId, projectId, section: "settings" },
+        search: {
+          githubInstallationId: search.githubInstallationId,
+          githubAppError: search.githubAppError,
+        },
+      });
+      return;
+    }
+
+    if (search.githubInstallationId) {
+      setSettingsForm((f) => ({
+        ...f,
+        provider: "github",
+        providerGithubAuthType: "github_app",
+        providerGithubInstallationId: search.githubInstallationId!,
+      }));
+    }
+    if (search.githubAppError) {
+      const messages: Record<string, string> = {
+        disabled: "GitHub App integration is not enabled on this server.",
+        not_configured: "GitHub App is missing server credentials.",
+        install_failed: "Could not start GitHub App installation.",
+        invalid_callback: "GitHub App installation callback was invalid.",
+        state_mismatch: "GitHub App installation state did not match.",
+      };
+      setSettingsError(messages[search.githubAppError] ?? "GitHub App installation failed.");
+    }
+
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [
+    navigate,
+    projectId,
+    search.githubAppError,
+    search.githubInstallationId,
+    section,
+    teamId,
+  ]);
 
   const createRule = useMutation({
     mutationFn: (data: Parameters<typeof api.createRule>[2]) =>
@@ -91,9 +189,20 @@ export function ProjectDetailPage() {
   });
 
   const saveSettings = useMutation({
-    mutationFn: () => api.updateProject(teamId, project.id, formToUpdateInput(settingsForm)),
+    mutationFn: () =>
+      api.updateProject(
+        teamId,
+        project.id,
+        formToUpdateInput(settingsForm, { githubAppEnabled: githubApp?.enabled }),
+      ),
     onSuccess: () => window.location.reload(),
     onError: (err) => handleMutationError(err, setSettingsError, setSettingsFieldErrors),
+  });
+
+  const saveTemplates = useMutation({
+    mutationFn: () => api.updateProject(teamId, project.id, formToTemplatesUpdateInput(templatesForm)),
+    onSuccess: () => window.location.reload(),
+    onError: (err) => handleMutationError(err, setTemplatesError, setTemplatesFieldErrors),
   });
 
   const deleteProject = useMutation({
@@ -113,6 +222,16 @@ export function ProjectDetailPage() {
     },
   });
 
+  const dismissSyncError = useMutation({
+    mutationFn: (errorId: string) => api.dismissSyncError(teamId, project.id, errorId),
+    onSuccess: () => window.location.reload(),
+  });
+
+  const dismissAllSyncErrors = useMutation({
+    mutationFn: () => api.dismissAllSyncErrors(teamId, project.id),
+    onSuccess: () => window.location.reload(),
+  });
+
   const updateSettings = (
     field: keyof ProjectSettingsFormValues,
     value: string | number | boolean,
@@ -122,18 +241,36 @@ export function ProjectDetailPage() {
     setSettingsError("");
   };
 
+  const updateTemplates = (
+    field: keyof ProjectTemplatesFormValues,
+    value: string | boolean,
+  ) => {
+    setTemplatesForm((f) => ({ ...f, [field]: value }));
+    setTemplatesFieldErrors((prev) => clearFieldError(prev, field));
+    setTemplatesError("");
+  };
+
   const clearRuleFieldError = (field: string) => {
     setRuleFieldErrors((prev) => clearFieldError(prev, field));
     setRuleFormError("");
   };
 
-  const formatRuleActions = (rule: (typeof project.rules)[number]) => {
-    const parts: string[] = [];
-    if (rule.actionStatus) parts.push(`status: ${rule.actionStatus}`);
-    if (rule.actionLabels.length) parts.push(`labels: ${rule.actionLabels.join(", ")}`);
-    if (rule.actionAssigneeId) parts.push(`assignee: ${rule.actionAssigneeId}`);
-    return parts.length ? parts.join(" · ") : null;
+  const openThread = (threadId: string, issueLabel: string) => {
+    setSelectedThreadId(threadId);
+    setSelectedThreadLabel(issueLabel);
   };
+
+  const openRuleEditor = (ruleId: string) => {
+    setShowRuleForm(false);
+    setEditingRuleId(ruleId);
+  };
+
+  const syncErrorCategoryLabel = (category: ProjectSyncError["category"]) =>
+    category === "mail" ? "Mailbox" : "Issue provider";
+
+  const editingRule = editingRuleId
+    ? project.rules.find((rule) => rule.id === editingRuleId)
+    : undefined;
 
   return (
     <Layout
@@ -146,6 +283,15 @@ export function ProjectDetailPage() {
       projectName={project.name}
       section={section}
       inboxEmail={parseMailFromAddress(project.smtpFrom)}
+      issueLink={{
+        provider: project.provider,
+        label: project.providerProjectId,
+        href: providerIssuesWebUrl(
+          project.provider,
+          project.providerBaseUrl,
+          project.providerProjectId,
+        ),
+      }}
     >
       {section === "rules" && (
         <>
@@ -182,6 +328,25 @@ export function ProjectDetailPage() {
             />
           )}
 
+          {editingRule && (
+            <RuleForm
+              key={editingRule.id}
+              teamId={teamId}
+              projectId={project.id}
+              initial={ruleToFormInput(editingRule)}
+              title={`Edit rule: ${editingRule.name}`}
+              submitLabel={updateRule.isPending ? "Saving…" : "Save changes"}
+              isPending={updateRule.isPending}
+              formError={ruleFormError}
+              fieldErrors={ruleFieldErrors}
+              onClearFieldError={clearRuleFieldError}
+              onCancel={() => setEditingRuleId(null)}
+              onDelete={() => deleteRule.mutate(editingRule.id)}
+              isDeleting={deleteRule.isPending}
+              onSubmit={(data) => updateRule.mutate({ ruleId: editingRule.id, data })}
+            />
+          )}
+
           {project.rules.length === 0 && !showRuleForm ? (
             <div className={styles.empty}>
               <EmptyIcon icon={SlidersHorizontal} />
@@ -192,150 +357,263 @@ export function ProjectDetailPage() {
               </p>
               <Button onClick={() => setShowRuleForm(true)}>Add your first rule</Button>
             </div>
-          ) : (
-            project.rules
-              .sort((a, b) => a.priority - b.priority)
-              .map((rule) =>
-                editingRuleId === rule.id ? (
-                  <RuleForm
-                    key={rule.id}
-                    teamId={teamId}
-                    projectId={project.id}
-                    initial={ruleToFormInput(rule)}
-                    title={`Edit rule: ${rule.name}`}
-                    submitLabel={updateRule.isPending ? "Saving…" : "Save changes"}
-                    isPending={updateRule.isPending}
-                    formError={ruleFormError}
-                    fieldErrors={ruleFieldErrors}
-                    onClearFieldError={clearRuleFieldError}
-                    onCancel={() => setEditingRuleId(null)}
-                    onSubmit={(data) => updateRule.mutate({ ruleId: rule.id, data })}
-                  />
-                ) : (
-                  <div key={rule.id} className={styles.ruleCard}>
-                    <div className={styles.ruleHeader}>
-                      <span className={styles.ruleName}>
-                        {rule.name}
-                        {!rule.isEnabled && (
-                          <span className={[styles.badge, styles.badgeInactive].join(" ")} style={{ marginLeft: "0.5rem" }}>
-                            Disabled
-                          </span>
-                        )}
-                      </span>
-                      <div className={styles.ruleActions}>
-                        <Button
-                          variant="secondary"
-                          size="small"
-                          onClick={() => {
-                            setShowRuleForm(false);
-                            setEditingRuleId(rule.id);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="small"
-                          onClick={() => deleteRule.mutate(rule.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                    <div className={styles.ruleMeta}>
-                      {rule.matchSender && `sender: ${rule.matchSender} `}
-                      {rule.matchSubject && `subject: ${rule.matchSubject} `}
-                      {rule.matchBody && `body: ${rule.matchBody}`}
-                      {!rule.matchSender && !rule.matchSubject && !rule.matchBody && "match all"}
-                    </div>
-                    {formatRuleActions(rule) && (
-                      <div className={styles.ruleMeta}>{formatRuleActions(rule)}</div>
-                    )}
-                  </div>
-                ),
-              )
-          )}
-        </>
-      )}
-
-      {section === "status" && (
-        <Card title="Synced status" subtitle="Email conversations linked to issues">
-          {threads.length === 0 ? (
-            <div className={styles.empty}>
-              <EmptyIcon icon={MessagesSquare} />
-              <p className={styles.emptyTitle}>No synced conversations yet</p>
-              <p className={styles.emptyHint}>
-                Once mail starts flowing and rules match, synced threads will appear here.
-              </p>
-            </div>
-          ) : (
+          ) : project.rules.length > 0 ? (
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Issue</th>
-                    <th>Sender</th>
-                    <th>Messages</th>
-                    <th>Updated</th>
+                    <th>Name</th>
+                    <th>Priority</th>
+                    <th>Match</th>
+                    <th>Actions</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {threads.map((t) => (
-                    <tr key={t.id}>
-                      <td>
-                        <a href={t.issueUrl} target="_blank" rel="noreferrer">
-                          #{t.issueIid}
-                        </a>
-                      </td>
-                      <td>
-                        {t.originalSenderName ? (
-                          <>
-                            {t.originalSenderName}{" "}
-                            <span className={styles.ruleMeta}>&lt;{t.originalSenderEmail}&gt;</span>
-                          </>
-                        ) : (
-                          t.originalSenderEmail
-                        )}
-                      </td>
-                      <td>{t.messages.length}</td>
-                      <td>{new Date(t.updatedAt).toLocaleString()}</td>
-                      <td>
-                        <Button
-                          variant="secondary"
-                          size="small"
-                          onClick={() => {
-                            setSelectedThreadId(t.id);
-                            setSelectedThreadLabel(`#${t.issueIid}`);
-                          }}
-                        >
-                          Details
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {project.rules
+                    .sort((a, b) => a.priority - b.priority)
+                    .map((rule) => (
+                      <tr
+                        key={rule.id}
+                        className={styles.tableRowClickable}
+                        onClick={() => openRuleEditor(rule.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openRuleEditor(rule.id);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="link"
+                        aria-label={`Edit rule ${rule.name}`}
+                        aria-current={editingRuleId === rule.id ? "true" : undefined}
+                      >
+                        <td>
+                          <strong>{rule.name}</strong>
+                          {!rule.isEnabled && (
+                            <span
+                              className={[styles.badge, styles.badgeInactive].join(" ")}
+                              style={{ marginLeft: "0.5rem" }}
+                            >
+                              Disabled
+                            </span>
+                          )}
+                        </td>
+                        <td>{rule.priority}</td>
+                        <td className={styles.ruleMeta}>{formatRuleMatch(rule)}</td>
+                        <td>
+                          <RuleActionsCell rule={rule} options={providerOptions.data} />
+                        </td>
+                        <td className={styles.tableActions}>
+                          <TableRowAction
+                            label="Edit"
+                            onActivate={(e) => {
+                              e.stopPropagation();
+                              openRuleEditor(rule.id);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
-          )}
-          <ThreadDetailDialog
-            teamId={teamId}
-            projectId={project.id}
-            threadId={selectedThreadId}
-            issueLabel={selectedThreadLabel}
-            onClose={() => setSelectedThreadId(null)}
-          />
-        </Card>
+          ) : null}
+        </>
+      )}
+
+      {section === "status" && (
+        <>
+          <Card title="Conversations" subtitle="Email threads linked to issues">
+            {threads.length === 0 ? (
+              <div className={styles.empty}>
+                <EmptyIcon icon={MessagesSquare} />
+                <p className={styles.emptyTitle}>No conversations yet</p>
+                <p className={styles.emptyHint}>
+                  Once mail starts flowing and rules match, conversations will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Issue</th>
+                      <th>Sender</th>
+                      <th>Subject</th>
+                      <th>Messages</th>
+                      <th>Updated</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {threads.map((t) => {
+                      const issueLabel = `#${t.issueIid}`;
+                      return (
+                        <tr
+                          key={t.id}
+                          className={styles.tableRowClickable}
+                          onClick={() => openThread(t.id, issueLabel)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openThread(t.id, issueLabel);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="link"
+                          aria-label={`View thread ${issueLabel}`}
+                        >
+                          <td>
+                            <a
+                              href={t.issueUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {issueLabel}
+                            </a>
+                          </td>
+                          <td>
+                            {t.originalSenderName ? (
+                              <>
+                                {t.originalSenderName}{" "}
+                                <span className={styles.ruleMeta}>
+                                  &lt;{t.originalSenderEmail}&gt;
+                                </span>
+                              </>
+                            ) : (
+                              t.originalSenderEmail
+                            )}
+                          </td>
+                          <td className={styles.tableCellTruncate}>{t.subjectNormalized}</td>
+                          <td>{t.messages.length}</td>
+                          <td>{new Date(t.updatedAt).toLocaleString()}</td>
+                          <td className={styles.tableActions}>
+                            <TableRowAction
+                              label="Details"
+                              onActivate={(e) => {
+                                e.stopPropagation();
+                                openThread(t.id, issueLabel);
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <ThreadDetailDialog
+              teamId={teamId}
+              projectId={project.id}
+              threadId={selectedThreadId}
+              issueLabel={selectedThreadLabel}
+              onClose={() => setSelectedThreadId(null)}
+            />
+          </Card>
+
+          <Card
+            title="Sync errors"
+            subtitle="Recent mailbox and issue API failures for this project"
+            className={styles.section}
+          >
+            {syncErrors.length === 0 ? (
+              <p className={styles.formHint}>No active sync errors. Failures will appear here.</p>
+            ) : (
+              <>
+                <div className={styles.syncErrorActions}>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => dismissAllSyncErrors.mutate()}
+                    disabled={dismissAllSyncErrors.isPending}
+                  >
+                    Dismiss all
+                  </Button>
+                </div>
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        <th>Operation</th>
+                        <th>Message</th>
+                        <th>Time</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {syncErrors.map((error) => (
+                        <tr
+                          key={error.id}
+                          className={styles.tableRowClickable}
+                          onClick={() => setSelectedSyncErrorId(error.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedSyncErrorId(error.id);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="link"
+                          aria-label={`View sync error: ${error.operation}`}
+                        >
+                          <td>
+                            <span className={[styles.badge, styles.badgeInactive].join(" ")}>
+                              {syncErrorCategoryLabel(error.category)}
+                            </span>
+                          </td>
+                          <td>
+                            {error.operation}
+                            {error.status != null ? ` · HTTP ${error.status}` : ""}
+                          </td>
+                          <td className={styles.tableCellTruncate}>{error.message}</td>
+                          <td>{new Date(error.createdAt).toLocaleString()}</td>
+                          <td className={styles.tableActions}>
+                            <TableRowAction
+                              label="Details"
+                              onActivate={(e) => {
+                                e.stopPropagation();
+                                setSelectedSyncErrorId(error.id);
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <SyncErrorDetailDialog
+                  error={selectedSyncError}
+                  onClose={() => setSelectedSyncErrorId(null)}
+                  onDismiss={(errorId) => dismissSyncError.mutate(errorId)}
+                  isDismissing={dismissSyncError.isPending}
+                />
+              </>
+            )}
+          </Card>
+        </>
       )}
 
       {section === "templates" && (
-        <div className={styles.empty}>
-          <EmptyIcon icon={Scissors} />
-          <p className={styles.emptyTitle}>Templates are on the way</p>
-          <p className={styles.emptyHint}>
-            Save canned replies for your team — less typing, more beard-stroking contemplation.
-          </p>
-        </div>
+        <Card title="Templates">
+          {templatesError && (
+            <div className={[styles.alert, styles.alertError].join(" ")}>{templatesError}</div>
+          )}
+          <ProjectTemplatesForm
+            values={templatesForm}
+            onChange={updateTemplates}
+            onSubmit={() => saveTemplates.mutate()}
+            submitLabel={saveTemplates.isPending ? "Saving…" : "Save templates"}
+            isPending={saveTemplates.isPending}
+            fieldErrors={templatesFieldErrors}
+            onClearFieldError={(field) =>
+              setTemplatesFieldErrors((prev) => clearFieldError(prev, field))
+            }
+          />
+        </Card>
       )}
 
       {section === "settings" && (
@@ -345,14 +623,16 @@ export function ProjectDetailPage() {
               <div className={[styles.alert, styles.alertError].join(" ")}>{settingsError}</div>
             )}
             <ProjectSettingsForm
+              key={projectId}
               mode="edit"
+              teamId={teamId}
+              projectId={projectId}
               values={settingsForm}
               onChange={updateSettings}
               onSubmit={() => saveSettings.mutate()}
               submitLabel={saveSettings.isPending ? "Saving…" : "Save settings"}
               isPending={saveSettings.isPending}
               fieldErrors={settingsFieldErrors}
-              webhookUrl={project.webhookUrl}
               onClearFieldError={(field) =>
                 setSettingsFieldErrors((prev) => clearFieldError(prev, field))
               }
@@ -360,47 +640,43 @@ export function ProjectDetailPage() {
           </Card>
 
           <Card title="Danger zone" subtitle="Irreversible actions" className={[styles.section, styles.dangerZone].join(" ")}>
-            <p className={styles.formHint} style={{ marginTop: 0 }}>
-              Permanently delete this project, including all rules, synced threads, and message
-              history. This cannot be undone.
-            </p>
-            {deleteError && (
-              <div className={[styles.alert, styles.alertError].join(" ")}>{deleteError}</div>
-            )}
-            <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
-              Delete project
-            </Button>
+            <div className={styles.dangerZoneBody}>
+              <p className={styles.dangerZoneText}>
+                Permanently delete this project, including all rules, synced threads, and message
+                history. This cannot be undone.
+              </p>
+              {deleteError && (
+                <div className={[styles.alert, styles.alertError, styles.dangerZoneAlert].join(" ")}>
+                  {deleteError}
+                </div>
+              )}
+              <div className={styles.dangerZoneActions}>
+                <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
+                  Delete project
+                </Button>
+              </div>
+            </div>
           </Card>
 
-          <Dialog
+          <DestructiveConfirmDialog
             open={showDeleteDialog}
             onOpenChange={(open) => {
               setShowDeleteDialog(open);
               if (!open) setDeleteError("");
             }}
-            title="Delete project?"
-          >
-            <p className={styles.formHint} style={{ marginTop: 0 }}>
-              Are you sure you want to delete <strong>{project.name}</strong>? All rules, synced
-              threads, and message history will be permanently removed.
-            </p>
-            <div className={styles.formActions}>
-              <Button
-                variant="secondary"
-                onClick={() => setShowDeleteDialog(false)}
-                disabled={deleteProject.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => deleteProject.mutate()}
-                disabled={deleteProject.isPending}
-              >
-                {deleteProject.isPending ? "Deleting…" : "Delete project"}
-              </Button>
-            </div>
-          </Dialog>
+            title="Destroy this project?"
+            entityName={project.name}
+            description="This project and all synced data will be permanently erased. Mail will stop syncing and issue links for existing threads will be lost."
+            consequences={[
+              "Mailbox credentials and provider connection settings",
+              "All sync rules and their match history",
+              "Every email thread and message synced with issues",
+              "GitLab webhooks registered for this project",
+            ]}
+            slideLabel="Slide all the way across to unlock project deletion"
+            isPending={deleteProject.isPending}
+            onConfirm={() => deleteProject.mutate()}
+          />
         </>
       )}
     </Layout>

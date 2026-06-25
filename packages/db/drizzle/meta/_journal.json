@@ -64,6 +64,62 @@
       "when": 1782290000000,
       "tag": "0008_issue_missing_at",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782300000000,
+      "tag": "0009_project_sync_errors",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782310000000,
+      "tag": "0010_project_github_installation",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782320000000,
+      "tag": "0011_project_imap_ingested",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782330000000,
+      "tag": "0012_project_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1782340000000,
+      "tag": "0013_inbound_ack_cc_mailbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1782350000000,
+      "tag": "0014_project_imap_ingested_through",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1782360000000,
+      "tag": "0015_outbound_comment_cc_mailbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1782370000000,
+      "tag": "0016_drop_project_poll_intervals",
+      "breakpoints": true
     }
   ]
 }

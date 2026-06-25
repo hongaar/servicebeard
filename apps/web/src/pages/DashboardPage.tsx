@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLoaderData } from "@tanstack/react-router";
+import { slugifyName } from "@servicebeard/shared";
+import { useMutation } from "@tanstack/react-query";
+import { Link, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import { ChevronRight, Users } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/Button";
@@ -18,16 +19,20 @@ export function DashboardPage() {
   const { user, teams } = data;
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const router = useRouter();
 
   const createTeam = useMutation({
-    mutationFn: () => api.createTeam({ name, slug }),
-    onSuccess: () => {
-      queryClient.invalidateQueries();
+    mutationFn: () =>
+      api.createTeam({
+        name,
+        slug: slugifyName(name),
+      }),
+    onSuccess: async (team) => {
+      await router.invalidate();
       setShowCreate(false);
       setName("");
-      setSlug("");
+      navigate({ to: "/teams/$teamId/projects", params: { teamId: team.id } });
     },
   });
 
@@ -53,38 +58,34 @@ export function DashboardPage() {
         {showCreate && (
           <Dialog open={showCreate} onOpenChange={setShowCreate} title="Create a team">
             <p className={styles.formHint} style={{ marginTop: 0, marginBottom: "1rem" }}>
-              Teams group people and projects together. Pick a short, URL-friendly slug.
+              Teams group people and projects together.
             </p>
-            <div className={styles.form}>
+            <form
+              className={styles.form}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!name.trim() || createTeam.isPending) return;
+                createTeam.mutate();
+              }}
+            >
               <Input
                 label="Team name"
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setSlug(
-                    e.target.value
-                      .toLowerCase()
-                      .replace(/\s+/g, "-")
-                      .replace(/[^a-z0-9-]/g, ""),
-                  );
-                }}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
               />
-              <Input label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
               <div className={styles.formActions}>
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowCreate(false)}
-                >
+                <Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => createTeam.mutate()}
-                  disabled={!name || !slug || createTeam.isPending}
+                  type="submit"
+                  disabled={!name.trim() || createTeam.isPending}
                 >
                   {createTeam.isPending ? "Creating…" : "Create team"}
                 </Button>
               </div>
-            </div>
+            </form>
           </Dialog>
         )}
 

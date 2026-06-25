@@ -8,14 +8,26 @@ import {
     users,
 } from "@servicebeard/db";
 import {
+    buildGithubAppInstallationSettingsUrl,
+    getRepositoryInstallation,
+    isGithubAppConfigured,
+} from "@servicebeard/providers";
+import {
     createTeamSchema,
     inviteMemberSchema,
+    parseGithubRepository,
+    slugifyName,
+    testMailConnectionSchema,
+    testProviderConnectionSchema,
     updateMemberSchema,
     updateTeamSchema,
 } from "@servicebeard/shared";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";
+import { testMailConnection, testProviderConnection } from "../lib/connection-test";
+import { providerFailureResponse } from "../lib/external-error";
+import { startGithubAppInstall } from "../lib/github-app-install";
 import type { AppVariables } from "../middleware/auth";
 import { requireAuth } from "../middleware/auth";
 import { requireTeamMember } from "../middleware/team";
@@ -89,9 +101,14 @@ teamRoutes.patch("/:teamId", async (c) => {
   const body = updateTeamSchema.parse(await c.req.json());
   const db = getDb();
 
+  const updates: Record<string, unknown> = { ...body, updatedAt: new Date() };
+  if (body.name !== undefined && body.slug === undefined) {
+    updates.slug = slugifyName(body.name);
+  }
+
   const [updated] = await db
     .update(teams)
-    .set({ ...body, updatedAt: new Date() })
+    .set(updates)
     .where(eq(teams.id, teamId))
     .returning();
 
@@ -104,6 +121,30 @@ teamRoutes.patch("/:teamId", async (c) => {
   });
 
   return c.json(updated);
+});
+
+teamRoutes.delete("/:teamId", async (c) => {
+  const teamId = c.req.param("teamId");
+  const { userId } = await requireTeamMember(c, teamId, "owner");
+  const db = getDb();
+
+  const team = await db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+  });
+  if (!team) return c.json({ error: "Not found" }, 404);
+
+  await auditLog({
+    teamId,
+    userId,
+    action: "delete",
+    resourceType: "team",
+    resourceId: teamId,
+    metadata: { name: team.name },
+  });
+
+  await db.delete(teams).where(eq(teams.id, teamId));
+
+  return c.json({ ok: true });
 });
 
 teamRoutes.post("/:teamId/members", async (c) => {
@@ -247,6 +288,70 @@ teamRoutes.post("/invites/:token/accept", async (c) => {
   await db.delete(teamInvites).where(eq(teamInvites.id, invite.id));
 
   return c.json(member, 201);
+});
+
+teamRoutes.post("/:teamId/test-mail", async (c) => {
+  const teamId = c.req.param("teamId");
+  await requireTeamMember(c, teamId, "admin");
+  const body = testMailConnectionSchema.parse(await c.req.json());
+
+  try {
+    return c.json(await testMailConnection(body));
+  } catch (err) {
+    return c.json(providerFailureResponse("test-mail", err), 400);
+  }
+});
+
+teamRoutes.post("/:teamId/test-provider", async (c) => {
+  const teamId = c.req.param("teamId");
+  await requireTeamMember(c, teamId, "admin");
+  const body = testProviderConnectionSchema.parse(await c.req.json());
+
+  try {
+    return c.json(await testProviderConnection(body));
+  } catch (err) {
+    return c.json(providerFailureResponse("test-provider", err), 400);
+  }
+});
+
+teamRoutes.get("/:teamId/github-app/install", async (c) => {
+  const teamId = c.req.param("teamId");
+  requireAuth(c);
+  await requireTeamMember(c, teamId, "admin");
+  return startGithubAppInstall(c, teamId);
+});
+
+teamRoutes.get("/:teamId/github-app/repository-installation", async (c) => {
+  const teamId = c.req.param("teamId");
+  await requireTeamMember(c, teamId, "admin");
+
+  if (!isGithubAppConfigured()) {
+    return c.json({ error: "GitHub App is not configured" }, 503);
+  }
+
+  const baseUrl = c.req.query("baseUrl")?.trim() || "https://github.com";
+  const repositoryInput = c.req.query("repository")?.trim();
+  if (!repositoryInput) {
+    return c.json({ error: "repository is required" }, 400);
+  }
+
+  try {
+    const repository = parseGithubRepository(repositoryInput);
+    const installation = await getRepositoryInstallation(baseUrl, repository);
+    if (!installation) {
+      return c.json({ installed: false as const, repository });
+    }
+    return c.json({
+      installed: true as const,
+      repository,
+      installationId: installation.installationId,
+      accountLogin: installation.accountLogin,
+      settingsUrl: buildGithubAppInstallationSettingsUrl(baseUrl, installation.installationId),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Lookup failed";
+    return c.json({ error: message }, 400);
+  }
 });
 
 export { teamRoutes };

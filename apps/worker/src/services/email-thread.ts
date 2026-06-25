@@ -65,10 +65,19 @@ export function threadingForParent(parentMessageId: string, parentReferences: st
   return { inReplyTo, references };
 }
 
-export function customerOutboundCc(
+export function inboundAckCc(
   project: typeof projects.$inferSelect,
   customerEmail: string,
 ): string | undefined {
+  if (!project.inboundAckCcMailbox) return undefined;
+  return supportMailboxCc(project.smtpFrom, customerEmail);
+}
+
+export function outboundCommentCc(
+  project: typeof projects.$inferSelect,
+  customerEmail: string,
+): string | undefined {
+  if (!project.outboundCommentCcMailbox) return undefined;
   return supportMailboxCc(project.smtpFrom, customerEmail);
 }
 

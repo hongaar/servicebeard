@@ -8,6 +8,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({
   variant = "primary",
   size = "default",
+  type = "button",
   className,
   disabled,
   children,
@@ -15,6 +16,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
+      type={type}
       className={[
         styles.button,
         styles[variant],

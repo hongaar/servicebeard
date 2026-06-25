@@ -1,7 +1,15 @@
 import type { ParsedEmail, Rule } from "@servicebeard/shared";
-import { evaluateRules, normalizeSubject } from "@servicebeard/shared";
+import {
+    DEFAULT_CATCH_ALL_RULE, DEFAULT_INBOUND_COMMENT_TEMPLATE,
+    DEFAULT_INBOUND_ISSUE_TEMPLATE, evaluateRules, normalizeSubject
+} from "@servicebeard/shared";
 import { beforeAll, describe, expect, test } from "bun:test";
-import { isEmailEligibleForInboundSync } from "../apps/worker/src/services/inbound";
+import {
+    advanceImapIngestedThrough,
+    computeImapPollSince,
+    IMAP_POLL_OVERLAP_MS,
+    isEmailEligibleForInboundSync,
+} from "../apps/worker/src/services/inbound";
 import { formatCommentBody, formatIssueDescription } from "../apps/worker/src/services/rules";
 
 const testEmailDate = new Date("2026-01-15T12:00:00Z");
@@ -111,6 +119,39 @@ describe("rules engine", () => {
     expect(result.rule?.name).toBe("High");
   });
 
+  test("default catch-all rule matches any email and runs after specific rules", () => {
+    const catchAll: Rule = {
+      ...baseRule,
+      id: "catch-all",
+      name: DEFAULT_CATCH_ALL_RULE.name,
+      priority: DEFAULT_CATCH_ALL_RULE.priority,
+      matchSender: DEFAULT_CATCH_ALL_RULE.matchSender,
+      matchSubject: DEFAULT_CATCH_ALL_RULE.matchSubject,
+      matchBody: DEFAULT_CATCH_ALL_RULE.matchBody,
+      actionLabels: DEFAULT_CATCH_ALL_RULE.actionLabels,
+    };
+    const specific = { ...baseRule, id: "2", name: "VIP", priority: 0, matchSender: "vip@example.com" };
+    const email = testEmail({
+      messageId: "m-catch",
+      inReplyTo: null,
+      references: [],
+      toAddresses: [],
+      ccAddresses: [],
+      bccAddresses: [],
+      fromEmail: "anyone@example.com",
+      fromName: null,
+      subject: "Hello",
+      body: "Anything",
+      date: testEmailDate,
+    });
+
+    expect(evaluateRules([catchAll], email).rule?.name).toBe("Catch-all");
+    expect(evaluateRules([specific, catchAll], email).rule?.name).toBe("Catch-all");
+    expect(
+      evaluateRules([specific, catchAll], { ...email, fromEmail: "vip@example.com" }).rule?.name,
+    ).toBe("VIP");
+  });
+
   test("skips disabled rules", () => {
     const disabled = { ...baseRule, isEnabled: false, matchSender: null };
     const result = evaluateRules([disabled], testEmail({
@@ -147,6 +188,7 @@ describe("issue description formatting", () => {
         date: testEmailDate,
       }),
       "thread-123",
+      DEFAULT_INBOUND_ISSUE_TEMPLATE,
     );
     expect(desc).toContain("**Message from User <user@example.com>**");
     expect(desc).toContain("Something broke");
@@ -179,7 +221,7 @@ On 2026-06-23 22:02, support@mail.test wrote:
       subject: "Re: problem",
       body,
       date: testEmailDate,
-    }));
+    }), DEFAULT_INBOUND_COMMENT_TEMPLATE);
 
     expect(comment).toContain("**Reply from customer <customer@mail.test>**");
     expect(comment).toContain("dat is mooi!");
@@ -201,7 +243,7 @@ On 2026-06-23 22:02, support@mail.test wrote:
       subject: "Help",
       body: "First message with no quotes",
       date: testEmailDate,
-    }));
+    }), DEFAULT_INBOUND_COMMENT_TEMPLATE);
 
     expect(comment).toContain("First message with no quotes");
     expect(comment).toContain("<!-- servicebeard-sync:email:<m@mail.test>-->");
@@ -216,6 +258,82 @@ describe("loop prevention markers", () => {
     const marker = buildSyncMarker("email:<m@mail.test>");
     expect(isServicebeardSyncedContent(`Reply text\n\n${marker}`)).toBe(true);
     expect(isServicebeardSyncedContent("Regular agent reply")).toBe(false);
+  });
+});
+
+describe("internal comment marker", () => {
+  test("detects [internal] at start or end only", async () => {
+    const { isServicebeardInternalContent } = await import("@servicebeard/shared");
+
+    expect(isServicebeardInternalContent("[internal] Checking with billing")).toBe(true);
+    expect(isServicebeardInternalContent("[INTERNAL] Checking with billing")).toBe(true);
+    expect(isServicebeardInternalContent("Need another look [internal]")).toBe(true);
+    expect(isServicebeardInternalContent("  [internal]  ")).toBe(true);
+    expect(isServicebeardInternalContent("See [internal] docs for details")).toBe(false);
+    expect(isServicebeardInternalContent("Regular customer-facing reply")).toBe(false);
+  });
+});
+
+describe("issue support details footer", () => {
+  test("builds collapsible footer with project link", async () => {
+    const { buildIssueSupportDetailsFooter } = await import("@servicebeard/shared");
+
+    const footer = buildIssueSupportDetailsFooter({
+      webUrl: "https://app.example.com",
+      teamId: "team-1",
+      projectId: "project-1",
+    });
+
+    expect(footer).toContain("<details>");
+    expect(footer).toContain("<summary>Support details</summary>");
+    expect(footer).toContain("[ServiceBeard](https://app.example.com)");
+    expect(footer).toContain(
+      "[Open project](https://app.example.com/teams/team-1/projects/project-1)",
+    );
+    expect(footer).toContain("`[internal]`");
+  });
+
+  test("mentions GitLab internal notes in footer for GitLab projects", async () => {
+    const { buildIssueSupportDetailsFooter } = await import("@servicebeard/shared");
+
+    const footer = buildIssueSupportDetailsFooter({
+      webUrl: "https://app.example.com",
+      teamId: "team-1",
+      projectId: "project-1",
+      provider: "gitlab",
+    });
+
+    expect(footer).toContain("Internal note");
+    expect(footer).toContain("`[internal]`");
+  });
+
+  test("includes support footer in new issue descriptions", () => {
+    const desc = formatIssueDescription(
+      testEmail({
+        messageId: "<abc@mail.com>",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "user@example.com",
+        fromName: "User",
+        subject: "Bug report",
+        body: "Something broke",
+        date: testEmailDate,
+      }),
+      "thread-123",
+      DEFAULT_INBOUND_ISSUE_TEMPLATE,
+      undefined,
+      {
+        webUrl: "https://app.example.com",
+        teamId: "team-1",
+        projectId: "project-1",
+      },
+    );
+
+    expect(desc).toContain("<summary>Support details</summary>");
+    expect(desc).toContain("<!-- servicebeard-sync:thread-123-->");
   });
 });
 
@@ -424,6 +542,37 @@ describe("inbound sync window", () => {
   });
 });
 
+describe("imap poll watermark", () => {
+  const projectCreatedAt = new Date("2026-06-01T10:00:00Z");
+
+  test("starts from project creation when no watermark exists", () => {
+    expect(computeImapPollSince(projectCreatedAt, null)).toEqual(projectCreatedAt);
+  });
+
+  test("searches from watermark minus overlap", () => {
+    const watermark = new Date("2026-06-10T12:00:00Z");
+    expect(computeImapPollSince(projectCreatedAt, watermark)).toEqual(
+      new Date(watermark.getTime() - IMAP_POLL_OVERLAP_MS),
+    );
+  });
+
+  test("never searches before project creation", () => {
+    const watermark = new Date("2026-06-02T08:00:00Z");
+    expect(computeImapPollSince(projectCreatedAt, watermark)).toEqual(projectCreatedAt);
+  });
+
+  test("advances watermark to latest scanned internal date", () => {
+    const current = new Date("2026-06-05T10:00:00Z");
+    const scanned = new Date("2026-06-06T10:00:00Z");
+    expect(advanceImapIngestedThrough(current, scanned)).toEqual(scanned);
+  });
+
+  test("keeps watermark when scan found nothing new", () => {
+    const current = new Date("2026-06-06T10:00:00Z");
+    expect(advanceImapIngestedThrough(current, null)).toEqual(current);
+  });
+});
+
 describe("mail from validation", () => {
   test("accepts localhost addresses", async () => {
     const { isValidMailFrom } = await import("@servicebeard/shared");
@@ -515,10 +664,153 @@ describe("inbound ack template", () => {
   });
 });
 
+describe("outbound comment template", () => {
+  test("replaces placeholders", async () => {
+    const { renderOutboundCommentTemplate } = await import("@servicebeard/shared");
+    const result = renderOutboundCommentTemplate(
+      "{{commentBody}}\n\nFrom {{authorName}} on #{{issueNumber}}: {{issueUrl}}",
+      {
+        commentBody: "We shipped a fix.",
+        authorName: "Alex",
+        issueNumber: 7,
+        issueUrl: "https://github.com/org/repo/issues/7",
+      },
+    );
+    expect(result).toContain("We shipped a fix.");
+    expect(result).toContain("Alex");
+    expect(result).toContain("#7");
+  });
+});
+
 describe("normalizeSubject", () => {
   test("strips Re: prefix", () => {
     expect(normalizeSubject("Re: Hello")).toBe("hello");
     expect(normalizeSubject("Fwd: Test")).toBe("test");
+  });
+});
+
+describe("detectIssueProviderFromUrl", () => {
+  test("detects GitHub cloud repository URLs", async () => {
+    const { detectIssueProviderFromUrl } = await import("@servicebeard/shared");
+    expect(detectIssueProviderFromUrl("https://github.com/acme/support")).toEqual({
+      provider: "github",
+      providerBaseUrl: "https://github.com",
+      providerProjectId: "acme/support",
+    });
+    expect(
+      detectIssueProviderFromUrl("https://github.com/acme/support/issues/12"),
+    ).toEqual({
+      provider: "github",
+      providerBaseUrl: "https://github.com",
+      providerProjectId: "acme/support",
+    });
+  });
+
+  test("detects GitLab cloud project URLs", async () => {
+    const { detectIssueProviderFromUrl } = await import("@servicebeard/shared");
+    expect(detectIssueProviderFromUrl("https://gitlab.com/acme/website")).toEqual({
+      provider: "gitlab",
+      providerBaseUrl: "https://gitlab.com",
+      providerProjectId: "acme/website",
+    });
+    expect(
+      detectIssueProviderFromUrl("https://gitlab.com/acme/website/-/issues/4"),
+    ).toEqual({
+      provider: "gitlab",
+      providerBaseUrl: "https://gitlab.com",
+      providerProjectId: "acme/website",
+    });
+  });
+
+  test("detects self-hosted instances from hostname", async () => {
+    const { detectIssueProviderFromUrl } = await import("@servicebeard/shared");
+    expect(
+      detectIssueProviderFromUrl("https://gitlab.example.com/acme/website"),
+    ).toEqual({
+      provider: "gitlab",
+      providerBaseUrl: "https://gitlab.example.com",
+      providerProjectId: "acme/website",
+    });
+    expect(
+      detectIssueProviderFromUrl("https://github.example.com/acme/support"),
+    ).toEqual({
+      provider: "github",
+      providerBaseUrl: "https://github.example.com",
+      providerProjectId: "acme/support",
+    });
+  });
+
+  test("returns null for ambiguous slugs", async () => {
+    const { detectIssueProviderFromUrl } = await import("@servicebeard/shared");
+    expect(detectIssueProviderFromUrl("acme/support")).toBeNull();
+  });
+});
+
+describe("parseGitlabProject", () => {
+  test("parses paths and URLs", async () => {
+    const { parseGitlabProject } = await import("@servicebeard/shared");
+    expect(parseGitlabProject("12345")).toBe("12345");
+    expect(parseGitlabProject("acme/website")).toBe("acme/website");
+    expect(parseGitlabProject("https://gitlab.com/acme/nested/website")).toBe(
+      "acme/nested/website",
+    );
+    expect(parseGitlabProject("git@gitlab.com:acme/website.git")).toBe("acme/website");
+  });
+});
+
+describe("parseGithubRepository", () => {
+  test("accepts owner/repo slug", async () => {
+    const { parseGithubRepository } = await import("@servicebeard/shared");
+    expect(parseGithubRepository("acme/support")).toBe("acme/support");
+    expect(parseGithubRepository("acme/support.git")).toBe("acme/support");
+  });
+
+  test("parses repository and issue URLs", async () => {
+    const { parseGithubRepository } = await import("@servicebeard/shared");
+    expect(parseGithubRepository("https://github.com/hongaar/servicebeard-support")).toBe(
+      "hongaar/servicebeard-support",
+    );
+    expect(
+      parseGithubRepository("https://github.com/hongaar/servicebeard-support/issues/1"),
+    ).toBe("hongaar/servicebeard-support");
+    expect(parseGithubRepository("github.com/acme/support/pull/12")).toBe("acme/support");
+  });
+
+  test("normalizes on create when provider is github", async () => {
+    const { createProjectSchema } = await import("@servicebeard/shared");
+    const parsed = createProjectSchema.parse({
+      name: "Support",
+      slug: "support",
+      provider: "github",
+      providerBaseUrl: "https://github.com",
+      providerProjectId: "https://github.com/acme/support/issues/3",
+      providerToken: "ghp_test",
+      imapHost: "imap.example.com",
+      imapUser: "support",
+      imapPassword: "secret",
+      smtpHost: "smtp.example.com",
+      smtpUser: "support",
+      smtpPassword: "secret",
+      smtpFrom: "support@example.com",
+    });
+    expect(parsed.providerProjectId).toBe("acme/support");
+  });
+});
+
+describe("github app install cookie", () => {
+  test("roundtrips returnTo with query string", async () => {
+    const { encodeGithubAppInstallCookie, decodeGithubAppInstallCookie } = await import(
+      "../apps/api/src/lib/github-app-install"
+    );
+    const payload = {
+      state: "abc123",
+      teamId: "team-1",
+      returnTo: "/teams/team-1/projects?create=1&wizardStep=provider",
+      popup: true,
+    };
+    const encoded = encodeGithubAppInstallCookie(payload);
+    expect(encoded).not.toContain("&");
+    expect(decodeGithubAppInstallCookie(encoded)).toEqual(payload);
   });
 });
 
@@ -644,6 +936,89 @@ describe("GitLab webhook parsing", () => {
   });
 });
 
+describe("GitHub webhook parsing", () => {
+  test("parses issue_comment created event", async () => {
+    const { GitHubProvider } = await import("@servicebeard/providers");
+    const provider = new GitHubProvider({
+      baseUrl: "https://github.com",
+      projectId: "octocat/Hello-World",
+      token: "token",
+    });
+
+    const event = provider.parseWebhook({
+      action: "created",
+      issue: { id: 100, number: 7 },
+      comment: {
+        id: 42,
+        body: "Thanks for the report",
+        user: { id: 5, login: "agent", name: "Support Agent" },
+        created_at: "2026-01-01T12:00:00Z",
+      },
+    });
+
+    expect(event).not.toBeNull();
+    expect(event!.noteId).toBe("42");
+    expect(event!.issueIid).toBe(7);
+    expect(event!.authorName).toBe("Support Agent");
+    expect(event!.authorUsername).toBe("agent");
+  });
+
+  test("skips bot comments", async () => {
+    const { GitHubProvider } = await import("@servicebeard/providers");
+    const provider = new GitHubProvider({
+      baseUrl: "https://github.com",
+      projectId: "octocat/Hello-World",
+      token: "token",
+    });
+
+    const event = provider.parseWebhook({
+      action: "created",
+      issue: { id: 100, number: 7 },
+      comment: {
+        id: 43,
+        body: "automated",
+        user: { id: 1, login: "bot", type: "Bot" },
+        created_at: "2026-01-01T12:00:00Z",
+      },
+    });
+
+    expect(event).toBeNull();
+  });
+
+  test("verifies webhook signature", async () => {
+    const { createHmac } = await import("node:crypto");
+    const { GitHubProvider } = await import("@servicebeard/providers");
+    const provider = new GitHubProvider({
+      baseUrl: "https://github.com",
+      projectId: "octocat/Hello-World",
+      token: "token",
+    });
+
+    const body = '{"action":"created"}';
+    const secret = "test-secret";
+    const signature =
+      "sha256=" + createHmac("sha256", secret).update(body).digest("hex");
+
+    expect(provider.verifyWebhook({ "x-hub-signature-256": signature }, body, secret)).toBe(
+      true,
+    );
+    expect(provider.verifyWebhook({ "x-hub-signature-256": "sha256=bad" }, body, secret)).toBe(
+      false,
+    );
+  });
+});
+
+describe("sync error classification", () => {
+  test("classifies mail and provider operations", async () => {
+    const { classifySyncError } = await import("@servicebeard/shared");
+    expect(classifySyncError("imap", "fetch-unseen")).toBe("mail");
+    expect(classifySyncError("smtp", "send-mail")).toBe("mail");
+    expect(classifySyncError("github", "list-comments")).toBe("provider");
+    expect(classifySyncError("inbound", "process-message")).toBe("provider");
+    expect(classifySyncError("api", "unknown")).toBeNull();
+  });
+});
+
 describe("login provider env", () => {
   const oidcEnv = {
     OIDC_ISSUER: "https://idp.example.com",
@@ -766,5 +1141,36 @@ describe("login provider env", () => {
     withEnv({ LOCAL_LOGIN: "true" }, () => {
       expect(isLocalLoginEnabled()).toBe(true);
     });
+  });
+});
+
+describe("mail autoconfig", () => {
+  test("mail.test resolves to local GreenMail settings", async () => {
+    const { lookupMailAutoconfig, usesLocalPartMailAuth } = await import(
+      "@servicebeard/shared/mail-autoconfig"
+    );
+
+    const config = lookupMailAutoconfig("support@mail.test");
+    expect(config?.providerName).toBe("GreenMail (local dev)");
+    expect(config?.imap).toEqual({ host: "localhost", port: 3143, secure: false });
+    expect(config?.smtp).toEqual({ host: "localhost", port: 3025, secure: false });
+    expect(usesLocalPartMailAuth("support@mail.test")).toBe(true);
+    expect(usesLocalPartMailAuth("support@gmail.com")).toBe(false);
+  });
+});
+
+describe("provider project URLs", () => {
+  test("builds GitHub and GitLab issues URLs", async () => {
+    const { providerIssuesWebUrl } = await import("@servicebeard/shared");
+
+    expect(
+      providerIssuesWebUrl("github", "https://github.com", "acme/support"),
+    ).toBe("https://github.com/acme/support/issues");
+    expect(
+      providerIssuesWebUrl("gitlab", "https://gitlab.com", "acme/support"),
+    ).toBe("https://gitlab.com/acme/support/-/issues");
+    expect(providerIssuesWebUrl("gitlab", "https://gitlab.com", "12345")).toBe(
+      "https://gitlab.com/projects/12345/issues",
+    );
   });
 });

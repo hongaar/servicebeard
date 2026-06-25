@@ -38,4 +38,5 @@ export async function closeDb(): Promise<void> {
 export * from "./crypto";
 export * from "./schema";
 export * from "./seed-dev-account";
+export * from "./sync-errors";
 

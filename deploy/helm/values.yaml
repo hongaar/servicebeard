@@ -72,16 +72,20 @@ env:
   OIDC_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
   GITHUB_CLIENT_ID: ""
   GITHUB_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
+  GITHUB_APP_ID: ""
   GITLAB_BASE_URL: https://gitlab.com
   GITLAB_CLIENT_ID: ""
   GITLAB_REDIRECT_URI: https://servicebeard.example.com/api/auth/callback
   API_URL: https://servicebeard.example.com
   WEB_URL: https://servicebeard.example.com
   WEBHOOK_BASE_URL: https://servicebeard.example.com
+  IMAP_POLL_INTERVAL_SECONDS: "60"
+  COMMENT_POLL_INTERVAL_SECONDS: "120"
 
 secrets:
   oidcClientSecret: changeme
   githubClientSecret: changeme
+  githubAppPrivateKey: ""
   gitlabClientSecret: changeme
   sessionSecret: changeme
   encryptionKey: "0000000000000000000000000000000000000000000000000000000000000000"

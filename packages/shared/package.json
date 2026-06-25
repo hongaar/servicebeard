@@ -13,6 +13,7 @@
     "./types": "./src/types.ts",
     "./login": "./src/login.ts",
     "./mail": "./src/mail.ts",
+    "./mail-autoconfig": "./src/mail-autoconfig.ts",
     "./templates": "./src/templates.ts",
     "./env": "./src/env.ts",
     "./env-watch": "./src/env-watch.ts",

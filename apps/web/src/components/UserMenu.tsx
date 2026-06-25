@@ -1,7 +1,10 @@
-import { LogOut } from "lucide-react";
+import { CircleHelp, LogOut } from "lucide-react";
 import { api } from "../lib/api";
+import { DOC_PATHS } from "../lib/docs";
 import { iconSm } from "../lib/icons";
 import { Button } from "./Button";
+import btn from "./Button.module.css";
+import { DocsLink } from "./DocsLink";
 import popoverStyles from "./Popover.module.css";
 import { PopoverChevron, usePopover } from "./usePopover.tsx";
 import styles from "./UserMenu.module.css";
@@ -64,7 +67,17 @@ export function UserMenu({ user }: UserMenuProps) {
             </div>
           </div>
           <div className={styles.menuActions}>
-            <Button variant="ghost" size="small" onClick={handleLogout} className={styles.signOut}>
+            <DocsLink
+              to={DOC_PATHS.index}
+              className={[btn.button, btn.ghost, btn.small, styles.menuAction].join(" ")}
+              role="menuitem"
+              iconSize={14}
+              onClick={close}
+            >
+              <CircleHelp {...iconSm} />
+              Help
+            </DocsLink>
+            <Button variant="ghost" size="small" onClick={handleLogout} className={styles.menuAction}>
               <LogOut {...iconSm} />
               Sign out
             </Button>

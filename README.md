@@ -4,7 +4,7 @@
 
 # ServiceBeard
 
-Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue trackers. First supported provider: **GitLab** (cloud + self-hosted).
+Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue trackers. Supported providers: **GitLab** (cloud + self-hosted) and **GitHub** (cloud + Enterprise Server).
 
 ## Features
 
@@ -88,8 +88,11 @@ Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
 | `DATABASE_URL` | Postgres connection string |
 | `ENCRYPTION_KEY` | 64-char hex key for AES-256-GCM secret encryption |
 | `SESSION_SECRET` | Session signing secret |
-| `WEBHOOK_BASE_URL` | Public URL for GitLab webhooks |
-| `TLS_CA_BUNDLE` | Optional path to a PEM CA bundle used for all GitLab API calls (merged with per-project CA) |
+| `WEBHOOK_BASE_URL` | Public URL for issue-tracker webhooks (GitLab/GitHub must reach this) |
+| `TLS_CA_BUNDLE` | Optional path to a PEM CA bundle used for all provider API calls (merged with per-project CA) |
+| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`; default: `info`) |
+
+In development (`NODE_ENV=development`), the API and worker also append structured JSON logs to `.logs/api.log` and `.logs/worker.log` at the repo root. Use these when `bun run dev` truncates terminal output — e.g. `tail -f .logs/worker.log` for provider API errors including `responseBody`.
 
 ### Authentication
 
@@ -131,6 +134,25 @@ Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
 | `GITHUB_CLIENT_ID` | OAuth App client ID |
 | `GITHUB_CLIENT_SECRET` | OAuth App client secret |
 | `GITHUB_REDIRECT_URI` | Same callback URL registered in GitHub |
+
+#### GitHub App (issue sync)
+
+Optional alternative to per-project personal access tokens. When configured, projects can authenticate with a GitHub App **installation ID** instead of a PAT. Issues and comments appear as `your-app[bot]`.
+
+1. Create a GitHub App (see in-app docs under **Provider setup → GitHub**) with Issues, Webhooks, and Administration (read) permissions on repositories.
+2. Set the app **Setup URL** to `{API_URL}/api/github-app/setup` (for local dev: `http://localhost:3000/api/github-app/setup`).
+3. Generate a private key and note the **App ID**.
+4. Add server-wide credentials to `.env` for the API and worker:
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_APP_ID` | Numeric App ID from the app settings page |
+| `GITHUB_APP_PRIVATE_KEY` | PEM private key (use `\n` for line breaks in `.env`), **or** |
+| `GITHUB_APP_PRIVATE_KEY_PATH` | Path to the `.pem` file (relative to repo root, or absolute) |
+
+5. In the project wizard, choose GitHub and click **Install GitHub App** — no manual installation ID is needed. When `GITHUB_APP_ID` is not set, projects use a personal access token instead.
+
+**PAT alternative:** create a dedicated machine/bot GitHub account, grant it access to the repository, and generate a fine-grained or classic PAT for that account — not your personal login — so created issues clearly come from ServiceBeard.
 
 #### GitLab OAuth
 
@@ -177,14 +199,16 @@ bun run db:studio
 1. Worker polls IMAP for unseen messages per active project
 2. Thread match via `Message-ID` / `References` / subject+sender
 3. Existing thread → append as public comment on issue
-4. New thread → evaluate rules → create GitLab issue with metadata
+4. New thread → evaluate rules → create issue on the linked provider with metadata
 5. Optional acknowledgement email to the original sender (project setting)
 
 **Outbound (comment → email)**
 
-1. GitLab `note_events` webhook (or polling fallback)
-2. Skip email-synced comments (sync marker), bot-authored notes, and already-processed notes
+1. Provider webhook (`note_events` on GitLab, `issue_comment` on GitHub) or polling fallback
+2. Skip internal comments (`[internal]` marker at the start or end, or GitLab internal notes), email-synced comments (sync marker), bot-authored notes, and already-processed notes
 3. Send threaded reply email via project SMTP
+
+New issues include a collapsible **Support details** footer with a link back to the ServiceBeard project and a reminder about the `[internal]` marker.
 
 ### Testing
 
@@ -233,11 +257,11 @@ swaks --to support@mail.test \
   --body "My app is broken"
 ```
 
-The worker polls IMAP and should create a GitLab issue (with a matching rule). View the message in Roundcube (support inbox).
+The worker polls IMAP and should create an issue on the linked provider (with a matching rule). View the message in Roundcube (support inbox).
 
 If **Send acknowledgement email for new issues** is enabled on the project, the worker also sends a threaded reply to the inbound `From` address. The reply lands in the reporter mailbox — log into Roundcube as `customer` / `customer` and check the inbox. Use `@mail.test` addresses when composing mail; acknowledgements are sent to whatever address appears in `From` (misconfigured clients that send as `@greenmail` or `@localhost` will not deliver to the `customer@mail.test` inbox).
 
-**2. Outbound (comment → email)** — add a public comment on the synced GitLab issue. The reply is sent via SMTP to `customer@mail.test`. Log into Roundcube as `customer` / `customer` to read it.
+**2. Outbound (comment → email)** — add a public comment on the synced issue (GitLab issue or GitHub issue). The reply is sent via SMTP to `customer@mail.test`. Log into Roundcube as `customer` / `customer` to read it.
 
 **3. Reply (email → comment)** — send a threaded reply back to the project inbox:
 
@@ -252,7 +276,11 @@ swaks --to support@mail.test \
 
 The worker should append this as a comment on the existing issue instead of opening a new one.
 
-**Self-hosted GitLab (custom TLS):** When creating a project, enable **Skip TLS certificate verification** for private CAs, or paste a PEM CA cert on the project. You can also set `TLS_CA_BUNDLE=/path/to/ca-bundle.pem` in `.env` to apply a CA bundle to all GitLab API calls.
+**Self-hosted / custom TLS:** When creating a project, enable **Skip TLS certificate verification** for private CAs, or paste a PEM CA cert on the project. You can also set `TLS_CA_BUNDLE=/path/to/ca-bundle.pem` in `.env` to apply a CA bundle to all provider API calls.
+
+**GitHub projects:** use repository slug `owner/repo`. When `GITHUB_APP_ID` is set on the server, use **Install GitHub App** in the project wizard (issues appear as `your-app[bot]`). Without it, provide a PAT from a **dedicated bot account** — classic `repo` scope or fine-grained token with Issues + Webhooks write. For GitHub Enterprise Server, set the instance URL and use the same `owner/repo` format.
+
+**GitLab projects:** use numeric project ID or `group/project` path and a token with `api` scope.
 
 ## Deploy
 
@@ -291,7 +319,7 @@ apps/
   web/       React frontend
 packages/
   db/        Drizzle schema + crypto
-  providers/ Issue tracker adapters (GitLab)
+  providers/ Issue tracker adapters (GitLab, GitHub)
   shared/    Zod schemas + types
 deploy/
   helm/      Kubernetes Helm chart

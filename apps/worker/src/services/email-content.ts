@@ -13,12 +13,13 @@ async function uploadInlineImage(
   filename: string,
   content: Buffer,
   contentType: string,
+  projectId?: string,
 ): Promise<string> {
   try {
     const uploaded = await provider.uploadFile(filename, content, contentType);
     return uploaded.markdown;
   } catch (err) {
-    logExternalError("gitlab", "upload-inline-image", err, { filename });
+    logExternalError("inbound", "upload-inline-image", err, { filename, projectId });
     throw err;
   }
 }
@@ -26,6 +27,7 @@ async function uploadInlineImage(
 export async function resolveEmailMarkdown(
   email: ParsedEmail,
   provider: IssueProvider,
+  projectId?: string,
 ): Promise<string> {
   let markdown = email.bodyMarkdown || email.body;
 
@@ -41,6 +43,7 @@ export async function resolveEmailMarkdown(
       image.filename,
       image.content,
       image.contentType,
+      projectId,
     );
 
     if (image.placeholder) {
@@ -66,6 +69,7 @@ export async function resolveEmailMarkdown(
       `inline-image-${index + 1}.png`,
       image.content,
       image.contentType,
+      projectId,
     );
     markdown = markdown.replace(image.fullMatch, uploadedMarkdown);
   }

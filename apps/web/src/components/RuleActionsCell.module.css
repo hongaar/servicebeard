@@ -1,0 +1,39 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.375rem;
+}
+
+.sep {
+  color: var(--color-text-muted);
+  margin-right: 0.375rem;
+}
+
+.part {
+  color: var(--color-text);
+}
+
+.prefix {
+  color: var(--color-text-muted);
+}
+
+.labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.empty {
+  color: var(--color-text-muted);
+}

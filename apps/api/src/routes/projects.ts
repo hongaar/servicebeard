@@ -1,8 +1,11 @@
 import {
+    dismissAllProjectSyncErrors,
+    dismissProjectSyncError,
     encrypt,
     generateWebhookSecret,
     getDb,
     issueThreads,
+    listProjectSyncErrors,
     projects,
     rules,
 } from "@servicebeard/db";
@@ -10,7 +13,9 @@ import { createProvider, toProviderConfig } from "@servicebeard/providers";
 import {
     createProjectSchema,
     createRuleSchema,
+    DEFAULT_CATCH_ALL_RULE,
     evaluateDraftRule,
+    normalizeProviderProjectId,
     testMailConnectionSchema,
     testProviderConnectionSchema,
     testRuleSchema,
@@ -19,9 +24,9 @@ import {
 } from "@servicebeard/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { ImapFlow } from "imapflow";
-import nodemailer from "nodemailer";
 import { auditLog } from "../lib/auth";
+import { testMailConnection, testProviderConnection } from "../lib/connection-test";
+import { providerFailureResponse } from "../lib/external-error";
 import { fetchRecentMessages, parseEmail } from "../lib/mail";
 import { createProjectProvider, projectMailCredentials } from "../lib/provider";
 import { getBoss, QUEUE_NAMES } from "../lib/queue";
@@ -30,9 +35,9 @@ import { requireTeamMember } from "../middleware/team";
 
 const projectRoutes = new Hono<{ Variables: AppVariables }>();
 
-function projectWebhookUrl(projectId: string): string {
+function projectWebhookUrl(project: { id: string; provider: string }): string {
   const base = process.env.WEBHOOK_BASE_URL ?? process.env.API_URL ?? "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/webhooks/gitlab/${projectId}`;
+  return `${base.replace(/\/$/, "")}/webhooks/${project.provider}/${project.id}`;
 }
 
 function sanitizeProject(project: typeof projects.$inferSelect) {
@@ -42,9 +47,10 @@ function sanitizeProject(project: typeof projects.$inferSelect) {
     imapPasswordEncrypted: _imapPasswordEncrypted,
     smtpPasswordEncrypted: _smtpPasswordEncrypted,
     webhookSecret: _webhookSecret,
+    webhookEnabled: _webhookEnabled,
     ...safe
   } = project;
-  return { ...safe, webhookUrl: projectWebhookUrl(project.id) };
+  return { ...safe, webhookUrl: projectWebhookUrl(project) };
 }
 
 projectRoutes.get("/:teamId/projects", async (c) => {
@@ -76,7 +82,8 @@ projectRoutes.post("/:teamId/projects", async (c) => {
       provider: body.provider,
       providerBaseUrl: body.providerBaseUrl,
       providerProjectId: body.providerProjectId,
-      providerTokenEncrypted: encrypt(body.providerToken),
+      providerTokenEncrypted: encrypt(body.providerToken ?? ""),
+      providerGithubInstallationId: body.providerGithubInstallationId?.trim() || null,
       providerTlsInsecure: body.providerTlsInsecure ?? false,
       providerCaCertEncrypted: body.providerCaCert?.trim()
         ? encrypt(body.providerCaCert.trim())
@@ -93,8 +100,6 @@ projectRoutes.post("/:teamId/projects", async (c) => {
       smtpPasswordEncrypted: encrypt(body.smtpPassword),
       smtpFrom: body.smtpFrom,
       webhookSecret,
-      imapPollIntervalSeconds: body.imapPollIntervalSeconds,
-      commentPollIntervalSeconds: body.commentPollIntervalSeconds,
     })
     .returning();
 
@@ -103,7 +108,8 @@ projectRoutes.post("/:teamId/projects", async (c) => {
     toProviderConfig({
       baseUrl: body.providerBaseUrl,
       projectId: body.providerProjectId,
-      token: body.providerToken,
+      token: body.providerToken ?? "",
+      githubInstallationId: body.providerGithubInstallationId?.trim() || null,
       tlsInsecure: body.providerTlsInsecure,
       caCert: body.providerCaCert ?? null,
     }),
@@ -117,6 +123,20 @@ projectRoutes.post("/:teamId/projects", async (c) => {
 
   const boss = await getBoss();
   await boss.send(QUEUE_NAMES.ENSURE_WEBHOOK, { projectId: project!.id });
+
+  await db.insert(rules).values({
+    projectId: project!.id,
+    name: DEFAULT_CATCH_ALL_RULE.name,
+    priority: DEFAULT_CATCH_ALL_RULE.priority,
+    isEnabled: DEFAULT_CATCH_ALL_RULE.isEnabled,
+    matchSender: DEFAULT_CATCH_ALL_RULE.matchSender ?? null,
+    matchSubject: DEFAULT_CATCH_ALL_RULE.matchSubject ?? null,
+    matchBody: DEFAULT_CATCH_ALL_RULE.matchBody ?? null,
+    actionCreateIssue: DEFAULT_CATCH_ALL_RULE.actionCreateIssue,
+    actionStatus: DEFAULT_CATCH_ALL_RULE.actionStatus ?? null,
+    actionLabels: DEFAULT_CATCH_ALL_RULE.actionLabels,
+    actionAssigneeId: DEFAULT_CATCH_ALL_RULE.actionAssigneeId ?? null,
+  });
 
   await auditLog({
     teamId,
@@ -155,13 +175,29 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
   const body = updateProjectSchema.parse(await c.req.json());
   const db = getDb();
 
+  const existing = await db.query.projects.findFirst({
+    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+  });
+  if (!existing) return c.json({ error: "Not found" }, 404);
+
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.name) updates.name = body.name;
   if (body.slug) updates.slug = body.slug;
   if (body.provider) updates.provider = body.provider;
   if (body.providerBaseUrl) updates.providerBaseUrl = body.providerBaseUrl;
-  if (body.providerProjectId) updates.providerProjectId = body.providerProjectId;
+  if (body.providerProjectId) {
+    updates.providerProjectId = normalizeProviderProjectId(
+      body.provider ?? existing.provider,
+      body.providerProjectId,
+    );
+  }
   if (body.providerToken) updates.providerTokenEncrypted = encrypt(body.providerToken);
+  if (body.providerGithubInstallationId !== undefined) {
+    updates.providerGithubInstallationId = body.providerGithubInstallationId.trim() || null;
+  }
+  if (body.providerGithubAuthType === "pat") {
+    updates.providerGithubInstallationId = null;
+  }
   if (body.providerTlsInsecure !== undefined) {
     updates.providerTlsInsecure = body.providerTlsInsecure;
   }
@@ -181,12 +217,23 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
   if (body.smtpUser) updates.smtpUser = body.smtpUser;
   if (body.smtpPassword) updates.smtpPasswordEncrypted = encrypt(body.smtpPassword);
   if (body.smtpFrom) updates.smtpFrom = body.smtpFrom;
-  if (body.imapPollIntervalSeconds) updates.imapPollIntervalSeconds = body.imapPollIntervalSeconds;
-  if (body.commentPollIntervalSeconds) updates.commentPollIntervalSeconds = body.commentPollIntervalSeconds;
   if (body.isActive !== undefined) updates.isActive = body.isActive;
-  if (body.webhookEnabled !== undefined) updates.webhookEnabled = body.webhookEnabled;
   if (body.inboundAckEnabled !== undefined) updates.inboundAckEnabled = body.inboundAckEnabled;
-  if (body.inboundAckTemplate) updates.inboundAckTemplate = body.inboundAckTemplate;
+  if (body.inboundAckCcMailbox !== undefined) updates.inboundAckCcMailbox = body.inboundAckCcMailbox;
+  if (body.inboundAckTemplate !== undefined) updates.inboundAckTemplate = body.inboundAckTemplate;
+  if (body.outboundCommentTemplate !== undefined) {
+    updates.outboundCommentTemplate = body.outboundCommentTemplate;
+  }
+  if (body.outboundCommentCcMailbox !== undefined) {
+    updates.outboundCommentCcMailbox = body.outboundCommentCcMailbox;
+  }
+  if (body.inboundIssueTemplate !== undefined) updates.inboundIssueTemplate = body.inboundIssueTemplate;
+  if (body.inboundCommentTemplate !== undefined) {
+    updates.inboundCommentTemplate = body.inboundCommentTemplate;
+  }
+  if (body.imapMarkIngestedAsSeen !== undefined) {
+    updates.imapMarkIngestedAsSeen = body.imapMarkIngestedAsSeen;
+  }
 
   const [updated] = await db
     .update(projects)
@@ -237,61 +284,27 @@ projectRoutes.delete("/:teamId/projects/:projectId", async (c) => {
 
 projectRoutes.post("/:teamId/projects/:projectId/test-mail", async (c) => {
   const teamId = c.req.param("teamId");
+  const projectId = c.req.param("projectId");
   await requireTeamMember(c, teamId, "admin");
   const body = testMailConnectionSchema.parse(await c.req.json());
 
-  const client = new ImapFlow({
-    host: body.imapHost,
-    port: body.imapPort,
-    secure: body.imapSecure,
-    auth: { user: body.imapUser, pass: body.imapPassword },
-    logger: false,
-  });
-
   try {
-    await client.connect();
-    await client.logout();
-
-    const transporter = nodemailer.createTransport({
-      host: body.smtpHost,
-      port: body.smtpPort,
-      secure: body.smtpSecure,
-      auth: { user: body.smtpUser, pass: body.smtpPassword },
-    });
-    await transporter.verify();
-
-    return c.json({ ok: true, imap: true, smtp: true });
+    return c.json(await testMailConnection(body));
   } catch (err) {
-    return c.json(
-      { ok: false, error: err instanceof Error ? err.message : "Connection failed" },
-      400,
-    );
+    return c.json(providerFailureResponse("test-mail", err, { projectId }), 400);
   }
 });
 
 projectRoutes.post("/:teamId/projects/:projectId/test-provider", async (c) => {
   const teamId = c.req.param("teamId");
+  const projectId = c.req.param("projectId");
   await requireTeamMember(c, teamId, "admin");
   const body = testProviderConnectionSchema.parse(await c.req.json());
 
   try {
-    const provider = createProvider(
-      body.provider,
-      toProviderConfig({
-        baseUrl: body.providerBaseUrl,
-        projectId: body.providerProjectId,
-        token: body.providerToken,
-        tlsInsecure: body.providerTlsInsecure,
-        caCert: body.providerCaCert ?? null,
-      }),
-    );
-    const user = await provider.getCurrentUser();
-    return c.json({ ok: true, user });
+    return c.json(await testProviderConnection(body));
   } catch (err) {
-    return c.json(
-      { ok: false, error: err instanceof Error ? err.message : "Connection failed" },
-      400,
-    );
+    return c.json(providerFailureResponse("test-provider", err, { projectId }), 400);
   }
 });
 
@@ -517,6 +530,55 @@ projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
       400,
     );
   }
+});
+
+// Sync errors
+projectRoutes.get("/:teamId/projects/:projectId/sync-errors", async (c) => {
+  const teamId = c.req.param("teamId");
+  const projectId = c.req.param("projectId");
+  await requireTeamMember(c, teamId);
+  const db = getDb();
+
+  const project = await db.query.projects.findFirst({
+    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+  });
+  if (!project) return c.json({ error: "Not found" }, 404);
+
+  const errors = await listProjectSyncErrors(projectId);
+  return c.json({ errors });
+});
+
+projectRoutes.post("/:teamId/projects/:projectId/sync-errors/dismiss-all", async (c) => {
+  const teamId = c.req.param("teamId");
+  const projectId = c.req.param("projectId");
+  await requireTeamMember(c, teamId, "admin");
+  const db = getDb();
+
+  const project = await db.query.projects.findFirst({
+    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+  });
+  if (!project) return c.json({ error: "Not found" }, 404);
+
+  const dismissed = await dismissAllProjectSyncErrors(projectId);
+  return c.json({ ok: true, dismissed });
+});
+
+projectRoutes.post("/:teamId/projects/:projectId/sync-errors/:errorId/dismiss", async (c) => {
+  const teamId = c.req.param("teamId");
+  const projectId = c.req.param("projectId");
+  const errorId = c.req.param("errorId");
+  await requireTeamMember(c, teamId, "admin");
+  const db = getDb();
+
+  const project = await db.query.projects.findFirst({
+    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+  });
+  if (!project) return c.json({ error: "Not found" }, 404);
+
+  const dismissed = await dismissProjectSyncError(projectId, errorId);
+  if (!dismissed) return c.json({ error: "Not found" }, 404);
+
+  return c.json({ ok: true });
 });
 
 // Threads

@@ -1,15 +1,18 @@
+import { providerErrorDetails, setProviderLog } from "@servicebeard/providers";
 import { formatValidationError } from "@servicebeard/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger as honoLogger } from "hono/logger";
 import { ZodError } from "zod";
 import "./lib/env-loader";
+import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
 import { seedDevLocalAccount } from "./lib/login/dev-account";
 import { httpRequestDuration, httpRequestTotal } from "./lib/metrics";
 import type { AppVariables } from "./middleware/auth";
 import { authMiddleware } from "./middleware/auth";
+import { requestLogMiddleware } from "./middleware/request-log";
 import { authRoutes } from "./routes/auth";
+import { githubAppRoutes } from "./routes/github-app";
 import { healthRoutes } from "./routes/health";
 import { projectRoutes } from "./routes/projects";
 import { teamRoutes } from "./routes/teams";
@@ -17,10 +20,11 @@ import { webhookRoutes } from "./routes/webhooks";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.use("*", honoLogger());
-app.use(
-  "*",
-  cors({
+setProviderLog((level, message, context) => {
+  logger[level](context ?? {}, message);
+});
+
+app.use("*", cors({
     origin: process.env.WEB_URL ?? "http://localhost:5173",
     credentials: true,
   }),
@@ -38,6 +42,8 @@ app.use("*", async (c, next) => {
   );
   httpRequestTotal.inc({ method: c.req.method, route, status });
 });
+
+app.use("*", requestLogMiddleware);
 
 app.use("*", authMiddleware);
 
@@ -63,13 +69,32 @@ app.onError((err, c) => {
   if (err.message === "EMAIL_TAKEN") {
     return c.json({ error: "An account with this email already exists" }, 409);
   }
-  logger.error({ err }, "unhandled error");
+  const providerError = providerErrorDetails(err);
+  if (providerError) {
+    logExternalError("api", "unhandled", err);
+    return c.json(
+      {
+        error: providerError.message,
+        status: providerError.status,
+        responseBody: providerError.responseBody,
+      },
+      500,
+    );
+  }
+  logger.error(
+    {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    },
+    "unhandled error",
+  );
   const message = err instanceof Error ? err.message : "Internal server error";
   return c.json({ error: message }, 500);
 });
 
 app.route("/", healthRoutes);
 app.route("/api/auth", authRoutes);
+app.route("/api/github-app", githubAppRoutes);
 app.route("/api/teams", teamRoutes);
 app.route("/api/teams", projectRoutes);
 app.route("/webhooks", webhookRoutes);

@@ -1,7 +1,46 @@
 import { z } from "zod";
 import { PROVIDERS, TEAM_ROLES } from "./constants";
 import { stripEmptyStrings } from "./errors";
+import { looksLikeGithubRepositoryUrl, parseGithubRepository } from "./github-repository";
 import { mailFromSchema } from "./mail";
+
+function preprocessProviderProjectId(input: unknown): unknown {
+  if (!input || typeof input !== "object") return input;
+  const data = { ...(input as Record<string, unknown>) };
+  if (typeof data.providerProjectId === "string") {
+    const shouldParseGithub =
+      data.provider === "github" || looksLikeGithubRepositoryUrl(data.providerProjectId);
+    if (shouldParseGithub) {
+      try {
+        data.providerProjectId = parseGithubRepository(data.providerProjectId);
+      } catch {
+        // Leave raw value; refineGithubProjectId reports the error.
+      }
+    }
+  }
+  return data;
+}
+
+function refineGithubProjectId(
+  data: { provider?: string; providerProjectId?: string },
+  ctx: z.RefinementCtx,
+) {
+  const projectId = data.providerProjectId;
+  if (!projectId) return;
+
+  const isGithub = data.provider === "github" || looksLikeGithubRepositoryUrl(projectId);
+  if (!isGithub) return;
+
+  try {
+    parseGithubRepository(projectId);
+  } catch (err) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: err instanceof Error ? err.message : "Invalid GitHub repository",
+      path: ["providerProjectId"],
+    });
+  }
+}
 
 export const createTeamSchema = z.object({
   name: z.string().min(1).max(100),
@@ -37,37 +76,89 @@ export const mailConfigSchema = z.object({
   smtpFrom: mailFromSchema,
 });
 
-export const providerConfigSchema = z.object({
+const providerConfigFields = z.object({
   provider: z.enum(PROVIDERS),
   providerBaseUrl: z.string().url(),
   providerProjectId: z.string().min(1),
-  providerToken: z.string().min(1),
+  providerToken: z.string().optional(),
+  providerGithubAuthType: z.enum(["pat", "github_app"]).optional(),
+  providerGithubInstallationId: z.string().optional(),
   providerTlsInsecure: z.boolean().default(false),
   providerCaCert: z.string().nullable().optional(),
 });
 
-export const createProjectSchema = z
-  .object({
-    name: z.string().min(1).max(100),
-    slug: z
-      .string()
-      .min(1)
-      .max(50)
-      .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
-    imapPollIntervalSeconds: z.number().int().min(60).default(60),
-    commentPollIntervalSeconds: z.number().int().min(60).default(120),
-  })
-  .merge(providerConfigSchema)
-  .merge(mailConfigSchema);
+function refineProviderCredentials(
+  data: z.infer<typeof providerConfigFields>,
+  ctx: z.RefinementCtx,
+) {
+  if (data.provider === "github") {
+    const authType =
+      data.providerGithubAuthType ??
+      (data.providerGithubInstallationId?.trim() ? "github_app" : "pat");
+    if (authType === "github_app") {
+      if (!data.providerGithubInstallationId?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "GitHub App installation ID is required",
+          path: ["providerGithubInstallationId"],
+        });
+      }
+      return;
+    }
+  }
+
+  if (!data.providerToken?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Access token is required",
+      path: ["providerToken"],
+    });
+  }
+}
+
+export const providerConfigSchema = z.preprocess(
+  preprocessProviderProjectId,
+  providerConfigFields
+    .superRefine(refineGithubProjectId)
+    .superRefine(refineProviderCredentials),
+);
+
+const createProjectFields = z.object({
+  name: z.string().min(1).max(100),
+  slug: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
+});
+
+export const createProjectSchema = z.preprocess(
+  preprocessProviderProjectId,
+  createProjectFields
+    .merge(providerConfigFields)
+    .merge(mailConfigSchema)
+    .superRefine(refineGithubProjectId)
+    .superRefine(refineProviderCredentials),
+);
 
 export const updateProjectSchema = z.preprocess(
-  stripEmptyStrings,
-  createProjectSchema.partial().extend({
-    isActive: z.boolean().optional(),
-    webhookEnabled: z.boolean().optional(),
-    inboundAckEnabled: z.boolean().optional(),
-    inboundAckTemplate: z.string().min(1).max(10000).optional(),
-  }),
+  (input) => preprocessProviderProjectId(stripEmptyStrings(input)),
+  createProjectFields
+    .partial()
+    .merge(providerConfigFields.partial())
+    .merge(mailConfigSchema.partial())
+    .extend({
+      isActive: z.boolean().optional(),
+      inboundAckEnabled: z.boolean().optional(),
+      inboundAckCcMailbox: z.boolean().optional(),
+      inboundAckTemplate: z.string().min(1).max(10000).optional(),
+      outboundCommentTemplate: z.string().min(1).max(10000).optional(),
+      outboundCommentCcMailbox: z.boolean().optional(),
+      inboundIssueTemplate: z.string().min(1).max(10000).optional(),
+      inboundCommentTemplate: z.string().min(1).max(10000).optional(),
+      imapMarkIngestedAsSeen: z.boolean().optional(),
+    })
+    .superRefine(refineGithubProjectId),
 );
 
 export const createRuleSchema = z.object({
@@ -113,9 +204,14 @@ export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export interface UpdateProjectInput extends Partial<CreateProjectInput> {
   isActive?: boolean;
-  webhookEnabled?: boolean;
   inboundAckEnabled?: boolean;
+  inboundAckCcMailbox?: boolean;
   inboundAckTemplate?: string;
+  outboundCommentTemplate?: string;
+  outboundCommentCcMailbox?: boolean;
+  inboundIssueTemplate?: string;
+  inboundCommentTemplate?: string;
+  imapMarkIngestedAsSeen?: boolean;
 }
 export type CreateRuleInput = z.infer<typeof createRuleSchema>;
 export type UpdateRuleInput = z.infer<typeof updateRuleSchema>;

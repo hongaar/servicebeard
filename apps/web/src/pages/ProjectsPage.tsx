@@ -1,17 +1,17 @@
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
-import { useMutation } from "@tanstack/react-query";
-import { Link, useLoaderData, useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowRight, FolderPlus } from "lucide-react";
-import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useLoaderData, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import { FolderPlus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { CreateProjectWizard } from "../components/CreateProjectWizard";
 import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
-import { ProjectSettingsForm } from "../components/ProjectSettingsForm";
 import { ProviderLogo } from "../components/ProviderLogo";
+import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
-import { iconSm } from "../lib/icons";
 import {
     defaultProjectSettingsForm,
     formToCreateInput,
@@ -22,21 +22,78 @@ import styles from "../styles/pages.module.css";
 export function ProjectsPage() {
   const { user, projects, teamName } = useLoaderData({ from: "/teams/$teamId/projects" });
   const { teamId } = useParams({ from: "/teams/$teamId/projects" });
+  const search = useSearch({ strict: false }) as {
+    create?: string | boolean;
+    wizardStep?: string;
+    githubInstallationId?: string;
+    githubAppError?: string;
+  };
   const navigate = useNavigate();
+  const router = useRouter();
+  const { data: githubApp } = useQuery({
+    queryKey: ["github-app-config"],
+    queryFn: () => api.getGithubAppConfig(),
+    staleTime: 60_000,
+  });
 
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<ProjectSettingsFormValues>({
-    ...defaultProjectSettingsForm,
-    imapPassword: "support",
-    smtpPassword: "support",
-  });
+  const [wizardStepIndex, setWizardStepIndex] = useState(0);
+  const [form, setForm] = useState<ProjectSettingsFormValues>(defaultProjectSettingsForm);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    const installationId = search.githubInstallationId;
+    const shouldOpen =
+      search.create ||
+      installationId ||
+      search.githubAppError ||
+      search.wizardStep === "provider";
+
+    if (!shouldOpen) return;
+
+    setShowCreate(true);
+    if (search.wizardStep === "provider") {
+      setWizardStepIndex(2);
+    }
+    if (installationId) {
+      setForm((f) => ({
+        ...f,
+        provider: "github",
+        providerGithubAuthType: "github_app",
+        providerGithubInstallationId: installationId,
+      }));
+    }
+    if (search.githubAppError) {
+      const messages: Record<string, string> = {
+        disabled: "GitHub App integration is not enabled on this server.",
+        not_configured: "GitHub App is missing server credentials.",
+        install_failed: "Could not start GitHub App installation.",
+        invalid_callback: "GitHub App installation callback was invalid.",
+        state_mismatch: "GitHub App installation state did not match.",
+      };
+      setError(messages[search.githubAppError] ?? "GitHub App installation failed.");
+    }
+
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [
+    navigate,
+    search.create,
+    search.githubAppError,
+    search.githubInstallationId,
+    search.wizardStep,
+    teamId,
+  ]);
+
   const create = useMutation({
-    mutationFn: () => api.createProject(teamId, formToCreateInput(form)),
-    onSuccess: () => {
-      window.location.reload();
+    mutationFn: () =>
+      api.createProject(teamId, formToCreateInput(form, { githubAppEnabled: githubApp?.enabled })),
+    onSuccess: async (project) => {
+      await router.invalidate();
+      navigate({
+        to: "/teams/$teamId/projects/$projectId/$section",
+        params: { teamId, projectId: project.id, section: "rules" },
+      });
     },
     onError: (err) => handleMutationError(err, setError, setFieldErrors),
   });
@@ -45,6 +102,22 @@ export function ProjectsPage() {
     setForm((f) => ({ ...f, [field]: value }));
     setFieldErrors((prev) => clearFieldError(prev, field));
     setError("");
+  };
+
+  const openCreate = () => {
+    setForm(defaultProjectSettingsForm);
+    setWizardStepIndex(0);
+    setError("");
+    setFieldErrors({});
+    setShowCreate(true);
+  };
+
+  const closeCreate = () => {
+    setShowCreate(false);
+    setWizardStepIndex(0);
+    setForm(defaultProjectSettingsForm);
+    setError("");
+    setFieldErrors({});
   };
 
   const openProject = (projectId: string) => {
@@ -71,7 +144,7 @@ export function ProjectsPage() {
               : `${projects.length} project${projects.length === 1 ? "" : "s"} configured`}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(!showCreate)}>
+        <Button onClick={() => (showCreate ? closeCreate() : openCreate())}>
           {showCreate ? "Cancel" : "New project"}
         </Button>
       </div>
@@ -79,16 +152,18 @@ export function ProjectsPage() {
       {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
 
       {showCreate && (
-        <Card title="New project" subtitle="Connect your mailbox and issue provider" className={styles.section}>
-          <ProjectSettingsForm
-            mode="create"
+        <Card title="New project" subtitle="Set up your mailbox and issue provider" className={styles.section}>
+          <CreateProjectWizard
+            teamId={teamId}
             values={form}
             onChange={update}
             onSubmit={() => create.mutate()}
-            onCancel={() => setShowCreate(false)}
+            onCancel={closeCreate}
             submitLabel={create.isPending ? "Creating…" : "Create project"}
             isPending={create.isPending}
             fieldErrors={fieldErrors}
+            initialStepIndex={wizardStepIndex}
+            githubAppEnabled={githubApp?.enabled}
             onClearFieldError={(field) =>
               setFieldErrors((prev) => clearFieldError(prev, field))
             }
@@ -101,10 +176,10 @@ export function ProjectsPage() {
           <EmptyIcon icon={FolderPlus} />
           <p className={styles.emptyTitle}>No projects yet</p>
           <p className={styles.emptyHint}>
-            A project links your support inbox to GitLab (or another provider) so incoming mail
-            becomes tracked issues automatically.
+            A project links your support inbox to GitLab so incoming mail becomes tracked issues
+            automatically.
           </p>
-          <Button onClick={() => setShowCreate(true)}>Create your first project</Button>
+          <Button onClick={openCreate}>Create your first project</Button>
         </div>
       ) : projects.length > 0 ? (
         <div className={styles.tableWrap}>
@@ -112,8 +187,8 @@ export function ProjectsPage() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Inbox</th>
-                <th>Provider</th>
+                <th>Mailbox</th>
+                <th>Issues</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -143,7 +218,10 @@ export function ProjectsPage() {
                     </span>
                   </td>
                   <td>
-                    <ProviderLogo provider={p.provider} />
+                    <span className={styles.issuesCell}>
+                      <ProviderLogo provider={p.provider} />
+                      <span className={styles.issuesRepo}>{p.providerProjectId}</span>
+                    </span>
                   </td>
                   <td>
                     <span
@@ -156,17 +234,14 @@ export function ProjectsPage() {
                     </span>
                   </td>
                   <td className={styles.tableActions}>
-                    <Link
-                      to="/teams/$teamId/projects/$projectId/$section"
-                      params={{ teamId, projectId: p.id, section: "rules" }}
-                      className={styles.tableRowLink}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <span className={styles.tableRowLinkInner}>
-                        Open
-                        <ArrowRight {...iconSm} />
-                      </span>
-                    </Link>
+                    <TableRowActionLink
+                      label="Open"
+                      onActivate={(e) => e.stopPropagation()}
+                      link={{
+                        to: "/teams/$teamId/projects/$projectId/$section",
+                        params: { teamId, projectId: p.id, section: "rules" },
+                      }}
+                    />
                   </td>
                 </tr>
               ))}

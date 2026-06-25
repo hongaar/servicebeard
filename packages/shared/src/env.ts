@@ -17,6 +17,22 @@ function findMonorepoRoot(startDir: string): string | null {
   return null;
 }
 
+export function findMonorepoRootDir(): string | null {
+  return findMonorepoRoot(process.cwd()) ?? findMonorepoRoot(import.meta.dir);
+}
+
+/** Resolve env file paths relative to the monorepo root (where `.env` lives). */
+export function resolveMonorepoPath(filePath: string): string {
+  const trimmed = filePath.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith("/") || /^[A-Za-z]:[\\/]/.test(trimmed)) {
+    return resolve(trimmed);
+  }
+  const root = findMonorepoRootDir();
+  if (root) return resolve(root, trimmed);
+  return resolve(process.cwd(), trimmed);
+}
+
 function parseEnvFile(path: string, overwrite: boolean): void {
   const content = readFileSync(path, "utf-8");
   for (const line of content.split("\n")) {
@@ -44,8 +60,7 @@ function parseEnvFile(path: string, overwrite: boolean): void {
 
 export function loadMonorepoEnv(): void {
   const overwrite = process.env.NODE_ENV !== "production";
-  const root =
-    findMonorepoRoot(process.cwd()) ?? findMonorepoRoot(import.meta.dir);
+  const root = findMonorepoRootDir();
 
   const candidates = [
     root ? resolve(root, ".env") : null,

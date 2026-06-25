@@ -14,6 +14,7 @@ import { iconMd } from "../lib/icons";
 import type { ProjectSection } from "../lib/navigation";
 import { BackLink, ProjectPicker, TeamPicker } from "./ContextPicker";
 import styles from "./Layout.module.css";
+import { ProviderLogo } from "./ProviderLogo";
 import { UserMenu } from "./UserMenu";
 
 interface LayoutProps {
@@ -27,6 +28,11 @@ interface LayoutProps {
   projectName?: string;
   section?: ProjectSection;
   inboxEmail?: string;
+  issueLink?: {
+    provider: string;
+    label: string;
+    href: string;
+  };
 }
 
 function NavIcon({ children }: { children: React.ReactNode }) {
@@ -44,6 +50,7 @@ export function Layout({
   projectName,
   section = "rules",
   inboxEmail,
+  issueLink,
 }: LayoutProps) {
   const router = useRouterState();
   const pathname = router.location.pathname;
@@ -64,6 +71,7 @@ export function Layout({
 
   const isDashboard = pathname === "/";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
+  const isTeamSettings = teamId && pathname === `/teams/${teamId}/settings`;
   const isProjectsList = teamId && pathname === `/teams/${teamId}/projects`;
   const isProjectContext = !!(teamId && projectId);
 
@@ -141,6 +149,16 @@ export function Layout({
                   </NavIcon>
                   Members
                 </Link>
+                <Link
+                  to="/teams/$teamId/settings"
+                  params={{ teamId }}
+                  className={navLinkClass(!!isTeamSettings)}
+                >
+                  <NavIcon>
+                    <Settings {...iconMd} />
+                  </NavIcon>
+                  Settings
+                </Link>
               </>
             )}
 
@@ -165,9 +183,6 @@ export function Layout({
                       <Icon {...iconMd} />
                     </NavIcon>
                     {label}
-                    {key === "templates" && (
-                      <span className={styles.comingSoon}>soon</span>
-                    )}
                   </Link>
                 ))}
               </>
@@ -193,6 +208,20 @@ export function Layout({
               <p className={styles.pageInbox}>
                 <span className={styles.pageInboxLabel}>New tickets arrive at</span>
                 <code className={styles.pageInboxEmail}>{inboxEmail}</code>
+                {issueLink && (
+                  <>
+                    <span className={styles.pageInboxLabel}>Issues tracked in</span>
+                    <a
+                      href={issueLink.href}
+                      className={styles.pageIssueLink}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ProviderLogo provider={issueLink.provider} />
+                      <span>{issueLink.label}</span>
+                    </a>
+                  </>
+                )}
               </p>
             )}
             {description && <p className={styles.pageDescription}>{description}</p>}

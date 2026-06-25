@@ -1,0 +1,116 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.hintUnlocked {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.track {
+  position: relative;
+  height: 3rem;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-subtle);
+  border: 2px solid var(--color-border);
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+
+.trackDisabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.trackUnlocked {
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg-subtle));
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-danger) 70%, transparent),
+    color-mix(in srgb, var(--color-danger) 90%, transparent)
+  );
+  pointer-events: none;
+  transition: width 0.05s linear;
+}
+
+.fillReady {
+  width: 100% !important;
+  background: var(--color-danger);
+}
+
+.trackCue {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3.5rem;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: color-mix(in srgb, var(--color-danger) 75%, var(--color-text-muted));
+  pointer-events: none;
+  transition: color var(--transition-fast);
+  z-index: 0;
+}
+
+.trackCueOnFill {
+  color: #fff;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--color-danger) 50%, transparent);
+}
+
+.thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 2.75rem;
+  height: calc(100% - 6px);
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-danger);
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  z-index: 1;
+}
+
+.thumb:active {
+  cursor: grabbing;
+  box-shadow: var(--shadow-md);
+}
+
+.thumbReady {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.grip {
+  letter-spacing: -0.15em;
+}

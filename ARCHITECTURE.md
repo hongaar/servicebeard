@@ -1,0 +1,319 @@
+# ServiceBeard sync architecture
+
+ServiceBeard connects a **support mailbox** (IMAP in, SMTP out) to an **issue tracker** (GitLab or GitHub) per project. Sync is bidirectional: customer email becomes issues and comments; public issue comments become threaded email replies.
+
+Projects are **strictly isolated**. Each project has its own mailbox credentials, provider link, rules, threads, and ingest state. Nothing is shared across projects except, optionally, the same physical mailbox credentials configured on multiple projects.
+
+---
+
+## Runtime layout
+
+| Piece | Role |
+|-------|------|
+| **API** (`apps/api`) | HTTP surface: auth, project CRUD, webhook receivers, connection tests |
+| **Worker** (`apps/worker`) | Background sync: IMAP poll, comment poll, outbound email, webhook registration |
+| **Web** (`apps/web`) | UI for teams, projects, rules, and conversation history |
+| **Database** | Postgres via Drizzle — projects, threads, messages, rules, ingest cursors |
+| **Providers** (`packages/providers`) | GitLab/GitHub API + webhook parsing |
+
+The worker uses **pg-boss** (Postgres-backed queues) for scheduling and job handoff. The API enqueues outbound work when a webhook arrives; the worker does all heavy lifting.
+
+---
+
+## Scheduling
+
+A cron tick runs **once per minute** (`* * * * *`). Each tick walks **active projects independently** and runs jobs only when the project's interval has elapsed:
+
+| Job | Default interval | Purpose |
+|-----|------------------|---------|
+| IMAP poll | 60s | Inbound email → issue/comment |
+| Comment poll | 120s | Outbound fallback when webhooks are unavailable |
+
+Additional queues:
+
+- **`send-email`** — one outbound comment → email send (usually from webhook)
+- **`ensure-webhook`** — register/update provider webhook on project create
+
+Poll jobs use a **singleton** queue policy so only one IMAP poll and one comment poll run at a time globally.
+
+---
+
+## Core objects
+
+### Project
+
+One mailbox + one issue tracker repository/group. Holds encrypted credentials, templates, and sync cursors.
+
+### Issue thread
+
+Links a conversation to a single external issue. Stores the original customer sender, normalized subject, and `lastSeenNoteAt` for outbound polling.
+
+Created when the first matching inbound email creates an issue, or when a follow-up is matched to an existing thread.
+
+### Email message
+
+One row per email the project has sent or received, keyed by RFC `Message-ID` per project. Stores direction, threading headers, optional `externalNoteId` (link to provider comment), and address lists.
+
+Used for threading, deduplication of outbound notes, and the UI conversation view.
+
+### Rules
+
+Ordered, per-project matchers (sender / subject / body). First enabled match wins. Default catch-all creates an issue for any unmatched new thread.
+
+---
+
+## Inbound sync (email → issue)
+
+```mermaid
+sequenceDiagram
+  participant Cron as Worker cron
+  participant IMAP as Mailbox IMAP
+  participant DB as Database
+  participant Rules as Rules engine
+  participant Provider as Issue tracker
+  participant SMTP as Mailbox SMTP
+
+  Cron->>DB: Load project + ingest cursor
+  Cron->>IMAP: SEARCH since poll window
+  IMAP-->>Cron: Envelopes in window
+  Cron->>DB: Skip known Message-IDs
+  Cron->>IMAP: FETCH bodies (new only)
+  loop Each new message
+    Cron->>Cron: Parse + eligibility check
+    alt Existing thread
+      Cron->>Provider: Add public comment
+      Cron->>DB: Record inbound message
+    else New thread + rule match
+      Cron->>Provider: Create issue
+      Cron->>DB: Create thread + inbound message
+      opt inbound ack enabled
+        Cron->>SMTP: Send acknowledgement
+        Cron->>DB: Record outbound ack
+      end
+    else No rule / pre-project
+      Cron->>DB: Record ingest only
+    end
+    Cron->>DB: Mark Message-ID ingested
+    opt imapMarkIngestedAsSeen
+      Cron->>IMAP: Set \\Seen flag
+    end
+  end
+  Cron->>DB: Advance imapIngestedThrough watermark
+```
+
+### IMAP fetch strategy
+
+Inbound sync **does not use the IMAP `\Seen` flag** to decide what to process. That flag is optional and write-only (see below).
+
+Instead, each poll:
+
+1. **Compute search window** — `pollSince = max(project.createdAt, imapIngestedThrough − 24h)`. The 24-hour overlap tolerates out-of-order delivery.
+2. **IMAP SEARCH** `SINCE pollSince` — bounded scan, not full mailbox history on every poll.
+3. **Envelope pass** — fetch headers for all UIDs in the window; skip Message-IDs already in the project's ingest table (loaded for `ingested_at >= pollSince` only).
+4. **Body pass** — download full source only for unknown Message-IDs.
+5. **Advance watermark** — set `imapIngestedThrough` to the latest IMAP internal date seen in the envelope scan (including already-ingested mail).
+
+On first poll (no watermark), search starts at `project.createdAt`.
+
+### Per-project ingest tracking
+
+Table `project_imap_ingested_messages` records `(project_id, message_id)` for every message this project has **examined**, including:
+
+- successfully synced mail
+- skipped mail (no matching rule, pre-project date)
+- duplicates
+
+Messages are **not** recorded on processing errors so the next poll retries.
+
+This table is what makes **shared mailboxes** work: two projects can point at the same IMAP login without stealing each other's mail via `\Seen`. Each project maintains its own ingest history.
+
+`email_messages` remains the source of truth for **synced** conversations; the ingest table covers skips and idempotency before sync.
+
+### Optional IMAP mark-as-read
+
+Setting **`imapMarkIngestedAsSeen`** (default on) writes `\Seen` to the mailbox after this project ingests a message. This only affects how the inbox appears in a mail client. It does not gate ServiceBeard sync.
+
+### Eligibility and threading
+
+| Check | Behavior |
+|-------|----------|
+| Email `Date` before project creation | Skip; record ingest |
+| `Message-ID` already in ingest table | Skip envelope/body fetch |
+| `Message-ID` already in `email_messages` | Skip processing (safety net) |
+
+**Thread detection** (first match wins, scoped to project):
+
+1. `In-Reply-To` / `References` match a stored `Message-ID` or `in_reply_to` on this project
+2. Normalized subject + original sender email match an existing thread
+
+If a thread exists → append a **public** comment. Otherwise → evaluate rules.
+
+### New issue path
+
+When a rule matches with `actionCreateIssue`:
+
+1. Format issue description (template + sync marker embedding `threadId`)
+2. Create issue on provider (labels, assignee, status from rule)
+3. Insert thread + inbound `email_messages` row
+4. Optionally send **inbound acknowledgement** via SMTP (threaded reply to customer; optional CC to support mailbox)
+
+### Content handling
+
+HTML email is converted to markdown for issue bodies. Inline images can be uploaded to the provider. Issue descriptions include a collapsible ServiceBeard footer with a project link and `[internal]` usage hint.
+
+---
+
+## Shared mailbox pattern
+
+Multiple projects may use identical IMAP/SMTP credentials (e.g. one `support@` inbox, separate GitHub and GitLab repos).
+
+```mermaid
+flowchart LR
+  subgraph mailbox [Shared IMAP inbox]
+    M1[Customer email]
+    M2[Ack copy]
+  end
+
+  subgraph gh [GitHub project]
+    GH_INGEST[Ingest table]
+    GH_ISSUE[GitHub issue]
+  end
+
+  subgraph gl [GitLab project]
+    GL_INGEST[Ingest table]
+    GL_ISSUE[GitLab issue]
+  end
+
+  M1 --> GH_INGEST --> GH_ISSUE
+  M1 --> GL_INGEST --> GL_ISSUE
+  GH_ISSUE -.->|SMTP ack| M2
+```
+
+Each project polls independently on its own interval. The same physical message may create **separate issues** on each project — that is intentional when routing the same inbox to multiple trackers.
+
+**Control points:**
+
+- Ingest table is per project — no cross-project Message-ID lookups
+- IMAP `\Seen` is not used for fetch — one project marking read does not hide mail from another
+- Watermark and ingest records are per project — scan cost scales with each project's window, not shared state
+
+---
+
+## Outbound sync (comment → email)
+
+```mermaid
+sequenceDiagram
+  participant Provider as Issue tracker
+  participant API as API webhook
+  participant Queue as pg-boss
+  participant Worker as Worker
+  participant SMTP as Mailbox SMTP
+  participant DB as Database
+
+  Provider->>API: Note / comment event
+  API->>API: Verify signature
+  API->>Queue: send-email job
+  Queue->>Worker: processOutboundComment
+  Worker->>Worker: Skip filters
+  Worker->>DB: Load thread + last message
+  Worker->>SMTP: Threaded reply to customer
+  Worker->>DB: Record outbound message
+  Worker->>Provider: Reaction marker (e-mail)
+```
+
+### Triggers
+
+| Path | When |
+|------|------|
+| **Webhook** (preferred) | Provider pushes `note` (GitLab) or `issue_comment` (GitHub) to API |
+| **Comment poll** (fallback) | Worker lists comments since `thread.lastSeenNoteAt` for each active thread |
+
+Webhook handling is fast-path only: API validates, enqueues, returns `200`. Sending happens asynchronously in the worker.
+
+### Skip filters
+
+Outbound email is **not** sent when:
+
+| Reason | Detail |
+|--------|--------|
+| Internal note | GitLab confidential/internal flag |
+| System note | GitLab system-generated notes |
+| `[internal]` marker | Comment starts or ends with `[internal]` |
+| Sync marker | Body contains `<!-- servicebeard-sync:… -->` (email-originated content) |
+| Bot author | GitHub `user.type === "Bot"` at webhook parse time |
+| Already processed | `externalNoteId` exists in `email_messages` |
+
+Skipped notes still advance `lastSeenNoteAt` so polling does not revisit them.
+
+### Reply construction
+
+1. Load thread and **latest** stored message (inbound or outbound)
+2. Render outbound template with comment body and author
+3. Append quoted previous message (standard `On … wrote:` format)
+4. Set `In-Reply-To` / `References` from parent `Message-ID`
+5. Send to **original customer email**; optionally CC support mailbox
+6. Store outbound row with provider `noteId` for dedup
+7. Add provider reaction (📧) on the comment
+
+---
+
+## Loop prevention
+
+Email → issue comment → email loops are broken by layers:
+
+1. **Sync marker** in issue/comment bodies from inbound sync — outbound path ignores these
+2. **`[internal]` marker** — agents comment without triggering customer email
+3. **Note ID dedup** — same provider comment never sends twice
+4. **`lastSeenNoteAt` cursor** — comment poll does not reprocess old notes
+5. **Bot filtering** — GitHub bot comments dropped at webhook parse
+
+Inbound acknowledgement and outbound replies are stored as `email_messages` with proper `Message-ID` threading so follow-up customer mail attaches to the correct thread rather than spawning duplicates.
+
+---
+
+## Webhook registration
+
+On project create, `ensure-webhook` registers a project-scoped URL:
+
+```
+{WEBHOOK_BASE_URL}/webhooks/{gitlab|github}/{projectId}
+```
+
+Requires a **publicly reachable** API URL. If webhooks cannot be registered (e.g. localhost), comment polling still works at the configured interval.
+
+`webhookEnabled` on the project toggles acceptance of incoming events without removing the remote hook.
+
+---
+
+## Error handling
+
+External failures (IMAP, SMTP, provider API) are logged and surfaced as **project sync errors** in the UI (categorized as mail vs provider). A failed inbound message is **not** marked ingested, so the next poll retries. Poll cursors (`lastImapPollAt`, `lastCommentPollAt`, `imapIngestedThrough`) update only after a successful poll cycle completes.
+
+---
+
+## Configuration surface (sync-relevant)
+
+| Setting | Effect |
+|---------|--------|
+| `isActive` | Master switch — inactive projects are not polled |
+| `IMAP_POLL_INTERVAL_SECONDS` | Env var (min 60s, default 60); inbound poll frequency |
+| `COMMENT_POLL_INTERVAL_SECONDS` | Env var (min 60s, default 120); outbound fallback frequency |
+| `imapMarkIngestedAsSeen` | Write IMAP `\Seen` after ingest |
+| `inboundAckEnabled` | Send auto-reply on new issue |
+| `inboundAckCcMailbox` | CC support address on ack |
+| `webhookEnabled` | Accept provider push events |
+| Rules | Which inbound mail creates issues vs is ignored |
+
+Templates (`inboundIssueTemplate`, `inboundCommentTemplate`, `outboundCommentTemplate`, `inboundAckTemplate`) control rendered bodies without changing sync control flow.
+
+---
+
+## Mental model
+
+```
+Customer email ──IMAP poll──▶ Rules / threading ──▶ Issue tracker
+                                                      │
+Customer inbox ◀──SMTP send── Public comment ◀── Webhook or poll
+```
+
+Each project is a self-contained sync loop: its own mailbox connection, its own ingest cursor, its own issue tracker, its own conversation history. Shared physical mailboxes are supported by per-project ingest state and by not relying on IMAP read flags for fetch logic.

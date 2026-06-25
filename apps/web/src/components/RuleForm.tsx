@@ -12,6 +12,7 @@ import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { Checkbox, Input, Select } from "./Input";
+import { ProviderLabelMultiSelect } from "./ProviderLabelMultiSelect";
 
 interface RuleFormProps {
   teamId: string;
@@ -22,6 +23,8 @@ interface RuleFormProps {
   onSubmit: (data: CreateRuleInput) => void;
   isPending?: boolean;
   onCancel?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
   formError?: string;
   fieldErrors?: Record<string, string>;
   onClearFieldError?: (field: string) => void;
@@ -49,6 +52,8 @@ export function RuleForm({
   onSubmit,
   isPending,
   onCancel,
+  onDelete,
+  isDeleting,
   formError,
   fieldErrors,
   onClearFieldError,
@@ -131,16 +136,6 @@ export function RuleForm({
     })) ?? []),
   ];
 
-  const toggleLabel = (label: string) => {
-    setForm((f) => {
-      const current = f.actionLabels ?? [];
-      const next = current.includes(label)
-        ? current.filter((l) => l !== label)
-        : [...current, label];
-      return { ...f, actionLabels: next };
-    });
-  };
-
   const handleSubmit = () => {
     onSubmit({
       ...form,
@@ -160,7 +155,14 @@ export function RuleForm({
 
   return (
     <Card title={title} className={styles.section}>
-      <div className={styles.form}>
+      <form
+        className={styles.form}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isPending || !form.name.trim()) return;
+          handleSubmit();
+        }}
+      >
         {formError && (
           <div className={[styles.alert, styles.alertError].join(" ")}>{formError}</div>
         )}
@@ -302,10 +304,16 @@ export function RuleForm({
           )}
         </div>
 
+        <Checkbox
+          label="Create issue when matched"
+          checked={form.actionCreateIssue ?? true}
+          onChange={(v) => setForm((f) => ({ ...f, actionCreateIssue: v }))}
+        />
+
         <div className={styles.sectionTitle}>Default issue settings</div>
         {providerOptions.isError && (
           <div className={[styles.alert, styles.alertError].join(" ")}>
-            Could not load GitLab options:{" "}
+            Could not load provider options:{" "}
             {providerOptions.error instanceof Error
               ? providerOptions.error.message
               : "Unknown error"}
@@ -332,49 +340,38 @@ export function RuleForm({
           />
         </div>
 
-        {providerOptions.isLoading ? (
-          <p className={styles.formHint}>Loading labels from GitLab…</p>
-        ) : options?.labels.length ? (
-          <div>
-            <div className={styles.sectionTitle}>Default labels</div>
-            <div className={styles.labelGrid}>
-              {options.labels.map((label) => (
-                <label key={label.name} className={styles.labelOption}>
-                  <input
-                    type="checkbox"
-                    checked={(form.actionLabels ?? []).includes(label.name)}
-                    onChange={() => toggleLabel(label.name)}
-                  />
-                  <span
-                    className={styles.labelSwatch}
-                    style={label.color ? { backgroundColor: `#${label.color}` } : undefined}
-                  />
-                  {label.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className={styles.formHint}>No labels found in the GitLab project.</p>
-        )}
-
-        <Checkbox
-          label="Create issue when matched"
-          checked={form.actionCreateIssue ?? true}
-          onChange={(v) => setForm((f) => ({ ...f, actionCreateIssue: v }))}
+        <ProviderLabelMultiSelect
+          label="Default labels"
+          value={form.actionLabels ?? []}
+          onChange={(actionLabels) => setForm((f) => ({ ...f, actionLabels }))}
+          options={options?.labels ?? []}
+          loading={providerOptions.isLoading}
         />
 
         <div className={styles.formActions}>
-          {onCancel && (
-            <Button variant="secondary" onClick={onCancel}>
-              Cancel
+          {onDelete && (
+            <Button
+              type="button"
+              variant="danger"
+              onClick={onDelete}
+              disabled={isDeleting || isPending}
+              className={styles.formActionsLeading}
+            >
+              {isDeleting ? "Deleting…" : "Delete rule"}
             </Button>
           )}
-          <Button onClick={handleSubmit} disabled={isPending || !form.name.trim()}>
-            {submitLabel}
-          </Button>
+          <div className={styles.formActionsTrailing}>
+            {onCancel && (
+              <Button type="button" variant="secondary" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
+            <Button type="submit" disabled={isPending || isDeleting || !form.name.trim()}>
+              {submitLabel}
+            </Button>
+          </div>
         </div>
-      </div>
+      </form>
     </Card>
   );
 }

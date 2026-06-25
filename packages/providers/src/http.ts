@@ -1,10 +1,13 @@
+import { resolveMonorepoPath } from "@servicebeard/shared/env";
 import { existsSync, readFileSync } from "node:fs";
 import type { ProviderConfig } from "./types";
 
 function readGlobalCaBundle(): string | undefined {
   const path = process.env.TLS_CA_BUNDLE;
-  if (!path || !existsSync(path)) return undefined;
-  return readFileSync(path, "utf8");
+  if (!path) return undefined;
+  const resolved = resolveMonorepoPath(path);
+  if (!existsSync(resolved)) return undefined;
+  return readFileSync(resolved, "utf8");
 }
 
 export function buildTlsOptions(config: ProviderConfig): Record<string, unknown> | undefined {

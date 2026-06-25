@@ -1,45 +1,50 @@
 import type { ParsedEmail } from "@servicebeard/shared";
 import {
+    buildIssueSupportDetailsFooter,
     buildSyncMarker,
-    evaluateRules,
+    formatEmailSender,
+    renderInboundCommentTemplate,
+    renderInboundIssueTemplate,
     stripQuotedReply,
+    type IssueSupportDetailsOptions,
     type RuleMatchResult,
 } from "@servicebeard/shared";
 
-export { evaluateRules };
+export { evaluateRules } from "@servicebeard/shared";
 export type { ParsedEmail, RuleMatchResult };
 
 export function formatIssueDescription(
   email: ParsedEmail,
   threadId: string,
+  template: string,
   bodyMarkdown?: string,
+  support?: IssueSupportDetailsOptions,
 ): string {
-  const sender = email.fromName
-    ? `${email.fromName} <${email.fromEmail}>`
-    : email.fromEmail;
-
   const body = bodyMarkdown ?? email.bodyMarkdown ?? email.body;
+  const rendered = renderInboundIssueTemplate(template, {
+    sender: formatEmailSender(email.fromName, email.fromEmail),
+    senderName: email.fromName ?? email.fromEmail,
+    senderEmail: email.fromEmail,
+    subject: email.subject,
+    body,
+  });
+  const supportFooter = support ? buildIssueSupportDetailsFooter(support) : "";
 
-  return `**Message from ${sender}**
-
-${body}
-
-${buildSyncMarker(threadId)}`;
+  return `${rendered}${supportFooter ? `\n${supportFooter}\n` : "\n"}${buildSyncMarker(threadId)}`;
 }
 
 export function formatCommentBody(
   email: ParsedEmail,
+  template: string,
   bodyMarkdown?: string,
 ): string {
-  const sender = email.fromName
-    ? `${email.fromName} <${email.fromEmail}>`
-    : email.fromEmail;
-
   const body = stripQuotedReply(bodyMarkdown ?? email.bodyMarkdown ?? email.body);
+  const rendered = renderInboundCommentTemplate(template, {
+    sender: formatEmailSender(email.fromName, email.fromEmail),
+    senderName: email.fromName ?? email.fromEmail,
+    senderEmail: email.fromEmail,
+    body,
+  });
 
-  return `**Reply from ${sender}**
-
-${body}
-
-${buildSyncMarker(`email:${email.messageId}`)}`;
+  return `${rendered}\n\n${buildSyncMarker(`email:${email.messageId}`)}`;
 }

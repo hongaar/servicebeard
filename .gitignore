@@ -4,8 +4,10 @@ landing-dist/
 .landing-build-tmp/
 .env
 .env.local
+.logs/
 *.log
 .DS_Store
 coverage/
 .turbo/
 *.tsbuildinfo
+*.private-key.pem

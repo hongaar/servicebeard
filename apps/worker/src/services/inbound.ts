@@ -3,22 +3,27 @@ import {
     emailMessages,
     getDb,
     issueThreads,
+    projectImapIngestedMessages,
     projects,
 } from "@servicebeard/db";
-import { normalizeSubject, renderInboundAckTemplate } from "@servicebeard/shared";
-import { and, eq, inArray, or } from "drizzle-orm";
+import {
+    normalizeSubject,
+    renderInboundAckTemplate,
+    resolveServicebeardWebUrl,
+} from "@servicebeard/shared";
+import { and, eq, gte, inArray, or } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
 import {
-    customerOutboundCc,
+    inboundAckCc,
     inboundEmailAddresses,
     outboundEmailAddresses,
     quotedEmailFromParsed,
     replyBodyWithQuote,
     threadingForParent,
 } from "./email-thread";
-import { fetchUnseenMessages, markMessageSeen, parseEmail } from "./mail";
+import { fetchInboxMessagesSince, markMessageSeen, parseEmail } from "./mail";
 import { createProjectProvider } from "./provider";
 import {
     evaluateRules,
@@ -28,12 +33,71 @@ import {
 } from "./rules";
 import { sendEmail } from "./smtp";
 
+/** Re-scan this far before the ingest watermark to tolerate out-of-order delivery. */
+export const IMAP_POLL_OVERLAP_MS = 24 * 60 * 60 * 1000;
+
 /** Only process emails sent on or after the project was created. */
 export function isEmailEligibleForInboundSync(
   emailDate: Date,
   projectCreatedAt: Date,
 ): boolean {
   return emailDate.getTime() >= projectCreatedAt.getTime();
+}
+
+export function computeImapPollSince(
+  projectCreatedAt: Date,
+  imapIngestedThrough: Date | null,
+): Date {
+  const floor = projectCreatedAt.getTime();
+  if (!imapIngestedThrough) {
+    return new Date(floor);
+  }
+  return new Date(Math.max(floor, imapIngestedThrough.getTime() - IMAP_POLL_OVERLAP_MS));
+}
+
+export function advanceImapIngestedThrough(
+  current: Date | null,
+  scannedThrough: Date | null,
+): Date | null {
+  if (!scannedThrough) return current;
+  if (!current) return scannedThrough;
+  return scannedThrough.getTime() > current.getTime() ? scannedThrough : current;
+}
+
+export async function loadIngestedMessageIds(
+  projectId: string,
+  ingestedSince?: Date,
+): Promise<Set<string>> {
+  const db = getDb();
+  const where = ingestedSince
+    ? and(
+        eq(projectImapIngestedMessages.projectId, projectId),
+        gte(projectImapIngestedMessages.ingestedAt, ingestedSince),
+      )
+    : eq(projectImapIngestedMessages.projectId, projectId);
+
+  const rows = await db
+    .select({ messageId: projectImapIngestedMessages.messageId })
+    .from(projectImapIngestedMessages)
+    .where(where);
+
+  return new Set(rows.map((row) => row.messageId));
+}
+
+export async function recordIngestedMessage(
+  projectId: string,
+  messageId: string,
+): Promise<void> {
+  const db = getDb();
+  await db
+    .insert(projectImapIngestedMessages)
+    .values({ projectId, messageId })
+    .onConflictDoNothing({
+      target: [
+        projectImapIngestedMessages.projectId,
+        projectImapIngestedMessages.messageId,
+      ],
+    });
 }
 
 export async function processImapPoll(projectId: string): Promise<void> {
@@ -52,39 +116,72 @@ export async function processImapPoll(projectId: string): Promise<void> {
     imapPassword: decrypt(project.imapPasswordEncrypted),
   };
 
-  let messages;
+  const pollSince = computeImapPollSince(project.createdAt, project.imapIngestedThrough);
+  const ingestedMessageIds = await loadIngestedMessageIds(projectId, pollSince);
+
+  let fetchResult;
   try {
-    messages = await fetchUnseenMessages(creds);
+    fetchResult = await fetchInboxMessagesSince(
+      creds,
+      pollSince,
+      ingestedMessageIds,
+      { projectId },
+    );
   } catch (err) {
     logExternalError("imap", "poll", err, { projectId });
     throw err;
   }
 
-  logger.info({ projectId, count: messages.length }, "fetched unseen messages");
+  const { messages, scannedThrough } = fetchResult;
+
+  logger.info(
+    { projectId, count: messages.length, pollSince, scannedThrough },
+    "fetched inbox messages",
+  );
 
   for (const { uid, raw, internalDate } of messages) {
     try {
       const email = await parseEmail(raw, internalDate);
+
+      if (ingestedMessageIds.has(email.messageId)) {
+        continue;
+      }
 
       if (!isEmailEligibleForInboundSync(email.date, project.createdAt)) {
         logger.debug(
           { projectId, uid, messageId: email.messageId, emailDate: email.date },
           "skipping pre-project email",
         );
-        await markMessageSeen(creds, uid);
+        await recordIngestedMessage(projectId, email.messageId);
+        ingestedMessageIds.add(email.messageId);
+        if (project.imapMarkIngestedAsSeen) {
+          await markMessageSeen(creds, uid, { projectId });
+        }
         continue;
       }
 
       await processInboundEmail(projectId, email);
-      await markMessageSeen(creds, uid);
+      await recordIngestedMessage(projectId, email.messageId);
+      ingestedMessageIds.add(email.messageId);
+      if (project.imapMarkIngestedAsSeen) {
+        await markMessageSeen(creds, uid, { projectId });
+      }
     } catch (err) {
       logExternalError("inbound", "process-message", err, { projectId, uid });
     }
   }
 
+  const imapIngestedThrough = advanceImapIngestedThrough(
+    project.imapIngestedThrough,
+    scannedThrough,
+  );
+
   await db
     .update(projects)
-    .set({ lastImapPollAt: new Date() })
+    .set({
+      lastImapPollAt: new Date(),
+      ...(imapIngestedThrough ? { imapIngestedThrough } : {}),
+    })
     .where(eq(projects.id, projectId));
 }
 
@@ -120,8 +217,8 @@ export async function processInboundEmail(
   const addresses = inboundEmailAddresses(email);
 
   if (thread) {
-    const markdownBody = await resolveEmailMarkdown(email, provider);
-    const commentBody = formatCommentBody(email, markdownBody);
+    const markdownBody = await resolveEmailMarkdown(email, provider, projectId);
+    const commentBody = formatCommentBody(email, project.inboundCommentTemplate, markdownBody);
     const result = await provider.addComment(thread.issueIid, commentBody, {
       internal: false,
     });
@@ -163,7 +260,18 @@ export async function processInboundEmail(
 
   const tempThreadId = crypto.randomUUID();
   const markdownBody = await resolveEmailMarkdown(email, provider);
-  const description = formatIssueDescription(email, tempThreadId, markdownBody);
+  const description = formatIssueDescription(
+    email,
+    tempThreadId,
+    project.inboundIssueTemplate,
+    markdownBody,
+    {
+      webUrl: resolveServicebeardWebUrl(),
+      teamId: project.teamId,
+      projectId: project.id,
+      provider: project.provider,
+    },
+  );
 
   const issue = await provider.createIssue({
     title: email.subject,
@@ -228,7 +336,7 @@ async function sendInboundAckEmail(
     email.messageId,
     email.references,
   );
-  const cc = customerOutboundCc(project, thread.originalSenderEmail);
+  const cc = inboundAckCc(project, thread.originalSenderEmail);
 
   const ackAddresses = outboundEmailAddresses(
     project.smtpFrom,
@@ -255,6 +363,7 @@ async function sendInboundAckEmail(
       inReplyTo,
       references,
     },
+    { projectId: project.id },
   );
 
   await db.insert(emailMessages).values({

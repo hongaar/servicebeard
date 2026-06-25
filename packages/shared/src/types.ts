@@ -53,12 +53,15 @@ export interface Project {
   smtpSecure: boolean;
   smtpUser: string;
   smtpFrom: string;
-  imapPollIntervalSeconds: number;
-  commentPollIntervalSeconds: number;
-  webhookEnabled: boolean;
   isActive: boolean;
   inboundAckEnabled: boolean;
+  inboundAckCcMailbox: boolean;
   inboundAckTemplate: string;
+  outboundCommentTemplate: string;
+  outboundCommentCcMailbox: boolean;
+  inboundIssueTemplate: string;
+  inboundCommentTemplate: string;
+  imapMarkIngestedAsSeen: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -26,44 +26,99 @@ export interface MailCredentials {
   imapPassword: string;
 }
 
-export async function fetchUnseenMessages(
-  creds: MailCredentials,
-): Promise<Array<{ uid: number; raw: Buffer; internalDate: Date }>> {
-  const client = new ImapFlow({
+export interface InboxFetchResult {
+  messages: Array<{ uid: number; raw: Buffer; internalDate: Date }>;
+  /** Latest IMAP internal date among all messages in the search window. */
+  scannedThrough: Date | null;
+}
+
+function createImapClient(creds: MailCredentials): ImapFlow {
+  return new ImapFlow({
     host: creds.imapHost,
     port: creds.imapPort,
     secure: creds.imapSecure,
     auth: { user: creds.imapUser, pass: creds.imapPassword },
     logger: false,
   });
+}
 
-  const messages: Array<{ uid: number; raw: Buffer; internalDate: Date }> = [];
+function parseImapInternalDate(value: Date | string | undefined): Date {
+  if (value instanceof Date) return value;
+  if (value) return new Date(value);
+  return new Date();
+}
+
+function laterDate(a: Date | null, b: Date): Date {
+  if (!a) return b;
+  return b.getTime() > a.getTime() ? b : a;
+}
+
+/** Fetches inbox messages on or after `since`, skipping IDs already ingested by the project. */
+export async function fetchInboxMessagesSince(
+  creds: MailCredentials,
+  since: Date,
+  skipMessageIds: ReadonlySet<string>,
+  context?: { projectId?: string },
+): Promise<InboxFetchResult> {
+  const client = createImapClient(creds);
+  const messages: InboxFetchResult["messages"] = [];
+  let scannedThrough: Date | null = null;
 
   try {
     await client.connect();
     const lock = await client.getMailboxLock("INBOX");
 
     try {
+      const uids = await client.search({ since }, { uid: true });
+      if (!uids || uids.length === 0) {
+        return { messages, scannedThrough };
+      }
+
+      const pendingUids: number[] = [];
+
       for await (const msg of client.fetch(
-        { seen: false },
-        { source: true, uid: true, internalDate: true },
+        uids,
+        { envelope: true, uid: true, internalDate: true },
+        { uid: true },
       )) {
-        if (msg.source && msg.uid) {
-          const internalDate =
-            msg.internalDate instanceof Date
-              ? msg.internalDate
-              : msg.internalDate
-                ? new Date(msg.internalDate)
-                : new Date();
-          messages.push({ uid: msg.uid, raw: msg.source, internalDate });
+        if (!msg.uid) continue;
+        const internalDate = parseImapInternalDate(msg.internalDate);
+        scannedThrough = laterDate(scannedThrough, internalDate);
+
+        const envelopeId = msg.envelope?.messageId?.trim();
+        if (!envelopeId) {
+          pendingUids.push(msg.uid);
+          continue;
         }
+        const messageId = normalizeMessageId(envelopeId);
+        if (!skipMessageIds.has(messageId)) {
+          pendingUids.push(msg.uid);
+        }
+      }
+
+      if (pendingUids.length === 0) {
+        return { messages, scannedThrough };
+      }
+
+      for await (const msg of client.fetch(
+        pendingUids,
+        { source: true, uid: true, internalDate: true },
+        { uid: true },
+      )) {
+        if (!msg.source || !msg.uid) continue;
+        messages.push({
+          uid: msg.uid,
+          raw: msg.source,
+          internalDate: parseImapInternalDate(msg.internalDate),
+        });
       }
     } finally {
       lock.release();
       await client.logout();
     }
   } catch (err) {
-    logExternalError("imap", "fetch-unseen", err, {
+    logExternalError("imap", "fetch-since", err, {
+      projectId: context?.projectId,
       host: creds.imapHost,
       port: creds.imapPort,
       user: creds.imapUser,
@@ -71,20 +126,15 @@ export async function fetchUnseenMessages(
     throw err;
   }
 
-  return messages;
+  return { messages, scannedThrough };
 }
 
 export async function markMessageSeen(
   creds: MailCredentials,
   uid: number,
+  context?: { projectId?: string },
 ): Promise<void> {
-  const client = new ImapFlow({
-    host: creds.imapHost,
-    port: creds.imapPort,
-    secure: creds.imapSecure,
-    auth: { user: creds.imapUser, pass: creds.imapPassword },
-    logger: false,
-  });
+  const client = createImapClient(creds);
 
   try {
     await client.connect();
@@ -98,6 +148,7 @@ export async function markMessageSeen(
     }
   } catch (err) {
     logExternalError("imap", "mark-seen", err, {
+      projectId: context?.projectId,
       host: creds.imapHost,
       port: creds.imapPort,
       user: creds.imapUser,
