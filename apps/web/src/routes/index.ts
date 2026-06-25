@@ -104,7 +104,7 @@ export const dashboardRoute = createRoute({
   component: HomePage,
   loader: async () => {
     const { user } = await api.getMe();
-    if (!user) return { user: null, teams: [] as Awaited<ReturnType<typeof api.getTeams>>["teams"] };
+    if (!user) throw redirect({ to: "/login" });
     const { teams } = await api.getTeams();
     return { user, teams };
   },

@@ -1,3 +1,7 @@
+import {
+    cloudTeamNavItems,
+    isCloudTeamNavActive,
+} from "@cloudExtensions";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -68,6 +72,7 @@ export function Layout({
 
   const teams = teamsData?.teams ?? [];
   const projects = projectsData?.projects ?? [];
+  const extraTeamNavItems = teamId ? cloudTeamNavItems(teamId) : [];
 
   const isDashboard = pathname === "/";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
@@ -159,6 +164,24 @@ export function Layout({
                   </NavIcon>
                   Settings
                 </Link>
+                {extraTeamNavItems.map((item) => {
+                  if (item.visible === false) return null;
+                  const Icon = item.icon;
+                  const active = isCloudTeamNavActive(pathname, teamId, item);
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      params={item.params ?? { teamId }}
+                      className={navLinkClass(active)}
+                    >
+                      <NavIcon>
+                        <Icon {...iconMd} />
+                      </NavIcon>
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </>
             )}
 

@@ -22,10 +22,11 @@ import {
     updateProjectSchema,
     updateRuleSchema,
 } from "@servicebeard/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";
 import { testMailConnection, testProviderConnection } from "../lib/connection-test";
+import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { fetchRecentMessages, parseEmail } from "../lib/mail";
 import { createProjectProvider, projectMailCredentials } from "../lib/provider";
@@ -70,6 +71,12 @@ projectRoutes.post("/:teamId/projects", async (c) => {
   const { userId } = await requireTeamMember(c, teamId, "admin");
   const body = createProjectSchema.parse(await c.req.json());
   const db = getDb();
+
+  const [{ value: projectCount }] = await db
+    .select({ value: count() })
+    .from(projects)
+    .where(eq(projects.teamId, teamId));
+  await getEntitlements().assertCanCreateProject(teamId, projectCount);
 
   const webhookSecret = generateWebhookSecret();
 

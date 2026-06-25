@@ -14,7 +14,6 @@
     "dev:web": "bun run --filter @servicebeard/web dev",
     "dev:worker": "bun run --filter @servicebeard/worker dev",
     "build": "bun run --filter '*' build",
-    "build:landing": "bun run --filter @servicebeard/web build:landing",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "eslint .",
     "test": "bun test tests/",

@@ -16,7 +16,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 - Bidirectional sync: email → issue/comment, issue comment → email reply
 - Loop prevention via bot-user filtering, sync markers, and note deduplication
 - Webhook + polling fallback for outbound comments
-- Kubernetes deployment via Helm
+- Kubernetes deployment via Helm (self-host from this repo)
 
 ## Stack
 
@@ -26,7 +26,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 | Worker | Bun + pg-boss |
 | Frontend | Vite + React + Base UI + CSS Modules |
 | Database | PostgreSQL + Drizzle ORM |
-| Deploy | Helm + Docker |
+| Deploy | Helm + Docker (self-host from this repo; hosted edition in serviceboard-cloud) |
 
 ## Quickstart
 
@@ -286,7 +286,9 @@ The worker should append this as a comment on the existing issue instead of open
 
 Container images and the Helm chart are published to [GHCR](https://github.com/hongaar/servicebeard/pkgs). New packages default to private; a maintainer must set each package to **Public** once under [Packages](https://github.com/users/hongaar/packages) (Package settings → Change visibility).
 
-**From GHCR (recommended):**
+The marketing site and hosted cloud edition are maintained in the private [serviceboard-cloud](https://github.com/hongaar/servicebeard-cloud) repository.
+
+**From GHCR (recommended for self-hosting):**
 
 ```bash
 helm install servicebeard oci://ghcr.io/hongaar/servicebeard-helm \
@@ -309,6 +311,22 @@ helm install servicebeard deploy/helm \
   --set secrets.oidcClientSecret=<secret> \
   --set secrets.sessionSecret=<secret>
 ```
+
+Build container images locally:
+
+```bash
+docker build --target api -t servicebeard-api .
+docker build --target worker -t servicebeard-worker .
+docker build --target web -t servicebeard-web .
+```
+
+## Documentation
+
+In-app documentation lives under `/docs` in the web UI (mailbox setup, issue providers, GitHub/GitLab guides). The marketing landing page and pricing site are in the [serviceboard-cloud](https://github.com/hongaar/servicebeard-cloud) repository.
+
+## Extensions
+
+Optional extension points for hosted editions are documented in [EXTENSIONS.md](./EXTENSIONS.md).
 
 ## Project structure
 

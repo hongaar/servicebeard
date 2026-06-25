@@ -1,6 +1,7 @@
 import { getDb, teamMembers } from "@servicebeard/db";
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
+import { getEntitlements } from "../lib/entitlements";
 import type { AppVariables } from "./auth";
 import { requireAuth } from "./auth";
 
@@ -29,6 +30,8 @@ export async function requireTeamMember(
       throw new Error("FORBIDDEN");
     }
   }
+
+  await getEntitlements().assertTeamAccess(teamId, { path: c.req.path });
 
   return { userId: user.id, role: member.role };
 }

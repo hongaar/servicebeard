@@ -3,6 +3,8 @@ import { formatValidationError } from "@servicebeard/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { ZodError } from "zod";
+import { loadExtensions } from "./extensions";
+import { setEntitlementsProvider } from "./lib/entitlements";
 import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
@@ -57,6 +59,12 @@ app.onError((err, c) => {
   if (err.message === "FORBIDDEN") {
     return c.json({ error: "Forbidden" }, 403);
   }
+  if (err.message === "PROJECT_LIMIT_REACHED") {
+    return c.json({ error: "Project limit reached", code: "PROJECT_LIMIT_REACHED" }, 402);
+  }
+  if (err.message === "SUBSCRIPTION_REQUIRED") {
+    return c.json({ error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" }, 402);
+  }
   if (err.message === "LOGIN_PROVIDER_DISABLED") {
     return c.json({ error: "Not available" }, 404);
   }
@@ -98,6 +106,8 @@ app.route("/api/github-app", githubAppRoutes);
 app.route("/api/teams", teamRoutes);
 app.route("/api/teams", projectRoutes);
 app.route("/webhooks", webhookRoutes);
+
+await loadExtensions({ app, setEntitlementsProvider });
 
 const port = Number(process.env.PORT ?? 3000);
 

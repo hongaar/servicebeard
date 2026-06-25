@@ -1,3 +1,4 @@
+import { cloudRoutes } from "@cloudExtensions";
 import { createRouter } from "@tanstack/react-router";
 import {
     dashboardRoute,
@@ -29,6 +30,7 @@ const routeTree = rootRoute.addChildren([
   teamRedirectRoute,
   teamMembersRoute,
   teamSettingsRoute,
+  ...cloudRoutes,
   projectsRoute,
   projectRedirectRoute,
   projectSectionRoute,

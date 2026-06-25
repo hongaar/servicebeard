@@ -4,6 +4,7 @@ import { setProviderLog } from "@servicebeard/providers";
 import { getCommentPollIntervalSeconds, getImapPollIntervalSeconds } from "@servicebeard/shared";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
+import { loadWorkerExtensions } from "./extensions";
 import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
@@ -233,6 +234,7 @@ export async function startWorker(): Promise<PgBoss> {
   );
 
   await schedulePollJobs(boss);
+  await loadWorkerExtensions({ boss });
 
   globalWorker.__servicebeardWorkerBoss = boss;
 
