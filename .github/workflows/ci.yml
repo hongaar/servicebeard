@@ -34,6 +34,16 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Smoke test (database)
+        env:
+          DATABASE_URL: postgres://servicebeard:servicebeard@localhost:5432/servicebeard
+          ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        run: |
+          set -euo pipefail
+          bun run db:migrate
+          bun run db:generate
+          git diff --exit-code packages/db/drizzle
+
       - name: Typecheck
         run: bun run typecheck
 

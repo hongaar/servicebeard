@@ -3,6 +3,7 @@ import type { NormalizedWebhookEvent } from "@servicebeard/providers";
 import { setProviderLog } from "@servicebeard/providers";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
+import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
 import { runExclusive } from "./lib/run-guard";

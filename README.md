@@ -93,15 +93,15 @@ Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
 
 ### Authentication
 
-Servicebeard supports multiple login providers. Enable one or more by setting the required env vars (see `.env.example`). All OAuth/OIDC providers share the same callback URL: `{API_URL}/api/auth/callback`.
+Servicebeard supports multiple login providers. Enable one or more by setting `*_LOGIN=true` and the required credentials (see `.env.example`). All OAuth/OIDC providers share the same callback URL: `{API_URL}/api/auth/callback`.
 
 #### Local (email/password & passkey)
 
-Enabled by default (`LOCAL_LOGIN=true`). Supports credential sign-in and passkeys without an external IdP. Set `LOCAL_LOGIN=false` to disable. In development, the API also seeds `dev@localhost` / `dev` on startup for quick testing.
+Enabled with `LOCAL_LOGIN=true`. Supports credential sign-in and passkeys without an external IdP. In development, the API also seeds `dev@localhost` / `dev` on startup for quick testing.
 
 | Variable | Description |
 |----------|-------------|
-| `LOCAL_LOGIN` | `true` (default) or `false` |
+| `LOCAL_LOGIN` | `true` to enable, `false` or unset to disable |
 | `LOCAL_LOGIN_SIGNUP` | Allow sign-up via local credentials (default: `true` when local login is enabled) |
 
 #### OIDC (generic IdP)
@@ -110,7 +110,7 @@ Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
 
 | Variable | Description |
 |----------|-------------|
-| `OIDC_LOGIN` | `true` to require config, `false` to disable |
+| `OIDC_LOGIN` | `true` to enable (requires OIDC_* config), `false` or unset to disable |
 | `OIDC_SIGNUP` | Allow new users on first sign-in (default: `true`) |
 | `OIDC_PROVIDER_NAME` | Display name on the login button (e.g. `Keycloak` → "Continue with Keycloak"; omit for "Continue with SSO") |
 | `OIDC_ISSUER` | Issuer URL (e.g. `https://auth.example.com/realms/myrealm`) |
@@ -126,7 +126,7 @@ Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
 
 | Variable | Description |
 |----------|-------------|
-| `GITHUB_LOGIN` | `true` to require config, `false` to disable |
+| `GITHUB_LOGIN` | `true` to enable (requires GITHUB_* config), `false` or unset to disable |
 | `GITHUB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
 | `GITHUB_CLIENT_ID` | OAuth App client ID |
 | `GITHUB_CLIENT_SECRET` | OAuth App client secret |
@@ -143,7 +143,7 @@ Works with GitLab.com or self-hosted GitLab.
 
 | Variable | Description |
 |----------|-------------|
-| `GITLAB_LOGIN` | `true` to require config, `false` to disable |
+| `GITLAB_LOGIN` | `true` to enable (requires GITLAB_* config), `false` or unset to disable |
 | `GITLAB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
 | `GITLAB_BASE_URL` | GitLab instance URL (default: `https://gitlab.com`) |
 | `GITLAB_CLIENT_ID` | Application ID |

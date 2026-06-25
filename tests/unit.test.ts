@@ -643,3 +643,128 @@ describe("GitLab webhook parsing", () => {
     expect(event).toBeNull();
   });
 });
+
+describe("login provider env", () => {
+  const oidcEnv = {
+    OIDC_ISSUER: "https://idp.example.com",
+    OIDC_CLIENT_ID: "client",
+    OIDC_CLIENT_SECRET: "secret",
+    OIDC_REDIRECT_URI: "http://localhost:3000/api/auth/callback",
+  };
+  const githubEnv = {
+    GITHUB_CLIENT_ID: "client",
+    GITHUB_CLIENT_SECRET: "secret",
+    GITHUB_REDIRECT_URI: "http://localhost:3000/api/auth/callback",
+  };
+  const gitlabEnv = {
+    GITLAB_CLIENT_ID: "client",
+    GITLAB_CLIENT_SECRET: "secret",
+    GITLAB_REDIRECT_URI: "http://localhost:3000/api/auth/callback",
+  };
+
+  function withEnv(
+    values: Record<string, string | undefined>,
+    run: () => void | Promise<void>,
+  ): void | Promise<void> {
+    const previous = new Map<string, string | undefined>();
+    for (const [key, value] of Object.entries(values)) {
+      previous.set(key, process.env[key]);
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+
+    try {
+      return run();
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  }
+
+  test("oauth providers stay disabled unless *_LOGIN=true", async () => {
+    const {
+      isGithubLoginEnabled,
+      isGitlabLoginEnabled,
+      isLocalLoginEnabled,
+      isOidcLoginEnabled,
+    } = await import("../apps/api/src/lib/env");
+
+    withEnv({
+      ...oidcEnv,
+      ...githubEnv,
+      ...gitlabEnv,
+      OIDC_LOGIN: undefined,
+      GITHUB_LOGIN: undefined,
+      GITLAB_LOGIN: undefined,
+      LOCAL_LOGIN: undefined,
+    }, () => {
+      expect(isOidcLoginEnabled()).toBe(false);
+      expect(isGithubLoginEnabled()).toBe(false);
+      expect(isGitlabLoginEnabled()).toBe(false);
+      expect(isLocalLoginEnabled()).toBe(false);
+    });
+  });
+
+  test("oauth providers require config even when *_LOGIN=true", async () => {
+    const {
+      isGithubLoginEnabled,
+      isGitlabLoginEnabled,
+      isOidcLoginEnabled,
+    } = await import("../apps/api/src/lib/env");
+
+    withEnv({
+      OIDC_LOGIN: "true",
+      GITHUB_LOGIN: "true",
+      GITLAB_LOGIN: "true",
+      OIDC_ISSUER: undefined,
+      OIDC_CLIENT_ID: undefined,
+      OIDC_CLIENT_SECRET: undefined,
+      OIDC_REDIRECT_URI: undefined,
+      GITHUB_CLIENT_ID: undefined,
+      GITHUB_CLIENT_SECRET: undefined,
+      GITHUB_REDIRECT_URI: undefined,
+      GITLAB_CLIENT_ID: undefined,
+      GITLAB_CLIENT_SECRET: undefined,
+      GITLAB_REDIRECT_URI: undefined,
+    }, () => {
+      expect(isOidcLoginEnabled()).toBe(false);
+      expect(isGithubLoginEnabled()).toBe(false);
+      expect(isGitlabLoginEnabled()).toBe(false);
+    });
+  });
+
+  test("oauth providers enable only with *_LOGIN=true and full config", async () => {
+    const {
+      isGithubLoginEnabled,
+      isGitlabLoginEnabled,
+      isOidcLoginEnabled,
+    } = await import("../apps/api/src/lib/env");
+
+    withEnv({
+      ...oidcEnv,
+      ...githubEnv,
+      ...gitlabEnv,
+      OIDC_LOGIN: "true",
+      GITHUB_LOGIN: "true",
+      GITLAB_LOGIN: "true",
+    }, () => {
+      expect(isOidcLoginEnabled()).toBe(true);
+      expect(isGithubLoginEnabled()).toBe(true);
+      expect(isGitlabLoginEnabled()).toBe(true);
+    });
+  });
+
+  test("local login requires LOCAL_LOGIN=true", async () => {
+    const { isLocalLoginEnabled } = await import("../apps/api/src/lib/env");
+
+    withEnv({ LOCAL_LOGIN: "false" }, () => {
+      expect(isLocalLoginEnabled()).toBe(false);
+    });
+
+    withEnv({ LOCAL_LOGIN: "true" }, () => {
+      expect(isLocalLoginEnabled()).toBe(true);
+    });
+  });
+});

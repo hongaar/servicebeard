@@ -15,6 +15,7 @@
     "./mail": "./src/mail.ts",
     "./templates": "./src/templates.ts",
     "./env": "./src/env.ts",
+    "./env-watch": "./src/env-watch.ts",
     "./email-content": "./src/email-content.ts"
   },
   "scripts": {

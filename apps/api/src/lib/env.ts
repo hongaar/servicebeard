@@ -16,16 +16,12 @@ function isOidcConfigured(): boolean {
 }
 
 export function isOidcLoginEnabled(): boolean {
-  const flag = parseEnvFlag(process.env.OIDC_LOGIN);
-  if (flag === false) return false;
-  if (flag === true) return isOidcConfigured();
+  if (parseEnvFlag(process.env.OIDC_LOGIN) !== true) return false;
   return isOidcConfigured();
 }
 
 export function isLocalLoginEnabled(): boolean {
-  const flag = parseEnvFlag(process.env.LOCAL_LOGIN);
-  if (flag === false) return false;
-  return true;
+  return parseEnvFlag(process.env.LOCAL_LOGIN) === true;
 }
 
 function isGithubConfigured(): boolean {
@@ -37,9 +33,7 @@ function isGithubConfigured(): boolean {
 }
 
 export function isGithubLoginEnabled(): boolean {
-  const flag = parseEnvFlag(process.env.GITHUB_LOGIN);
-  if (flag === false) return false;
-  if (flag === true) return isGithubConfigured();
+  if (parseEnvFlag(process.env.GITHUB_LOGIN) !== true) return false;
   return isGithubConfigured();
 }
 
@@ -52,8 +46,6 @@ function isGitlabConfigured(): boolean {
 }
 
 export function isGitlabLoginEnabled(): boolean {
-  const flag = parseEnvFlag(process.env.GITLAB_LOGIN);
-  if (flag === false) return false;
-  if (flag === true) return isGitlabConfigured();
+  if (parseEnvFlag(process.env.GITLAB_LOGIN) !== true) return false;
   return isGitlabConfigured();
 }

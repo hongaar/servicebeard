@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import "./env-watch";
 
 function findMonorepoRoot(startDir: string): string | null {
   let dir = startDir;
@@ -16,7 +17,7 @@ function findMonorepoRoot(startDir: string): string | null {
   return null;
 }
 
-function parseEnvFile(path: string): void {
+function parseEnvFile(path: string, overwrite: boolean): void {
   const content = readFileSync(path, "utf-8");
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
@@ -35,13 +36,14 @@ function parseEnvFile(path: string): void {
       value = value.slice(1, -1);
     }
 
-    if (process.env[key] === undefined) {
+    if (overwrite || process.env[key] === undefined) {
       process.env[key] = value;
     }
   }
 }
 
 export function loadMonorepoEnv(): void {
+  const overwrite = process.env.NODE_ENV !== "production";
   const root =
     findMonorepoRoot(process.cwd()) ?? findMonorepoRoot(import.meta.dir);
 
@@ -53,7 +55,7 @@ export function loadMonorepoEnv(): void {
 
   for (const path of candidates) {
     if (!existsSync(path)) continue;
-    parseEnvFile(path);
+    parseEnvFile(path, overwrite);
     return;
   }
 }

@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "generate": "drizzle-kit generate",
     "migrate": "bun run src/migrate.ts",
+    "reset": "bun run src/reset.ts",
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
