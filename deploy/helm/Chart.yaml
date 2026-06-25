@@ -4,6 +4,8 @@ description: Mail to issue board sync application
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
+annotations:
+  org.opencontainers.image.source: https://github.com/hongaar/servicebeard
 dependencies:
   - name: postgresql
     version: "16.x.x"

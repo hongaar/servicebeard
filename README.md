@@ -256,7 +256,7 @@ The worker should append this as a comment on the existing issue instead of open
 
 ## Deploy
 
-Container images and the Helm chart are published to [GHCR](https://github.com/hongaar/servicebeard/pkgs).
+Container images and the Helm chart are published to [GHCR](https://github.com/hongaar/servicebeard/pkgs). New packages default to private; a maintainer must set each package to **Public** once under [Packages](https://github.com/users/hongaar/packages) (Package settings → Change visibility).
 
 **From GHCR (recommended):**
 

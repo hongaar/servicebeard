@@ -78,6 +78,8 @@ jobs:
           target: ${{ matrix.target }}
           push: false
           tags: servicebeard-${{ matrix.target }}:build
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           outputs: ${{ github.event_name == 'push' && 'type=docker,dest=/tmp/image.tar' || '' }}
 
       - name: Upload image
@@ -154,26 +156,3 @@ jobs:
 
       - name: Push chart
         run: helm push /tmp/chart/*.tgz oci://ghcr.io/${{ github.repository_owner }}
-
-  make-packages-public:
-    runs-on: ubuntu-latest
-    needs: [docker-push, helm-publish]
-    if: github.event_name == 'push'
-    permissions:
-      packages: write
-    steps:
-      - name: Set package visibility to public
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-        run: |
-          set -euo pipefail
-          for pkg in servicebeard-helm servicebeard-api servicebeard-worker servicebeard-web; do
-            if gh api "/orgs/${OWNER}" &>/dev/null; then
-              gh api --method PUT "/orgs/${OWNER}/packages/container/${pkg}/visibility" \
-                -f visibility=public
-            else
-              gh api --method PUT "/user/packages/container/${pkg}/visibility" \
-                -f visibility=public
-            fi
-          done
