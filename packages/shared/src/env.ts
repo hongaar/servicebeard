@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import "./env-watch";
 
 function findMonorepoRoot(startDir: string): string | null {
   let dir = startDir;

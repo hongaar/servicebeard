@@ -1,5 +1,12 @@
 /**
- * Static import so Bun --watch restarts dev servers when the monorepo .env changes.
+ * Preload in dev (`bun --preload …`) so Bun --watch restarts when the monorepo .env changes.
  * Values are applied at runtime via loadMonorepoEnv().
  */
-import "../../../.env" with { type: "text" };
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+const envPath = resolve(import.meta.dir, "../../../.env");
+
+if (existsSync(envPath)) {
+  await import(envPath, { with: { type: "text" } });
+}

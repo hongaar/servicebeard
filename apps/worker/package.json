@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
+    "dev": "bun --preload ../../packages/shared/src/env-watch.ts run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "typecheck": "tsc --noEmit"
   },
