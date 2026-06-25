@@ -10,6 +10,7 @@ import {
     normalizeSubject,
     renderInboundAckTemplate,
     resolveServicebeardWebUrl,
+    type ProviderType,
 } from "@servicebeard/shared";
 import { and, eq, gte, inArray, or } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
@@ -269,7 +270,7 @@ export async function processInboundEmail(
       webUrl: resolveServicebeardWebUrl(),
       teamId: project.teamId,
       projectId: project.id,
-      provider: project.provider,
+      provider: project.provider as ProviderType,
     },
   );
 
