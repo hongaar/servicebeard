@@ -28,6 +28,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 COPY --from=extension-context /extension /extension
 WORKDIR /app/apps/web
+RUN if [ -d /extension/cloud/marketing/public ]; then \
+      cp -f /extension/cloud/marketing/public/*.png /app/apps/web/public/ 2>/dev/null || true; \
+    fi
 RUN SB_EXTENSION_MANIFEST=; \
     if [ -f /extension/extension.config.ts ]; then SB_EXTENSION_MANIFEST=/extension/extension.config.ts; \
     elif [ -f /extension/extension.config.js ]; then SB_EXTENSION_MANIFEST=/extension/extension.config.js; fi; \

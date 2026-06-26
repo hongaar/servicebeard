@@ -1,5 +1,5 @@
-import { createRoute, redirect } from "@tanstack/react-router";
 import { ExtensionLanding } from "@extensions";
+import { createRoute, redirect } from "@tanstack/react-router";
 import { api, ApiError } from "../lib/api";
 import {
     DEFAULT_PROJECT_SECTION,
@@ -11,6 +11,7 @@ import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
 import { DocsIndexPage } from "../pages/docs/DocsIndexPage";
 import { DocsIssueProvidersPage } from "../pages/docs/DocsIssueProvidersPage";
 import { DocsMailboxPage } from "../pages/docs/DocsMailboxPage";
+import { DocsSelfHostPage } from "../pages/docs/DocsSelfHostPage";
 import { GithubAppInstallCompletePage } from "../pages/GithubAppInstallCompletePage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
@@ -39,13 +40,21 @@ async function loadTeamContext(teamId: string) {
 async function loadProjectContext(teamId: string, projectId: string) {
   const user = await requireUser();
   try {
-    const [team, project, { threads }, { errors: syncErrors }] = await Promise.all([
+    const [team, projectData, { threads }, { errors: syncErrors }] = await Promise.all([
       api.getTeam(teamId),
       api.getProject(teamId, projectId),
       api.getThreads(teamId, projectId),
       api.getSyncErrors(teamId, projectId),
     ]);
-    return { user, project, threads, syncErrors, teamName: team.name };
+    const { entitlements, rules, ...project } = projectData;
+    return {
+      user,
+      project: { ...project, rules },
+      entitlements,
+      threads,
+      syncErrors,
+      teamName: team.name,
+    };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       throw redirect({
@@ -93,6 +102,12 @@ export const docsGitLabRoute = createRoute({
   component: DocsGitLabPage,
 });
 
+export const docsSelfHostRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/docs/self-host",
+  component: DocsSelfHostPage,
+});
+
 export const githubAppInstallCompleteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/github-app/install-complete",
@@ -119,7 +134,15 @@ export const dashboardRoute = createRoute({
 export const teamRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/teams/$teamId",
-  beforeLoad: ({ params }) => {
+  loader: async ({ params }) => {
+    const { teams } = await api.getTeams();
+    const team = teams.find((entry) => entry.id === params.teamId);
+    if (team?.subscriptionRequired && team.role === "owner") {
+      throw redirect({
+        to: "/teams/$teamId/billing",
+        params: { teamId: params.teamId },
+      });
+    }
     throw redirect({
       to: "/teams/$teamId/projects",
       params: { teamId: params.teamId },
@@ -153,11 +176,11 @@ export const projectsRoute = createRoute({
   component: ProjectsPage,
   loader: async ({ params }) => {
     const user = await requireUser();
-    const [team, { projects }] = await Promise.all([
+    const [team, { projects, entitlements }] = await Promise.all([
       api.getTeam(params.teamId),
       api.getProjects(params.teamId),
     ]);
-    return { user, projects, teamName: team.name };
+    return { user, projects, entitlements, teamName: team.name };
   },
 });
 

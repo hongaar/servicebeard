@@ -8,9 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bash scripts/dev.sh",
-    "dev:apps": "bash scripts/dev.sh --apps-only",
-    "dev:setup": "bash scripts/dev.sh --setup",
+    "dev": "bun run --filter './apps/*' dev",
+    "dev:infra": "docker compose up -d",
     "dev:api": "bun run --filter @servicebeard/api dev",
     "dev:web": "bun run --filter @servicebeard/web dev",
     "dev:worker": "bun run --filter @servicebeard/worker dev",

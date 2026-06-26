@@ -62,6 +62,15 @@ app.onError((err, c) => {
   if (err.message === "PROJECT_LIMIT_REACHED") {
     return c.json({ error: "Project limit reached", code: "PROJECT_LIMIT_REACHED" }, 402);
   }
+  if (err.message === "RULE_LIMIT_REACHED") {
+    return c.json({ error: "Rule limit reached", code: "RULE_LIMIT_REACHED" }, 402);
+  }
+  if (err.message === "CONVERSATION_LIMIT_REACHED") {
+    return c.json(
+      { error: "Monthly conversation limit reached", code: "CONVERSATION_LIMIT_REACHED" },
+      402,
+    );
+  }
   if (err.message === "SUBSCRIPTION_REQUIRED") {
     return c.json({ error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" }, 402);
   }

@@ -83,7 +83,8 @@ export function DocsMailboxPage() {
         domains are recognized today:
       </p>
 
-      <table className={styles.permissionTable}>
+      <div className={styles.providerTableWrap}>
+      <table className={styles.providerTable}>
         <thead>
           <tr>
             <th>Provider</th>
@@ -96,77 +97,133 @@ export function DocsMailboxPage() {
           <tr>
             <td>Gmail</td>
             <td>
-              <code>gmail.com</code>, <code>googlemail.com</code>
+              <div className={styles.providerDomains}>
+              <code className={styles.domainChip}>gmail.com</code>
+              <code className={styles.domainChip}>googlemail.com</code>
+              </div>
             </td>
             <td>
-              <code>imap.gmail.com:993</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>imap.gmail.com:993</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
             <td>
-              <code>smtp.gmail.com:465</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>smtp.gmail.com:465</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
           </tr>
           <tr>
             <td>Outlook / Microsoft 365</td>
             <td>
-              <code>outlook.com</code>, <code>hotmail.com</code>, <code>office365.com</code>
+              <div className={styles.providerDomains}>
+              <code className={styles.domainChip}>outlook.com</code>
+              <code className={styles.domainChip}>hotmail.com</code>
+              <code className={styles.domainChip}>office365.com</code>
+              </div>
             </td>
             <td>
-              <code>outlook.office365.com:993</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>outlook.office365.com:993</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
             <td>
-              <code>smtp.office365.com:587</code> (STARTTLS)
+              <span className={styles.mailEndpoint}>
+                <code>smtp.office365.com:587</code>
+                <span className={styles.mailTls}>(STARTTLS)</span>
+              </span>
             </td>
           </tr>
           <tr>
             <td>Yahoo Mail</td>
             <td>
-              <code>yahoo.com</code>, <code>ymail.com</code>
+              <div className={styles.providerDomains}>
+              <code className={styles.domainChip}>yahoo.com</code>
+              <code className={styles.domainChip}>ymail.com</code>
+              </div>
             </td>
             <td>
-              <code>imap.mail.yahoo.com:993</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>imap.mail.yahoo.com:993</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
             <td>
-              <code>smtp.mail.yahoo.com:465</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>smtp.mail.yahoo.com:465</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
           </tr>
           <tr>
             <td>iCloud</td>
             <td>
-              <code>icloud.com</code>, <code>me.com</code>, <code>mac.com</code>
+              <div className={styles.providerDomains}>
+              <code className={styles.domainChip}>icloud.com</code>
+              <code className={styles.domainChip}>me.com</code>
+              <code className={styles.domainChip}>mac.com</code>
+              </div>
             </td>
             <td>
-              <code>imap.mail.me.com:993</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>imap.mail.me.com:993</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
             <td>
-              <code>smtp.mail.me.com:587</code> (STARTTLS)
+              <span className={styles.mailEndpoint}>
+                <code>smtp.mail.me.com:587</code>
+                <span className={styles.mailTls}>(STARTTLS)</span>
+              </span>
             </td>
           </tr>
           <tr>
             <td>Fastmail</td>
             <td>
-              <code>fastmail.com</code>, <code>fastmail.fm</code>
+              <div className={styles.providerDomains}>
+              <code className={styles.domainChip}>fastmail.com</code>
+              <code className={styles.domainChip}>fastmail.fm</code>
+              </div>
             </td>
             <td>
-              <code>imap.fastmail.com:993</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>imap.fastmail.com:993</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
             <td>
-              <code>smtp.fastmail.com:465</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>smtp.fastmail.com:465</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
           </tr>
           <tr>
             <td>Zoho Mail</td>
             <td>
-              <code>zoho.com</code>
+              <div className={styles.providerDomains}>
+              <code className={styles.domainChip}>zoho.com</code>
+              </div>
             </td>
             <td>
-              <code>imap.zoho.com:993</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>imap.zoho.com:993</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
             <td>
-              <code>smtp.zoho.com:465</code> (TLS)
+              <span className={styles.mailEndpoint}>
+                <code>smtp.zoho.com:465</code>
+                <span className={styles.mailTls}>(TLS)</span>
+              </span>
             </td>
           </tr>
         </tbody>
       </table>
+      </div>
 
       <p>
         Custom domains on Google Workspace or Microsoft 365 usually use the same hostnames as Gmail

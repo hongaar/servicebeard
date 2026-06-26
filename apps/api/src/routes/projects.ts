@@ -15,6 +15,7 @@ import {
     createRuleSchema,
     DEFAULT_CATCH_ALL_RULE,
     evaluateDraftRule,
+    isEligibleForInboundRulePreview,
     normalizeProviderProjectId,
     testMailConnectionSchema,
     testProviderConnectionSchema,
@@ -31,6 +32,7 @@ import { providerFailureResponse } from "../lib/external-error";
 import { fetchRecentMessages, parseEmail } from "../lib/mail";
 import { createProjectProvider, projectMailCredentials } from "../lib/provider";
 import { getBoss, QUEUE_NAMES } from "../lib/queue";
+import { loadProjectThreadMatchIndex } from "../lib/thread-match";
 import type { AppVariables } from "../middleware/auth";
 import { requireTeamMember } from "../middleware/team";
 
@@ -63,13 +65,17 @@ projectRoutes.get("/:teamId/projects", async (c) => {
     where: eq(projects.teamId, teamId),
   });
 
-  return c.json({ projects: list.map(sanitizeProject) });
+  const entitlements = await getEntitlements().getTeamEntitlementUsage?.(teamId);
+
+  return c.json({
+    projects: list.map(sanitizeProject),
+    entitlements: entitlements ?? null,
+  });
 });
 
 projectRoutes.post("/:teamId/projects", async (c) => {
   const teamId = c.req.param("teamId");
   const { userId } = await requireTeamMember(c, teamId, "admin");
-  const body = createProjectSchema.parse(await c.req.json());
   const db = getDb();
 
   const [{ value: projectCount }] = await db
@@ -78,6 +84,7 @@ projectRoutes.post("/:teamId/projects", async (c) => {
     .where(eq(projects.teamId, teamId));
   await getEntitlements().assertCanCreateProject(teamId, projectCount);
 
+  const body = createProjectSchema.parse(await c.req.json());
   const webhookSecret = generateWebhookSecret();
 
   const [project] = await db
@@ -172,6 +179,7 @@ projectRoutes.get("/:teamId/projects/:projectId", async (c) => {
   return c.json({
     ...sanitizeProject(project),
     rules: project.rules,
+    entitlements: (await getEntitlements().getTeamEntitlementUsage?.(teamId)) ?? null,
   });
 });
 
@@ -338,7 +346,6 @@ projectRoutes.post("/:teamId/projects/:projectId/rules", async (c) => {
   const teamId = c.req.param("teamId");
   const projectId = c.req.param("projectId");
   const { userId } = await requireTeamMember(c, teamId, "admin");
-  const body = createRuleSchema.parse(await c.req.json());
   const db = getDb();
 
   const project = await db.query.projects.findFirst({
@@ -346,6 +353,14 @@ projectRoutes.post("/:teamId/projects/:projectId/rules", async (c) => {
   });
   if (!project) return c.json({ error: "Not found" }, 404);
 
+  const [{ value: ruleCount }] = await db
+    .select({ value: count() })
+    .from(rules)
+    .innerJoin(projects, eq(rules.projectId, projects.id))
+    .where(eq(projects.teamId, teamId));
+  await getEntitlements().assertCanCreateRule?.(teamId, ruleCount);
+
+  const body = createRuleSchema.parse(await c.req.json());
   const [rule] = await db
     .insert(rules)
     .values({
@@ -469,23 +484,46 @@ projectRoutes.get("/:teamId/projects/:projectId/mailbox-snapshot", async (c) => 
 
   try {
     const rawMessages = await fetchRecentMessages(projectMailCredentials(project), limit);
-    const messages = await Promise.all(
-      rawMessages.map(async (msg) => {
-        const parsed = await parseEmail(msg.raw);
-        return {
-          uid: msg.uid,
-          fromEmail: parsed.fromEmail,
-          fromName: parsed.fromName,
-          subject: parsed.subject,
-          bodyPreview: parsed.body.slice(0, 300),
-          body: parsed.body,
-          messageId: parsed.messageId,
-          date: parsed.date,
-        };
-      }),
-    );
+    const threadIndex = await loadProjectThreadMatchIndex(projectId);
+    const inboundCtx = {
+      supportEmail: project.smtpFrom,
+      projectCreatedAt: project.createdAt,
+    };
+    const messages = [];
+    for (const msg of rawMessages) {
+      const parsed = await parseEmail(msg.raw);
+      const eligibility = {
+        fromEmail: parsed.fromEmail,
+        subject: parsed.subject,
+        inReplyTo: parsed.inReplyTo,
+        references: parsed.references,
+        date: parsed.date,
+      };
+      if (!isEligibleForInboundRulePreview(eligibility, inboundCtx, threadIndex)) {
+        continue;
+      }
+      messages.push({
+        uid: msg.uid,
+        fromEmail: parsed.fromEmail,
+        fromName: parsed.fromName,
+        subject: parsed.subject,
+        bodyPreview: parsed.body.slice(0, 300),
+        body: parsed.body,
+        messageId: parsed.messageId,
+        inReplyTo: parsed.inReplyTo,
+        references: parsed.references,
+        toAddresses: parsed.toAddresses,
+        ccAddresses: parsed.ccAddresses,
+        bccAddresses: parsed.bccAddresses,
+        date: parsed.date,
+      });
+    }
 
-    return c.json({ messages });
+    return c.json({
+      supportEmail: project.smtpFrom,
+      projectCreatedAt: project.createdAt,
+      messages,
+    });
   } catch (err) {
     return c.json(
       { error: err instanceof Error ? err.message : "Failed to fetch mailbox snapshot" },
@@ -510,21 +548,39 @@ projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
 
   try {
     const rawMessages = await fetchRecentMessages(projectMailCredentials(project), limit);
-    const results = await Promise.all(
-      rawMessages.map(async (msg) => {
-        const email = await parseEmail(msg.raw);
-        const matched = evaluateDraftRule(body, email);
-        return {
-          uid: msg.uid,
-          fromEmail: email.fromEmail,
-          fromName: email.fromName,
-          subject: email.subject,
-          bodyPreview: email.body.slice(0, 200),
-          date: email.date,
-          matched,
-        };
-      }),
-    );
+    const threadIndex = await loadProjectThreadMatchIndex(projectId);
+    const inboundCtx = {
+      supportEmail: project.smtpFrom,
+      projectCreatedAt: project.createdAt,
+    };
+    const results = [];
+    for (const msg of rawMessages) {
+      const email = await parseEmail(msg.raw);
+      if (
+        !isEligibleForInboundRulePreview(
+          {
+            fromEmail: email.fromEmail,
+            subject: email.subject,
+            inReplyTo: email.inReplyTo,
+            references: email.references,
+            date: email.date,
+          },
+          inboundCtx,
+          threadIndex,
+        )
+      ) {
+        continue;
+      }
+      results.push({
+        uid: msg.uid,
+        fromEmail: email.fromEmail,
+        fromName: email.fromName,
+        subject: email.subject,
+        bodyPreview: email.body.slice(0, 200),
+        date: email.date,
+        matched: evaluateDraftRule(body, email),
+      });
+    }
 
     return c.json({
       results,

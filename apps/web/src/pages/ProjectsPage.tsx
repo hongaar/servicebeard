@@ -1,3 +1,4 @@
+import { LimitReachedDialog } from "@extensions";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLoaderData, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
@@ -11,6 +12,7 @@ import { Layout } from "../components/Layout";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
+import { entitlementLimitMessage } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import {
     defaultProjectSettingsForm,
@@ -20,7 +22,9 @@ import {
 import styles from "../styles/pages.module.css";
 
 export function ProjectsPage() {
-  const { user, projects, teamName } = useLoaderData({ from: "/teams/$teamId/projects" });
+  const { user, projects, entitlements, teamName } = useLoaderData({
+    from: "/teams/$teamId/projects",
+  });
   const { teamId } = useParams({ from: "/teams/$teamId/projects" });
   const search = useSearch({ strict: false }) as {
     create?: string | boolean;
@@ -41,6 +45,29 @@ export function ProjectsPage() {
   const [form, setForm] = useState<ProjectSettingsFormValues>(defaultProjectSettingsForm);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const atProjectLimit = Boolean(entitlementLimitMessage("project", entitlements));
+
+  const openCreate = () => {
+    setForm(defaultProjectSettingsForm);
+    setWizardStepIndex(0);
+    setError("");
+    setFieldErrors({});
+    setShowCreate(true);
+  };
+
+  const tryOpenCreate = () => {
+    if (atProjectLimit) {
+      if (LimitReachedDialog && entitlements) {
+        setLimitDialogOpen(true);
+      } else {
+        setError("Project limit reached");
+      }
+      setShowCreate(false);
+      return;
+    }
+    openCreate();
+  };
 
   useEffect(() => {
     const installationId = search.githubInstallationId;
@@ -51,6 +78,13 @@ export function ProjectsPage() {
       search.wizardStep === "provider";
 
     if (!shouldOpen) return;
+
+    if (atProjectLimit && !search.githubAppError) {
+      if (LimitReachedDialog && entitlements) {
+        setLimitDialogOpen(true);
+      }
+      return;
+    }
 
     setShowCreate(true);
     if (search.wizardStep === "provider") {
@@ -83,6 +117,8 @@ export function ProjectsPage() {
     search.githubInstallationId,
     search.wizardStep,
     teamId,
+    atProjectLimit,
+    entitlements,
   ]);
 
   const create = useMutation({
@@ -102,14 +138,6 @@ export function ProjectsPage() {
     setForm((f) => ({ ...f, [field]: value }));
     setFieldErrors((prev) => clearFieldError(prev, field));
     setError("");
-  };
-
-  const openCreate = () => {
-    setForm(defaultProjectSettingsForm);
-    setWizardStepIndex(0);
-    setError("");
-    setFieldErrors({});
-    setShowCreate(true);
   };
 
   const closeCreate = () => {
@@ -144,7 +172,7 @@ export function ProjectsPage() {
               : `${projects.length} project${projects.length === 1 ? "" : "s"} configured`}
           </p>
         </div>
-        <Button onClick={() => (showCreate ? closeCreate() : openCreate())}>
+        <Button onClick={() => (showCreate ? closeCreate() : tryOpenCreate())}>
           {showCreate ? "Cancel" : "New project"}
         </Button>
       </div>
@@ -179,7 +207,7 @@ export function ProjectsPage() {
             A project links your support inbox to GitLab so incoming mail becomes tracked issues
             automatically.
           </p>
-          <Button onClick={openCreate}>Create your first project</Button>
+          <Button onClick={tryOpenCreate}>Create your first project</Button>
         </div>
       ) : projects.length > 0 ? (
         <div className={styles.tableWrap}>
@@ -249,6 +277,16 @@ export function ProjectsPage() {
           </table>
         </div>
       ) : null}
+
+      {LimitReachedDialog && entitlements && (
+        <LimitReachedDialog
+          open={limitDialogOpen}
+          onOpenChange={setLimitDialogOpen}
+          resource="project"
+          entitlements={entitlements}
+          teamId={teamId}
+        />
+      )}
     </Layout>
   );
 }

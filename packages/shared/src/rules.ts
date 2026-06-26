@@ -1,3 +1,5 @@
+import type { InboundMailboxContext } from "./inbound-mail";
+import { isEligibleForInboundRuleEvaluation } from "./inbound-mail";
 import type { EmailInlineImage, Rule } from "./types";
 
 export interface ParsedEmail {
@@ -64,4 +66,13 @@ export function evaluateRules(rules: Rule[], email: ParsedEmail): RuleMatchResul
 
 export function evaluateDraftRule(rule: RuleTestInput, email: ParsedEmail): boolean {
   return evaluateRule({ ...rule, isEnabled: rule.isEnabled ?? true }, email);
+}
+
+export function evaluateDraftRuleForInbound(
+  rule: RuleTestInput,
+  email: ParsedEmail,
+  ctx: InboundMailboxContext,
+): boolean {
+  if (!isEligibleForInboundRuleEvaluation(email, ctx)) return false;
+  return evaluateDraftRule(rule, email);
 }

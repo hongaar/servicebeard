@@ -1,3 +1,4 @@
+import type { TeamEntitlementUsage } from "@servicebeard/shared/entitlements";
 import type { AuthConfigResponse } from "@servicebeard/shared/login";
 import type {
     AuthenticationResponseJSON,
@@ -136,7 +137,15 @@ export const api = {
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
 
   getTeams: () =>
-    request<{ teams: Array<{ id: string; name: string; slug: string; role: string }> }>("/teams"),
+    request<{
+      teams: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        role: string;
+        subscriptionRequired?: boolean;
+      }>;
+    }>("/teams"),
 
   createTeam: (data: { name: string; slug: string }) =>
     request<{ id: string; name: string; slug: string }>("/teams", {
@@ -157,10 +166,14 @@ export const api = {
     request<{ ok: boolean }>(`/teams/${teamId}`, { method: "DELETE" }),
 
   getProjects: (teamId: string) =>
-    request<{ projects: Project[] }>(`/teams/${teamId}/projects`),
+    request<{ projects: Project[]; entitlements: TeamEntitlementUsage | null }>(
+      `/teams/${teamId}/projects`,
+    ),
 
   getProject: (teamId: string, projectId: string) =>
-    request<Project & { rules: Rule[] }>(`/teams/${teamId}/projects/${projectId}`),
+    request<Project & { rules: Rule[]; entitlements: TeamEntitlementUsage | null }>(
+      `/teams/${teamId}/projects/${projectId}`,
+    ),
 
   createProject: (teamId: string, data: CreateProjectInput) =>
     request<Project>(`/teams/${teamId}/projects`, {
@@ -259,9 +272,7 @@ export const api = {
     request<ProviderOptions>(`/teams/${teamId}/projects/${projectId}/provider-options`),
 
   getMailboxSnapshot: (teamId: string, projectId: string, limit = 20) =>
-    request<{ messages: MailboxSnapshotMessage[] }>(
-      `/teams/${teamId}/projects/${projectId}/mailbox-snapshot?limit=${limit}`,
-    ),
+    request<MailboxSnapshot>(`/teams/${teamId}/projects/${projectId}/mailbox-snapshot?limit=${limit}`),
 
   testRule: (
     teamId: string,
@@ -494,7 +505,18 @@ export interface MailboxSnapshotMessage {
   bodyPreview: string;
   body: string;
   messageId: string;
+  inReplyTo: string | null;
+  references: string[];
+  toAddresses: string[];
+  ccAddresses: string[];
+  bccAddresses: string[];
   date: string | null;
+}
+
+export interface MailboxSnapshot {
+  supportEmail: string;
+  projectCreatedAt: string;
+  messages: MailboxSnapshotMessage[];
 }
 
 export interface TestRuleInput {

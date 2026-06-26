@@ -2,6 +2,7 @@ import type { AnyRoute } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import type { EntitlementRequiredError } from "../lib/api";
+import type { LimitReachedDialogProps } from "../lib/limitDialog";
 
 export interface ExtensionTeamNavItem {
   to: string;
@@ -22,6 +23,12 @@ export const extensionRoutes: AnyRoute[] = [];
 export const extensionPublicRoutes: AnyRoute[] = [];
 
 export const ExtensionLanding: ComponentType | undefined = undefined;
+
+export const ExtensionDocsPublicHeader: ComponentType | undefined = undefined;
+
+export const LimitReachedDialog: ComponentType<LimitReachedDialogProps> | undefined = undefined;
+
+export type { LimitReachedDialogProps, LimitResource } from "../lib/limitDialog";
 
 export function extensionTeamNavItems(_teamId: string): ExtensionTeamNavItem[] {
   return [];

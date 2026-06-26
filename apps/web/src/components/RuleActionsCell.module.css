@@ -2,24 +2,24 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 0;
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
 }
 
-.segment {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.375rem;
-}
-
 .sep {
+  flex-shrink: 0;
   color: var(--color-text-muted);
-  margin-right: 0.375rem;
+  line-height: 1;
+  user-select: none;
 }
 
 .part {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
   color: var(--color-text);
 }
 
@@ -36,4 +36,17 @@
 
 .empty {
   color: var(--color-text-muted);
+}
+
+.spinner {
+  display: inline-block;
+  vertical-align: -0.125em;
+  color: var(--color-text-muted);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

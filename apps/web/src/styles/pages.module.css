@@ -339,6 +339,10 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   text-transform: capitalize;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* ── Forms ── */

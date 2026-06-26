@@ -45,9 +45,12 @@ async function resolveExtensionsAlias(): Promise<string> {
 
 export default defineConfig(async () => {
   const extensionsAlias = await resolveExtensionsAlias();
+  const monorepoRoot = path.resolve(__dirname, "../..");
 
   return {
     plugins: [react()],
+    envDir: monorepoRoot,
+    envPrefix: ["VITE_", "CLOUD_PLAN_"],
     resolve: {
       alias: {
         "@extensions": extensionsAlias,
@@ -55,7 +58,9 @@ export default defineConfig(async () => {
       },
     },
     server: {
+      host: "127.0.0.1",
       port: 5173,
+      strictPort: true,
       proxy: {
         "/api": {
           target: "http://localhost:3000",

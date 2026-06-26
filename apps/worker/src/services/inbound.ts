@@ -7,12 +7,15 @@ import {
     projects,
 } from "@servicebeard/db";
 import {
+    isEligibleForInboundRuleEvaluation,
+    isEmailEligibleForInboundSync,
     normalizeSubject,
     renderInboundAckTemplate,
     resolveServicebeardWebUrl,
     type ProviderType,
 } from "@servicebeard/shared";
-import { and, eq, gte, inArray, or } from "drizzle-orm";
+import { getEntitlements } from "@servicebeard/shared/entitlements";
+import { and, count, eq, gte, inArray, lt, or } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
@@ -37,13 +40,7 @@ import { sendEmail } from "./smtp";
 /** Re-scan this far before the ingest watermark to tolerate out-of-order delivery. */
 export const IMAP_POLL_OVERLAP_MS = 24 * 60 * 60 * 1000;
 
-/** Only process emails sent on or after the project was created. */
-export function isEmailEligibleForInboundSync(
-  emailDate: Date,
-  projectCreatedAt: Date,
-): boolean {
-  return emailDate.getTime() >= projectCreatedAt.getTime();
-}
+export { isEmailEligibleForInboundSync } from "@servicebeard/shared";
 
 export function computeImapPollSince(
   projectCreatedAt: Date,
@@ -246,6 +243,16 @@ export async function processInboundEmail(
     return;
   }
 
+  if (
+    !isEligibleForInboundRuleEvaluation(email, {
+      supportEmail: project.smtpFrom,
+      projectCreatedAt: project.createdAt,
+    })
+  ) {
+    logger.info({ messageId: email.messageId }, "skipping mail ineligible for new issue rules");
+    return;
+  }
+
   const { matched, rule } = evaluateRules(
     project.rules.map((r: (typeof project.rules)[number]) => ({
       ...r,
@@ -257,6 +264,40 @@ export async function processInboundEmail(
   if (!matched || !rule?.actionCreateIssue) {
     logger.info({ messageId: email.messageId }, "no matching rule or create disabled");
     return;
+  }
+
+  const billingPeriod = await getEntitlements().getBillingPeriod?.(project.teamId);
+  const periodStart =
+    billingPeriod?.start ??
+    (() => {
+      const fallback = new Date();
+      fallback.setUTCDate(1);
+      fallback.setUTCHours(0, 0, 0, 0);
+      return fallback;
+    })();
+  const periodEnd = billingPeriod?.end;
+  const [{ value: conversationsThisMonth }] = await db
+    .select({ value: count() })
+    .from(issueThreads)
+    .innerJoin(projects, eq(issueThreads.projectId, projects.id))
+    .where(
+      and(
+        eq(projects.teamId, project.teamId),
+        gte(issueThreads.createdAt, periodStart),
+        ...(periodEnd ? [lt(issueThreads.createdAt, periodEnd)] : []),
+      ),
+    );
+  try {
+    await getEntitlements().assertCanCreateConversation?.(project.teamId, conversationsThisMonth);
+  } catch (err) {
+    if (err instanceof Error && err.message === "CONVERSATION_LIMIT_REACHED") {
+      logger.info(
+        { teamId: project.teamId },
+        "monthly conversation limit reached, skipping new issue",
+      );
+      return;
+    }
+    throw err;
   }
 
   const tempThreadId = crypto.randomUUID();

@@ -1,9 +1,13 @@
+import { ExtensionDocsPublicHeader } from "@extensions";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { api } from "../lib/api";
 import { DOC_PATHS } from "../lib/docs";
 import styles from "../styles/docs.module.css";
 
 const NAV = [
   { path: DOC_PATHS.index, label: "Overview" },
+  { path: DOC_PATHS.selfHost, label: "Self-hosting" },
   { path: DOC_PATHS.mailbox, label: "Mailbox configuration" },
   {
     path: DOC_PATHS.issueProviders,
@@ -20,6 +24,50 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function DocsAppHeader() {
+  return (
+    <header className={styles.header}>
+      <Link to="/" className={styles.brand}>
+        <img
+          src="/favicon.png"
+          alt=""
+          className={styles.brandLogo}
+          width={36}
+          height={36}
+        />
+        <span className={styles.brandName}>ServiceBeard</span>
+      </Link>
+      <Link to="/" className={styles.homeLink}>
+        Back to app
+      </Link>
+    </header>
+  );
+}
+
+function DocsGuestHeader() {
+  if (ExtensionDocsPublicHeader) {
+    return <ExtensionDocsPublicHeader />;
+  }
+
+  return (
+    <header className={styles.header}>
+      <Link to="/" className={styles.brand}>
+        <img
+          src="/favicon.png"
+          alt=""
+          className={styles.brandLogo}
+          width={36}
+          height={36}
+        />
+        <span className={styles.brandName}>ServiceBeard</span>
+      </Link>
+      <Link to="/login" className={styles.homeLink}>
+        Sign in
+      </Link>
+    </header>
+  );
+}
+
 export function DocsLayout({
   title,
   lead,
@@ -30,25 +78,23 @@ export function DocsLayout({
   children: React.ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => api.getMe(),
+    staleTime: 60_000,
+  });
+  const isLoggedIn = Boolean(data?.user);
 
   return (
     <div className={styles.page}>
-      <div className={styles.shell}>
-        <header className={styles.header}>
-          <Link to="/" className={styles.brand}>
-            <img
-              src="/favicon.png"
-              alt=""
-              className={styles.brandLogo}
-              width={36}
-              height={36}
-            />
-            <span className={styles.brandName}>ServiceBeard</span>
-          </Link>
-          <Link to="/" className={styles.homeLink}>
-            Back to app
-          </Link>
-        </header>
+      {!isLoggedIn && <DocsGuestHeader />}
+
+      <div
+        className={[styles.shell, !isLoggedIn ? styles.shellAfterPublicHeader : ""]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {isLoggedIn && <DocsAppHeader />}
 
         <div className={styles.layout}>
           <nav className={styles.nav} aria-label="Documentation">

@@ -18,6 +18,7 @@
     "./env": "./src/env.ts",
     "./env-watch": "./src/env-watch.ts",
     "./email-content": "./src/email-content.ts",
+    "./entitlements": "./src/entitlements.ts",
     "./extensions": "./src/extensions/index.ts"
   },
   "scripts": {

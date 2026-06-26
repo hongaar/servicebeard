@@ -26,6 +26,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";
 import { testMailConnection, testProviderConnection } from "../lib/connection-test";
+import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { startGithubAppInstall } from "../lib/github-app-install";
 import type { AppVariables } from "../middleware/auth";
@@ -43,11 +44,19 @@ teamRoutes.get("/", async (c) => {
     with: { team: true },
   });
 
-  return c.json({
-    teams: memberships.map((m) => ({
+  const entitlements = getEntitlements();
+  const teamsWithMeta = await Promise.all(
+    memberships.map(async (m) => ({
       ...m.team,
       role: m.role,
+      ...(entitlements.getTeamListingMeta
+        ? await entitlements.getTeamListingMeta(m.team.id)
+        : {}),
     })),
+  );
+
+  return c.json({
+    teams: teamsWithMeta,
   });
 });
 

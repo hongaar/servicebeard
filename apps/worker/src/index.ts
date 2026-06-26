@@ -2,6 +2,7 @@ import { getDb, projects } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
 import { setProviderLog } from "@servicebeard/providers";
 import { getCommentPollIntervalSeconds, getImapPollIntervalSeconds } from "@servicebeard/shared";
+import { getEntitlements } from "@servicebeard/shared/entitlements";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
 import { loadWorkerExtensions } from "./extensions";
@@ -50,13 +51,23 @@ async function runImapPollsForDueProjects(): Promise<void> {
   let skippedNotDue = 0;
 
   for (const project of activeProjects) {
-    if (!isProjectPollDue(project.lastImapPollAt, imapPollIntervalSeconds)) {
+    const operational = await getEntitlements().isTeamOperational?.(project.teamId);
+    if (operational === false) {
+      skippedNotDue++;
+      continue;
+    }
+
+    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(project.teamId);
+    const teamInterval =
+      teamIntervalResult instanceof Promise ? await teamIntervalResult : teamIntervalResult;
+    const intervalSeconds = teamInterval ?? imapPollIntervalSeconds;
+    if (!isProjectPollDue(project.lastImapPollAt, intervalSeconds)) {
       skippedNotDue++;
       logger.debug(
         {
           projectId: project.id,
           lastImapPollAt: project.lastImapPollAt,
-          intervalSeconds: imapPollIntervalSeconds,
+          intervalSeconds,
         },
         "imap poll not due yet",
       );
@@ -94,18 +105,23 @@ async function runCommentPollsForDueProjects(): Promise<void> {
   let skippedNotDue = 0;
 
   for (const project of activeProjects) {
-    if (
-      !isProjectPollDue(
-        project.lastCommentPollAt,
-        commentPollIntervalSeconds,
-      )
-    ) {
+    const operational = await getEntitlements().isTeamOperational?.(project.teamId);
+    if (operational === false) {
+      skippedNotDue++;
+      continue;
+    }
+
+    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(project.teamId);
+    const teamInterval =
+      teamIntervalResult instanceof Promise ? await teamIntervalResult : teamIntervalResult;
+    const intervalSeconds = teamInterval ?? commentPollIntervalSeconds;
+    if (!isProjectPollDue(project.lastCommentPollAt, intervalSeconds)) {
       skippedNotDue++;
       logger.debug(
         {
           projectId: project.id,
           lastCommentPollAt: project.lastCommentPollAt,
-          intervalSeconds: commentPollIntervalSeconds,
+          intervalSeconds,
         },
         "comment poll not due yet",
       );

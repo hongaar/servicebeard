@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Loader2 } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
 import type { ProviderOptions, Rule } from "../lib/api";
 import { providerLabelTagVars } from "../lib/providerLabel";
 import {
@@ -12,9 +13,20 @@ import styles from "./RuleActionsCell.module.css";
 interface RuleActionsCellProps {
   rule: Rule;
   options?: ProviderOptions;
+  optionsLoading?: boolean;
 }
 
-export function RuleActionsCell({ rule, options }: RuleActionsCellProps) {
+function ActionSpinner() {
+  return (
+    <Loader2
+      size={14}
+      className={styles.spinner}
+      aria-hidden="true"
+    />
+  );
+}
+
+export function RuleActionsCell({ rule, options, optionsLoading }: RuleActionsCellProps) {
   if (!ruleHasActions(rule)) {
     return <span className={styles.empty}>—</span>;
   }
@@ -28,8 +40,12 @@ export function RuleActionsCell({ rule, options }: RuleActionsCellProps) {
   if (rule.actionStatus) {
     parts.push(
       <span key="status" className={styles.part}>
-        <span className={styles.prefix}>status:</span>{" "}
-        {resolveStatusName(rule.actionStatus, options)}
+        <span className={styles.prefix}>status:</span>
+        {optionsLoading ? (
+          <ActionSpinner />
+        ) : (
+          resolveStatusName(rule.actionStatus, options)
+        )}
       </span>,
     );
   }
@@ -37,7 +53,7 @@ export function RuleActionsCell({ rule, options }: RuleActionsCellProps) {
   if (rule.actionLabels.length > 0) {
     parts.push(
       <span key="labels" className={styles.part}>
-        <span className={styles.prefix}>labels:</span>{" "}
+        <span className={styles.prefix}>labels:</span>
         <span className={styles.labels}>
           {rule.actionLabels.map((name) => (
             <span
@@ -56,19 +72,30 @@ export function RuleActionsCell({ rule, options }: RuleActionsCellProps) {
   if (rule.actionAssigneeId) {
     parts.push(
       <span key="assignee" className={styles.part}>
-        <span className={styles.prefix}>assignee:</span>{" "}
-        {resolveAssigneeName(rule.actionAssigneeId, options)}
+        <span className={styles.prefix}>assignee:</span>
+        {optionsLoading ? (
+          <ActionSpinner />
+        ) : (
+          resolveAssigneeName(rule.actionAssigneeId, options)
+        )}
       </span>,
     );
   }
 
   return (
-    <div className={styles.root}>
+    <div
+      className={styles.root}
+      aria-busy={optionsLoading || undefined}
+    >
       {parts.map((part, index) => (
-        <span key={index} className={styles.segment}>
-          {index > 0 ? <span className={styles.sep}>·</span> : null}
+        <Fragment key={index}>
+          {index > 0 ? (
+            <span className={styles.sep} aria-hidden="true">
+              ·
+            </span>
+          ) : null}
           {part}
-        </span>
+        </Fragment>
       ))}
     </div>
   );

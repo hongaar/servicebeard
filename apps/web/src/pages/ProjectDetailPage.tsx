@@ -1,3 +1,4 @@
+import { LimitReachedDialog } from "@extensions";
 import { providerIssuesWebUrl } from "@servicebeard/shared";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import { SyncErrorDetailDialog } from "../components/SyncErrorDetailDialog";
 import { TableRowAction } from "../components/TableRowAction";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
 import { api, type CreateRuleInput, type ProjectSyncError, type Rule } from "../lib/api";
+import { entitlementLimitMessage } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import type { ProjectSection } from "../lib/navigation";
 import {
@@ -64,7 +66,7 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, threads, syncErrors, teamName, section } = useLoaderData({
+  const { user, project, entitlements, threads, syncErrors, teamName, section } = useLoaderData({
     from: "/teams/$teamId/projects/$projectId/$section",
   });
   const { teamId, projectId } = useParams({ from: "/teams/$teamId/projects/$projectId/$section" });
@@ -103,6 +105,28 @@ export function ProjectDetailPage() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedThreadLabel, setSelectedThreadLabel] = useState("");
   const [selectedSyncErrorId, setSelectedSyncErrorId] = useState<string | null>(null);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const atRuleLimit = Boolean(entitlementLimitMessage("rule", entitlements));
+
+  const tryToggleRuleForm = () => {
+    if (showRuleForm) {
+      setEditingRuleId(null);
+      setRuleFormError("");
+      setShowRuleForm(false);
+      return;
+    }
+    if (atRuleLimit) {
+      if (LimitReachedDialog && entitlements) {
+        setLimitDialogOpen(true);
+      } else {
+        setRuleFormError("Rule limit reached");
+      }
+      return;
+    }
+    setEditingRuleId(null);
+    setRuleFormError("");
+    setShowRuleForm(true);
+  };
 
   const selectedSyncError =
     syncErrors.find((error) => error.id === selectedSyncErrorId) ?? null;
@@ -302,12 +326,7 @@ export function ProjectDetailPage() {
                 Rules run in priority order. The first match wins.
               </p>
             </div>
-            <Button
-              onClick={() => {
-                setEditingRuleId(null);
-                setShowRuleForm(!showRuleForm);
-              }}
-            >
+            <Button onClick={tryToggleRuleForm}>
               {showRuleForm ? "Cancel" : "Add rule"}
             </Button>
           </div>
@@ -402,7 +421,11 @@ export function ProjectDetailPage() {
                         <td>{rule.priority}</td>
                         <td className={styles.ruleMeta}>{formatRuleMatch(rule)}</td>
                         <td>
-                          <RuleActionsCell rule={rule} options={providerOptions.data} />
+                          <RuleActionsCell
+                            rule={rule}
+                            options={providerOptions.data}
+                            optionsLoading={providerOptions.isLoading}
+                          />
                         </td>
                         <td className={styles.tableActions}>
                           <TableRowAction
@@ -678,6 +701,16 @@ export function ProjectDetailPage() {
             onConfirm={() => deleteProject.mutate()}
           />
         </>
+      )}
+
+      {LimitReachedDialog && entitlements && (
+        <LimitReachedDialog
+          open={limitDialogOpen}
+          onOpenChange={setLimitDialogOpen}
+          resource="rule"
+          entitlements={entitlements}
+          teamId={teamId}
+        />
       )}
     </Layout>
   );

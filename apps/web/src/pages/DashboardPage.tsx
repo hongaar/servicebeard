@@ -17,6 +17,7 @@ export function DashboardPage() {
   if (data.landing || !data.user) return null;
 
   const { user, teams } = data;
+  const ownedTeamCount = teams.filter((team) => team.role === "owner").length;
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const navigate = useNavigate();
@@ -32,6 +33,10 @@ export function DashboardPage() {
       await router.invalidate();
       setShowCreate(false);
       setName("");
+      if (ownedTeamCount >= 1) {
+        navigate({ to: "/teams/$teamId/billing", params: { teamId: team.id } });
+        return;
+      }
       navigate({ to: "/teams/$teamId/projects", params: { teamId: team.id } });
     },
   });
@@ -47,7 +52,8 @@ export function DashboardPage() {
           <div className={styles.sectionHeaderText}>
             <h2 className={styles.sectionTitle}>Your teams</h2>
             <p className={styles.sectionDescription}>
-              Each team has its own members and mail-sync projects.
+              Each team has its own members and mail-sync projects. Your account includes one free
+              team; additional teams you create need their own subscription.
             </p>
           </div>
           <Button onClick={() => setShowCreate(!showCreate)}>
@@ -59,6 +65,13 @@ export function DashboardPage() {
           <Dialog open={showCreate} onOpenChange={setShowCreate} title="Create a team">
             <p className={styles.formHint} style={{ marginTop: 0, marginBottom: "1rem" }}>
               Teams group people and projects together.
+              {ownedTeamCount >= 1 && (
+                <>
+                  {" "}
+                  Because you already own a team, this new team will require its own subscription
+                  before you can use it.
+                </>
+              )}
             </p>
             <form
               className={styles.form}
@@ -100,25 +113,41 @@ export function DashboardPage() {
           </div>
         ) : (
           <div className={styles.grid}>
-            {teams.map((team) => (
-              <Link
-                key={team.id}
-                to="/teams/$teamId/projects"
-                params={{ teamId: team.id }}
-                className={styles.teamCard}
-              >
-                <div className={styles.teamCardTop}>
-                  <span className={styles.teamAvatar} aria-hidden>
-                    {team.name.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className={styles.teamArrow} aria-hidden>
-                    <ChevronRight {...iconMd} />
-                  </span>
-                </div>
-                <div className={styles.teamName}>{team.name}</div>
-                <div className={styles.teamRole}>{team.role}</div>
-              </Link>
-            ))}
+            {teams.map((team) => {
+              const needsSubscription = Boolean(team.subscriptionRequired);
+              const teamLink =
+                needsSubscription && team.role === "owner"
+                  ? {
+                      to: "/teams/$teamId/billing" as const,
+                      params: { teamId: team.id },
+                    }
+                  : {
+                      to: "/teams/$teamId/projects" as const,
+                      params: { teamId: team.id },
+                    };
+
+              return (
+                <Link key={team.id} {...teamLink} className={styles.teamCard}>
+                  <div className={styles.teamCardTop}>
+                    <span className={styles.teamAvatar} aria-hidden>
+                      {team.name.slice(0, 2).toUpperCase()}
+                    </span>
+                    <span className={styles.teamArrow} aria-hidden>
+                      <ChevronRight {...iconMd} />
+                    </span>
+                  </div>
+                  <div className={styles.teamName}>{team.name}</div>
+                  <div className={styles.teamRole}>
+                    {team.role}
+                    {needsSubscription && (
+                      <span className={[styles.badge, styles.badgeInactive].join(" ")}>
+                        Subscription required
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

@@ -1,14 +1,19 @@
 import type { ParsedEmail, Rule } from "@servicebeard/shared";
 import {
+    buildThreadMatchIndex,
     DEFAULT_CATCH_ALL_RULE, DEFAULT_INBOUND_COMMENT_TEMPLATE,
-    DEFAULT_INBOUND_ISSUE_TEMPLATE, evaluateRules, normalizeSubject
+    DEFAULT_INBOUND_ISSUE_TEMPLATE,
+    emailMatchesExistingThread,
+    evaluateRules,
+    isEligibleForInboundRuleEvaluation, isEligibleForInboundRulePreview,
+    isEmailEligibleForInboundSync,
+    normalizeSubject
 } from "@servicebeard/shared";
 import { beforeAll, describe, expect, test } from "bun:test";
 import {
     advanceImapIngestedThrough,
     computeImapPollSince,
     IMAP_POLL_OVERLAP_MS,
-    isEmailEligibleForInboundSync,
 } from "../apps/worker/src/services/inbound";
 import { formatCommentBody, formatIssueDescription } from "../apps/worker/src/services/rules";
 
@@ -539,6 +544,157 @@ describe("inbound sync window", () => {
         projectCreatedAt,
       ),
     ).toBe(false);
+  });
+});
+
+describe("inbound rule eligibility", () => {
+  const ctx = {
+    supportEmail: "support@mail.test",
+    projectCreatedAt: new Date("2026-06-01T10:00:00Z"),
+  };
+
+  test("accepts mail addressed directly to the support inbox", () => {
+    expect(
+      isEligibleForInboundRuleEvaluation(
+        {
+          fromEmail: "customer@mail.test",
+          subject: "Help",
+          inReplyTo: null,
+          references: [],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  test("accepts Cc-only delivery to the support inbox", () => {
+    expect(
+      isEligibleForInboundRuleEvaluation(
+        {
+          fromEmail: "customer@mail.test",
+          subject: "Help",
+          inReplyTo: "<parent@mail.test>",
+          references: ["<parent@mail.test>"],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  test("rejects mail sent by the support mailbox itself", () => {
+    expect(
+      isEligibleForInboundRuleEvaluation(
+        {
+          fromEmail: "support@mail.test",
+          subject: "Ack",
+          inReplyTo: null,
+          references: [],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("inbound thread matching", () => {
+  const index = buildThreadMatchIndex(
+    [
+      { messageId: "<parent@mail.test>", inReplyTo: null },
+      { messageId: "<other@mail.test>", inReplyTo: "<root@mail.test>" },
+    ],
+    [{ subjectNormalized: "help needed", originalSenderEmail: "customer@mail.test" }],
+  );
+
+  test("matches by In-Reply-To against stored message IDs", () => {
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: "<parent@mail.test>",
+          references: [],
+          subject: "Re: Help",
+          fromEmail: "customer@mail.test",
+        },
+        index,
+      ),
+    ).toBe(true);
+  });
+
+  test("matches by References against stored in-reply-to values", () => {
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: null,
+          references: ["<root@mail.test>"],
+          subject: "Re: Help",
+          fromEmail: "customer@mail.test",
+        },
+        index,
+      ),
+    ).toBe(true);
+  });
+
+  test("matches by normalized subject and sender", () => {
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: null,
+          references: [],
+          subject: "Re: Help needed",
+          fromEmail: "customer@mail.test",
+        },
+        index,
+      ),
+    ).toBe(true);
+  });
+
+  test("does not match unrelated Cc-only replies", () => {
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: "<unknown@mail.test>",
+          references: ["<unknown@mail.test>"],
+          subject: "Re: Other topic",
+          fromEmail: "customer@mail.test",
+        },
+        index,
+      ),
+    ).toBe(false);
+  });
+
+  test("excludes existing-thread mail from rule preview", () => {
+    const ctx = {
+      supportEmail: "support@mail.test",
+      projectCreatedAt: new Date("2026-06-01T10:00:00Z"),
+    };
+    expect(
+      isEligibleForInboundRulePreview(
+        {
+          fromEmail: "customer@mail.test",
+          subject: "Re: Help",
+          inReplyTo: "<parent@mail.test>",
+          references: ["<parent@mail.test>"],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+        index,
+      ),
+    ).toBe(false);
+    expect(
+      isEligibleForInboundRulePreview(
+        {
+          fromEmail: "customer@mail.test",
+          subject: "New topic",
+          inReplyTo: "<unknown@mail.test>",
+          references: ["<unknown@mail.test>"],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+        index,
+      ),
+    ).toBe(true);
   });
 });
 

@@ -35,43 +35,51 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 - [Bun](https://bun.sh) 1.2+
 - Docker (for Postgres, GreenMail, Adminer, Roundcube)
 
-### 1. Start infrastructure
+### 1. Environment
 
 ```bash
-docker compose up -d
 cp .env.example .env
-# Edit .env with your login provider settings (see Authentication below)
+# Edit .env — at minimum DATABASE_URL, ENCRYPTION_KEY, SESSION_SECRET, and login providers
 ```
 
-### 2. Install & migrate
+### 2. Install dependencies
 
 ```bash
 bun install
-bun run db:generate
+```
+
+### 3. Start infrastructure
+
+```bash
+docker compose up -d
+```
+
+This starts Postgres, GreenMail, Roundcube, and Adminer (local development only).
+
+### 4. Database
+
+```bash
+bun run db:generate   # after schema changes only
 bun run db:migrate
 ```
 
-### 3. Run dev servers
+`db:migrate` applies OSS migrations. When `SB_EXTENSION_MANIFEST` is set in `.env`, extension migrations run in the same command.
+
+### 5. Run dev servers
 
 ```bash
 bun run dev
 ```
 
-This starts Docker services (Postgres, GreenMail, Roundcube, Adminer) and runs the API, worker, and web UI in one terminal.
+This runs the API, worker, and web UI in parallel via Bun workspaces (`bun run --filter './apps/*' dev`).
 
-To run only the app servers (when Docker is already up):
+Run a single app:
 
 ```bash
-bun run dev:apps
+bun run dev:api
+bun run dev:worker
+bun run dev:web
 ```
-
-Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
-
-## Local development
-
-`docker compose up -d` also starts Postgres, GreenMail, Adminer, and Roundcube. These services are for local development only — they are not deployed to Kubernetes.
-
-### Dev URLs
 
 | Service | URL |
 |---------|-----|
@@ -80,6 +88,36 @@ Open http://localhost:5173 (web UI) and http://localhost:3000 (API).
 | Dev mail UI (Roundcube) | http://localhost:8888 |
 | GreenMail API / raw browser | http://localhost:8080 |
 | Database UI (Adminer) | http://localhost:8081 |
+
+Dev login (when `LOCAL_LOGIN=true`): `dev@localhost` / `dev`
+
+### Extensions (optional)
+
+To load a plugin extension (e.g. the private cloud edition), add to `.env`:
+
+```bash
+SB_EXTENSION_MANIFEST=../serviceboard-cloud/extension.config.ts
+```
+
+Then install the extension repo and merge its env vars (see that repo's `.env.example`):
+
+```bash
+cd ../serviceboard-cloud && bun install
+```
+
+Re-run `bun run db:migrate` after setting the manifest so extension tables are applied.
+
+## Local development
+
+`docker compose up -d` also starts Postgres, GreenMail, Adminer, and Roundcube. These services are for local development only — they are not deployed to Kubernetes.
+
+**Typical daily flow:**
+
+```bash
+docker compose up -d          # if not already running
+bun run db:migrate            # after pulling new migrations
+bun run dev                   # API + worker + web
+```
 
 ### Configuration
 
@@ -284,7 +322,7 @@ The worker should append this as a comment on the existing issue instead of open
 
 ## Deploy
 
-Container images and the Helm chart are published to [GHCR](https://github.com/hongaar/servicebeard/pkgs). New packages default to private; a maintainer must set each package to **Public** once under [Packages](https://github.com/users/hongaar/packages) (Package settings → Change visibility).
+Container images and the Helm chart are published to [GHCR](https://github.com/hongaar?tab=packages&repo_name=servicebeard). New packages default to private; a maintainer must set each package to **Public** once under [Packages](https://github.com/hongaar?tab=packages&repo_name=servicebeard) (Package settings → Change visibility).
 
 **From GHCR (recommended for self-hosting):**
 

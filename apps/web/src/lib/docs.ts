@@ -5,4 +5,5 @@ export const DOC_PATHS = {
   issueProviders: "/docs/issue-providers",
   github: "/docs/issue-providers/github",
   gitlab: "/docs/issue-providers/gitlab",
+  selfHost: "/docs/self-host",
 } as const;
