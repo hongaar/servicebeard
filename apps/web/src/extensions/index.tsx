@@ -1,8 +1,9 @@
 import type { AnyRoute } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 import type { EntitlementRequiredError } from "../lib/api";
 
-export interface CloudTeamNavItem {
+export interface ExtensionTeamNavItem {
   to: string;
   params?: Record<string, string>;
   label: string;
@@ -11,24 +12,36 @@ export interface CloudTeamNavItem {
   visible?: boolean;
 }
 
-export const cloudRoutes: AnyRoute[] = [];
+export interface EntitlementRedirect {
+  to: string;
+  params?: Record<string, string>;
+}
 
-export function cloudTeamNavItems(_teamId: string): CloudTeamNavItem[] {
+export const extensionRoutes: AnyRoute[] = [];
+
+export const extensionPublicRoutes: AnyRoute[] = [];
+
+export const ExtensionLanding: ComponentType | undefined = undefined;
+
+export function extensionTeamNavItems(_teamId: string): ExtensionTeamNavItem[] {
   return [];
 }
 
-export function handleApiError(_error: EntitlementRequiredError): void {
-  // Cloud builds override @cloudExtensions to redirect users to billing.
+export function handleApiError(
+  _error: EntitlementRequiredError,
+  _context?: { requestPath?: string },
+): EntitlementRedirect | undefined {
+  return undefined;
 }
 
-export function CloudAppExtras(): null {
+export function extensionAppExtras(): null {
   return null;
 }
 
-export function isCloudTeamNavActive(
+export function isExtensionTeamNavActive(
   pathname: string,
   teamId: string,
-  item: CloudTeamNavItem,
+  item: ExtensionTeamNavItem,
 ): boolean {
   const resolvedPath = item.to.replace("$teamId", teamId);
   return pathname === resolvedPath;

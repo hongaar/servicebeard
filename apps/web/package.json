@@ -9,6 +9,14 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
+  "exports": {
+    ".": "./src/index.ts",
+    "./components/*": "./src/components/*",
+    "./extensions": "./src/extensions/index.tsx",
+    "./lib/*": "./src/lib/*",
+    "./routes/*": "./src/routes/*",
+    "./styles/*": "./src/styles/*"
+  },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
     "@servicebeard/shared": "workspace:*",

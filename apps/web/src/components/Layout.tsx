@@ -1,7 +1,7 @@
 import {
-    cloudTeamNavItems,
-    isCloudTeamNavActive,
-} from "@cloudExtensions";
+    extensionTeamNavItems,
+    isExtensionTeamNavActive,
+} from "@extensions";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -72,7 +72,7 @@ export function Layout({
 
   const teams = teamsData?.teams ?? [];
   const projects = projectsData?.projects ?? [];
-  const extraTeamNavItems = teamId ? cloudTeamNavItems(teamId) : [];
+  const extraTeamNavItems = teamId ? extensionTeamNavItems(teamId) : [];
 
   const isDashboard = pathname === "/";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
@@ -167,7 +167,7 @@ export function Layout({
                 {extraTeamNavItems.map((item) => {
                   if (item.visible === false) return null;
                   const Icon = item.icon;
-                  const active = isCloudTeamNavActive(pathname, teamId, item);
+                  const active = isExtensionTeamNavActive(pathname, teamId, item);
                   return (
                     <Link
                       key={item.to}

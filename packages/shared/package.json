@@ -17,7 +17,8 @@
     "./templates": "./src/templates.ts",
     "./env": "./src/env.ts",
     "./env-watch": "./src/env-watch.ts",
-    "./email-content": "./src/email-content.ts"
+    "./email-content": "./src/email-content.ts",
+    "./extensions": "./src/extensions/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

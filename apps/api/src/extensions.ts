@@ -1,24 +1,25 @@
-import type { Hono } from "hono";
+import { loadExtensionManifest } from "@servicebeard/shared/extensions";
+import type { ExtensionContext, ExtensionModule } from "@servicebeard/shared/extensions";
 import { setEntitlementsProvider } from "./lib/entitlements";
 import type { AppVariables } from "./middleware/auth";
+import type { Hono } from "hono";
 
-export interface ExtensionContext {
-  app: Hono<{ Variables: AppVariables }>;
-  setEntitlementsProvider: typeof setEntitlementsProvider;
-}
+export type { ExtensionContext, ExtensionModule } from "@servicebeard/shared/extensions";
 
-export interface ExtensionModule {
-  register(ctx: ExtensionContext): void | Promise<void>;
-}
+export async function loadExtensions(
+  ctx: Omit<ExtensionContext, "app"> & {
+    app: Hono<{ Variables: AppVariables }>;
+  },
+): Promise<void> {
+  const manifest = await loadExtensionManifest();
+  if (!manifest) return;
 
-export async function loadExtensions(ctx: ExtensionContext): Promise<void> {
-  const modulePath = process.env.SB_EXTENSIONS_MODULE;
-  if (!modulePath) return;
-
-  const extension = (await import(modulePath)) as ExtensionModule;
+  const extension = (await import(manifest.api)) as ExtensionModule;
   if (typeof extension.register !== "function") {
-    throw new Error("SB_EXTENSIONS_MODULE must export a register function");
+    throw new Error("Extension api module must export a register function");
   }
 
   await extension.register(ctx);
 }
+
+export { setEntitlementsProvider };

@@ -5,6 +5,7 @@ import type {
     PublicKeyCredentialRequestOptionsJSON,
     RegistrationResponseJSON,
 } from "@simplewebauthn/browser";
+import { redirect } from "@tanstack/react-router";
 
 const API_BASE = "/api";
 
@@ -69,8 +70,11 @@ async function request<T>(
         body.error ?? "Entitlement required",
         body.code,
       );
-      const { handleApiError } = await import("@cloudExtensions");
-      handleApiError(entitlementError);
+      const { handleApiError } = await import("@extensions");
+      const entitlementRedirect = handleApiError(entitlementError, { requestPath: path });
+      if (entitlementRedirect) {
+        throw redirect(entitlementRedirect);
+      }
       throw entitlementError;
     }
     throw new ApiError(

@@ -1,4 +1,4 @@
-import { cloudRoutes } from "@cloudExtensions";
+import { extensionPublicRoutes, extensionRoutes } from "@extensions";
 import { createRouter } from "@tanstack/react-router";
 import {
     dashboardRoute,
@@ -20,6 +20,7 @@ import { rootRoute } from "./routes/root.tsx";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  ...extensionPublicRoutes,
   docsIndexRoute,
   docsMailboxRoute,
   docsIssueProvidersRoute,
@@ -30,7 +31,7 @@ const routeTree = rootRoute.addChildren([
   teamRedirectRoute,
   teamMembersRoute,
   teamSettingsRoute,
-  ...cloudRoutes,
+  ...extensionRoutes,
   projectsRoute,
   projectRedirectRoute,
   projectSectionRoute,

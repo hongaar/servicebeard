@@ -322,28 +322,34 @@ Each project is a self-contained sync loop: its own mailbox connection, its own 
 
 ## Extensions
 
-Optional extension points let a hosted edition add capabilities (billing, extra routes, UI) without forking the core application. Self-hosted deployments leave every extension unset; behavior is identical to a build without these hooks.
+Optional extension points let a hosted edition add capabilities (billing, marketing pages, extra routes, DB migrations) without forking the core application. Self-hosted deployments leave the extension manifest unset; behavior is identical to a build without these hooks.
 
-### Backend: `SB_EXTENSIONS_MODULE`
+### Extension manifest: `SB_EXTENSION_MANIFEST`
 
-Set `SB_EXTENSIONS_MODULE` to an absolute or workspace-relative path of a module that exports:
+Set `SB_EXTENSION_MANIFEST` to the path of an extension manifest file (typically `extension.config.ts` in the extension repository). The manifest declares:
 
 ```ts
-export async function register(ctx: {
-  app: Hono;
-  setEntitlementsProvider: (provider: EntitlementsProvider) => void;
-}): Promise<void>;
+export default {
+  api: "./path/to/api-extension/index.ts",
+  web: "./path/to/web-extension/index.tsx",
+  migrations: [{ dir: "./path/to/drizzle", table: "__drizzle_migrations_extension" }],
+};
 ```
 
-The API loads this module after mounting core routes (`apps/api/src/extensions.ts`). The worker loads the same module path with a worker-specific context (`apps/worker/src/extensions.ts`):
+Paths are resolved relative to the manifest file. A loader in `@servicebeard/shared/extensions` reads the manifest at runtime (API, worker, migrations) and at web build time (Vite).
+
+When `SB_EXTENSION_MANIFEST` is unset, nothing is loaded.
+
+### Backend: `register()`
+
+The API loads the manifest's `api` module after mounting core routes (`apps/api/src/extensions.ts`). The worker loads the same module with a worker-specific context (`apps/worker/src/extensions.ts`):
 
 ```ts
-export async function register(ctx: { boss: PgBoss }): Promise<void>;
+export async function register(ctx: ExtensionContext): Promise<void>;
+export async function register(ctx: WorkerExtensionContext): Promise<void>;
 ```
 
 A single module may export one `register` function that handles both contexts by checking which properties exist on `ctx`.
-
-When `SB_EXTENSIONS_MODULE` is unset, nothing is loaded.
 
 ### Entitlements
 
@@ -370,25 +376,46 @@ Enforcement points:
 - **Project creation** — `POST /api/teams/:teamId/projects` calls `assertCanCreateProject` after auth.
 - **Team access** — `requireTeamMember` calls `assertTeamAccess` for every team-scoped route. Exempt billing paths in your implementation so teams can subscribe.
 
-### Frontend: `@cloudExtensions`
+### Database migrations
 
-The web app resolves `@cloudExtensions` via Vite/TypeScript path alias (`apps/web/vite.config.ts`). The OSS default is an empty stub (`apps/web/src/extensions/index.tsx`):
+`bun run db:migrate` applies OSS migrations first, then each `migrations` entry from the extension manifest (with its own Drizzle migrations table).
+
+### Frontend: `@extensions`
+
+The web app resolves `@extensions` via Vite/TypeScript path alias (`apps/web/vite.config.ts`). The OSS default is an empty stub (`apps/web/src/extensions/index.tsx`):
 
 ```ts
-export const cloudRoutes: AnyRoute[] = [];
-export function cloudTeamNavItems(teamId: string): CloudTeamNavItem[] { return []; }
+export const extensionRoutes: AnyRoute[] = [];
+export const extensionPublicRoutes: AnyRoute[] = [];
+export const ExtensionLanding: ComponentType | undefined = undefined;
+export function extensionTeamNavItems(teamId: string): ExtensionTeamNavItem[] { return []; }
 ```
 
-An extended build overrides the alias to a module that exports:
+An extended build points the manifest's `web` entry at a module that exports:
 
-- `cloudRoutes` — TanStack Router routes merged in `apps/web/src/router.ts`
-- `cloudTeamNavItems(teamId)` — extra sidebar links rendered in `Layout.tsx`
-- `isCloudTeamNavActive(pathname, teamId, item)` — optional; OSS provides a default
+- `extensionRoutes` — authenticated TanStack Router routes merged in `apps/web/src/router.ts`
+- `extensionPublicRoutes` — public routes (e.g. `/pricing`) mounted without auth
+- `ExtensionLanding` — optional landing page shown at `/` for unauthenticated visitors
+- `extensionTeamNavItems(teamId)` — extra sidebar links rendered in `Layout.tsx`
+- `isExtensionTeamNavActive(pathname, teamId, item)` — optional; OSS provides a default
+- `handleApiError(error, context)` — optional 402 → billing redirect handler
+
+Extension UI code can import OSS web components via `@servicebeard/web/*`.
 
 The API client throws `EntitlementRequiredError` (402) when the response includes a `code` field. Extended UIs can catch this and redirect users to billing.
 
 ### Self-host checklist
 
-- Do **not** set `SB_EXTENSIONS_MODULE`
-- Build the web app with the default `@cloudExtensions` stub
+- Do **not** set `SB_EXTENSION_MANIFEST`
+- Build the web app with the default `@extensions` stub
 - No entitlements provider is registered; limits and access gates are disabled
+
+### Docker and Helm
+
+Build with an optional extension directory:
+
+```bash
+docker build --build-context extension=/path/to/extension -f Dockerfile --target api .
+```
+
+Helm values support `extension.enabled`, `extension.manifest`, and `extension.env` for extension-specific configuration.

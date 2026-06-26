@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@cloudExtensions": ["./src/extensions/index.tsx"]
+      "@extensions": ["./src/extensions/index.tsx"],
+      "@servicebeard/web/*": ["./src/*"]
     }
   },
   "include": ["src"]

@@ -1,4 +1,5 @@
 export * from "./constants";
+export * from "./extensions";
 export * from "./default-rule";
 export * from "./errors";
 export * from "./github-repository";

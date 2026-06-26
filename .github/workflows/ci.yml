@@ -84,8 +84,8 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@v7
         with:
-          context: .
-          target: ${{ matrix.target }}
+          build-contexts: |
+            extension=./extensions-stub
           push: false
           tags: servicebeard-${{ matrix.target }}:build
           labels: |

@@ -14,7 +14,7 @@ import styles from "../styles/pages.module.css";
 
 export function DashboardPage() {
   const data = useLoaderData({ from: "/" });
-  if (!data.user) return null;
+  if (data.landing || !data.user) return null;
 
   const { user, teams } = data;
   const [showCreate, setShowCreate] = useState(false);

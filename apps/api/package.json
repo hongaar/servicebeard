@@ -4,10 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --preload ../../packages/shared/src/env-watch.ts run --watch src/index.ts",
+    "dev": "bun --preload ../../packages/shared/src/env-watch.ts --watch src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    "./middleware/auth": "./src/middleware/auth.ts",
+    "./middleware/team": "./src/middleware/team.ts",
+    "./extensions": "./src/extensions.ts"
   },
   "dependencies": {
     "@servicebeard/db": "workspace:*",

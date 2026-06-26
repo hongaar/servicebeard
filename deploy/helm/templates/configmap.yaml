@@ -31,3 +31,9 @@ data:
   WEBHOOK_BASE_URL: {{ .Values.env.WEBHOOK_BASE_URL | quote }}
   IMAP_POLL_INTERVAL_SECONDS: {{ .Values.env.IMAP_POLL_INTERVAL_SECONDS | quote }}
   COMMENT_POLL_INTERVAL_SECONDS: {{ .Values.env.COMMENT_POLL_INTERVAL_SECONDS | quote }}
+  {{- if .Values.extension.enabled }}
+  SB_EXTENSION_MANIFEST: {{ .Values.extension.manifest | quote }}
+  {{- end }}
+  {{- range $key, $value := .Values.extension.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

@@ -1,4 +1,5 @@
 import { createRoute, redirect } from "@tanstack/react-router";
+import { ExtensionLanding } from "@extensions";
 import { api, ApiError } from "../lib/api";
 import {
     DEFAULT_PROJECT_SECTION,
@@ -104,9 +105,14 @@ export const dashboardRoute = createRoute({
   component: HomePage,
   loader: async () => {
     const { user } = await api.getMe();
-    if (!user) throw redirect({ to: "/login" });
+    if (!user) {
+      if (ExtensionLanding) {
+        return { landing: true as const };
+      }
+      throw redirect({ to: "/login" });
+    }
     const { teams } = await api.getTeams();
-    return { user, teams };
+    return { landing: false as const, user, teams };
   },
 });
 

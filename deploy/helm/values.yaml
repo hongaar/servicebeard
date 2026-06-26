@@ -82,6 +82,11 @@ env:
   IMAP_POLL_INTERVAL_SECONDS: "60"
   COMMENT_POLL_INTERVAL_SECONDS: "120"
 
+extension:
+  enabled: false
+  manifest: /extension/extension.config.ts
+  env: {}
+
 secrets:
   oidcClientSecret: changeme
   githubClientSecret: changeme
@@ -89,6 +94,7 @@ secrets:
   gitlabClientSecret: changeme
   sessionSecret: changeme
   encryptionKey: "0000000000000000000000000000000000000000000000000000000000000000"
+  mollieApiKey: ""
 
 autoscaling:
   enabled: false
