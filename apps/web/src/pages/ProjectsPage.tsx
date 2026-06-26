@@ -14,6 +14,7 @@ import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
 import { entitlementLimitMessage } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import type { ProjectsLoaderData } from "../lib/loaderTypes";
 import {
     defaultProjectSettingsForm,
     formToCreateInput,
@@ -24,7 +25,7 @@ import styles from "../styles/pages.module.css";
 export function ProjectsPage() {
   const { user, projects, entitlements, teamName } = useLoaderData({
     from: "/teams/$teamId/projects",
-  });
+  }) as ProjectsLoaderData;
   const { teamId } = useParams({ from: "/teams/$teamId/projects" });
   const search = useSearch({ strict: false }) as {
     create?: string | boolean;

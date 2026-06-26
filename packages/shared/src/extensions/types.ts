@@ -1,17 +1,9 @@
-export interface TeamEntitlementUsage {
-  projects: { used: number; limit: number | null };
-  rules: { used: number; limit: number | null };
-}
-
-export interface EntitlementsProvider {
-  assertCanCreateProject(teamId: string, currentCount: number): Promise<void>;
-  assertTeamAccess(teamId: string, ctx: { path: string }): Promise<void>;
-  assertCanCreateRule?(teamId: string, currentRuleCount: number): Promise<void>;
-  assertCanCreateConversation?(teamId: string, conversationsThisMonth: number): Promise<void>;
-  getBillingPeriod?(teamId: string): Promise<{ start: Date; end: Date }>;
-  getTeamEntitlementUsage?(teamId: string): Promise<TeamEntitlementUsage>;
-  getImapPollIntervalSeconds?(teamId: string): number | Promise<number> | undefined;
-}
+export type {
+  EntitlementsProvider,
+  TeamAccessContext,
+  TeamEntitlementUsage,
+  TeamListingMeta,
+} from "../entitlements";
 
 export interface ExtensionApp {
   route(path: string, handler: unknown): void;
@@ -19,7 +11,9 @@ export interface ExtensionApp {
 
 export interface ExtensionContext {
   app: ExtensionApp;
-  setEntitlementsProvider: (provider: EntitlementsProvider) => void;
+  setEntitlementsProvider: (
+    provider: import("../entitlements").EntitlementsProvider,
+  ) => void;
 }
 
 export interface ExtensionModule {

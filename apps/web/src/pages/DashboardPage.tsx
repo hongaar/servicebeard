@@ -1,6 +1,6 @@
 import { slugifyName } from "@servicebeard/shared";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ChevronRight, Users } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/Button";
@@ -10,13 +10,15 @@ import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
 import { api } from "../lib/api";
 import { iconMd } from "../lib/icons";
+import type { AppUser, TeamSummary } from "../lib/loaderTypes";
 import styles from "../styles/pages.module.css";
 
-export function DashboardPage() {
-  const data = useLoaderData({ from: "/" });
-  if (data.landing || !data.user) return null;
+type DashboardPageProps = {
+  user: AppUser;
+  teams: TeamSummary[];
+};
 
-  const { user, teams } = data;
+export function DashboardPage({ user, teams }: DashboardPageProps) {
   const ownedTeamCount = teams.filter((team) => team.role === "owner").length;
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");

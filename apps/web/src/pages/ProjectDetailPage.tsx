@@ -20,6 +20,7 @@ import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
 import { api, type CreateRuleInput, type ProjectSyncError, type Rule } from "../lib/api";
 import { entitlementLimitMessage } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import type { ProjectDetailLoaderData } from "../lib/loaderTypes";
 import type { ProjectSection } from "../lib/navigation";
 import {
     formToUpdateInput,
@@ -66,9 +67,10 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, entitlements, threads, syncErrors, teamName, section } = useLoaderData({
-    from: "/teams/$teamId/projects/$projectId/$section",
-  });
+  const { user, project, entitlements, threads, syncErrors, teamName, section } =
+    useLoaderData({
+      from: "/teams/$teamId/projects/$projectId/$section",
+    }) as ProjectDetailLoaderData;
   const { teamId, projectId } = useParams({ from: "/teams/$teamId/projects/$projectId/$section" });
   const search = useSearch({ strict: false }) as {
     githubInstallationId?: string;

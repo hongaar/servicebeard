@@ -9,5 +9,9 @@ export function HomePage() {
     return <ExtensionLanding />;
   }
 
-  return <DashboardPage />;
+  if (data.landing || !data.user) {
+    return null;
+  }
+
+  return <DashboardPage user={data.user} teams={data.teams} />;
 }
