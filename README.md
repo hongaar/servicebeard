@@ -26,7 +26,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 | Worker | Bun + pg-boss |
 | Frontend | Vite + React + Base UI + CSS Modules |
 | Database | PostgreSQL + Drizzle ORM |
-| Deploy | Helm + Docker (self-host from this repo; hosted edition in serviceboard-cloud) |
+| Deploy | Helm + Docker |
 
 ## Quickstart
 
@@ -286,8 +286,6 @@ The worker should append this as a comment on the existing issue instead of open
 
 Container images and the Helm chart are published to [GHCR](https://github.com/hongaar/servicebeard/pkgs). New packages default to private; a maintainer must set each package to **Public** once under [Packages](https://github.com/users/hongaar/packages) (Package settings → Change visibility).
 
-The marketing site and hosted cloud edition are maintained in the private [serviceboard-cloud](https://github.com/hongaar/servicebeard-cloud) repository.
-
 **From GHCR (recommended for self-hosting):**
 
 ```bash
@@ -322,11 +320,7 @@ docker build --target web -t servicebeard-web .
 
 ## Documentation
 
-In-app documentation lives under `/docs` in the web UI (mailbox setup, issue providers, GitHub/GitLab guides). The marketing landing page and pricing site are in the [serviceboard-cloud](https://github.com/hongaar/servicebeard-cloud) repository.
-
-## Extensions
-
-Optional extension points for hosted editions are documented in [EXTENSIONS.md](./EXTENSIONS.md).
+In-app documentation lives under `/docs` in the web UI (mailbox setup, issue providers, GitHub/GitLab guides). Sync design and extension points are in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Project structure
 
