@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 
@@ -30,7 +31,23 @@ export interface ResolvedExtensionManifest {
 }
 
 function resolveManifestPath(manifestPath: string): string {
-  return path.isAbsolute(manifestPath) ? manifestPath : path.resolve(process.cwd(), manifestPath);
+  if (path.isAbsolute(manifestPath)) return manifestPath;
+
+  const searchBases: string[] = [];
+  let current = process.cwd();
+  while (true) {
+    searchBases.push(current);
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  for (const base of searchBases) {
+    const resolved = path.resolve(base, manifestPath);
+    if (existsSync(resolved)) return resolved;
+  }
+
+  return path.resolve(process.cwd(), manifestPath);
 }
 
 export function parseExtensionManifest(
