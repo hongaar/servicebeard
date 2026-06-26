@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "dev": "bunx --bun vite",
+    "build": "tsc -b && bunx --bun vite build",
+    "preview": "bunx --bun vite preview",
     "typecheck": "tsc --noEmit"
   },
   "exports": {
