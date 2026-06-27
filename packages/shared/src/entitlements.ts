@@ -22,7 +22,7 @@ export interface EntitlementsProvider {
   getTeamEntitlementUsage?(teamId: string): Promise<TeamEntitlementUsage>;
   getTeamListingMeta?(teamId: string): Promise<TeamListingMeta>;
   isTeamOperational?(teamId: string): Promise<boolean>;
-  getImapPollIntervalSeconds?(teamId: string): number | Promise<number> | undefined;
+  getImapPollIntervalSeconds?(teamId: string): number | Promise<number | undefined> | undefined;
 }
 
 const unlimitedEntitlements: EntitlementsProvider = {

@@ -40,3 +40,4 @@ export * from "./schema";
 export * from "./seed-dev-account";
 export * from "./sync-errors";
 
+export { and, asc, count, eq, gte, lt, sql } from "drizzle-orm";
