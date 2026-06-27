@@ -14,7 +14,7 @@ const repoRoot = resolve(import.meta.dir, "../..");
 const input = resolve(process.argv[2] ?? resolve(repoRoot, "deploy/compose/.env"));
 const output = resolve(process.argv[3] ?? resolve(repoRoot, "deploy/compose/.env.vite"));
 
-const config = await viteConfig();
+const config = await viteConfig({ mode: "production", command: "build" });
 const rawPrefix = config.envPrefix ?? "VITE_";
 const prefixes = (Array.isArray(rawPrefix) ? rawPrefix : [rawPrefix]).map(String);
 
