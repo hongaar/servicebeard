@@ -268,7 +268,7 @@ export function ProjectMailSection({
         The inbox that receives customer emails.
         {isCreate
           ? " Enter the address, then auto-detect or enter server settings manually."
-          : " Also used as the From address when replying to customers."}{" "}
+          : " Used for IMAP/SMTP login and as the email address on outbound replies."}{" "}
         <DocsLink to={DOC_PATHS.mailbox}>Mailbox setup guide</DocsLink>
       </p>
 
@@ -278,7 +278,14 @@ export function ProjectMailSection({
         value={values.smtpFrom}
         error={fieldErrors?.smtpFrom}
         onChange={(e) => handleSupportEmail(e.target.value)}
-        hint="Also used as the From address when replying to customers."
+        hint="The inbox that receives customer emails."
+      />
+
+      <Input
+        label="From display name"
+        value={values.smtpFromName}
+        onChange={(e) => onChange("smtpFromName", e.target.value)}
+        hint="Optional. Shown to customers on replies (e.g. Acme Support)."
       />
 
       {isCreate && hasSupportEmail && !settingsRevealed && (

@@ -1,10 +1,13 @@
 import type { MailAutoconfig } from "@servicebeard/shared";
 import {
     detectIssueProviderFromUrl,
+    formatMailFrom,
     GREENMAIL_DEV_PROJECT_MAIL,
     lookupMailAutoconfig,
     parseGithubRepository,
     parseGitlabProject,
+    parseMailFromAddress,
+    parseMailFromName,
     slugifyName,
     usesLocalPartMailAuth,
 } from "@servicebeard/shared";
@@ -37,6 +40,7 @@ export interface ProjectSettingsFormValues {
   smtpUser: string;
   smtpPassword: string;
   smtpFrom: string;
+  smtpFromName: string;
   isActive: boolean;
   imapMarkIngestedAsSeen: boolean;
 }
@@ -93,6 +97,7 @@ const baseProjectSettingsForm: ProjectSettingsFormValues = {
   smtpUser: "",
   smtpPassword: "",
   smtpFrom: "",
+  smtpFromName: "",
   isActive: true,
   imapMarkIngestedAsSeen: true,
 };
@@ -282,7 +287,8 @@ export function projectToSettingsForm(project: Project): ProjectSettingsFormValu
     smtpSecure: project.smtpSecure,
     smtpUser: project.smtpUser,
     smtpPassword: "",
-    smtpFrom: project.smtpFrom,
+    smtpFrom: parseMailFromAddress(project.smtpFrom),
+    smtpFromName: parseMailFromName(project.smtpFrom) ?? "",
     isActive: project.isActive,
     imapMarkIngestedAsSeen: project.imapMarkIngestedAsSeen,
   };
@@ -300,7 +306,7 @@ export function formToMailConfig(form: ProjectSettingsFormValues) {
     smtpSecure: form.smtpSecure,
     smtpUser: form.smtpUser,
     smtpPassword: form.smtpPassword,
-    smtpFrom: form.smtpFrom,
+    smtpFrom: formatMailFrom(form.smtpFrom, form.smtpFromName),
   };
 }
 
@@ -361,7 +367,7 @@ export function formToUpdateInput(
     smtpPort: form.smtpPort,
     smtpSecure: form.smtpSecure,
     smtpUser: form.smtpUser,
-    smtpFrom: form.smtpFrom,
+    smtpFrom: formatMailFrom(form.smtpFrom, form.smtpFromName),
     isActive: form.isActive,
     imapMarkIngestedAsSeen: form.imapMarkIngestedAsSeen,
   };

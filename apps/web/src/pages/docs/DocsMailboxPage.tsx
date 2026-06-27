@@ -12,8 +12,9 @@ export function DocsMailboxPage() {
       <p>
         Each project has one mailbox. The worker polls <strong>IMAP</strong> for unseen messages and
         sends outbound mail (acknowledgements and comment replies) over <strong>SMTP</strong>. The{" "}
-        <strong>Support email address</strong> is both the mailbox login identity and the{" "}
-        <code>From</code> address customers see on replies.
+        <strong>Support email address</strong> is the mailbox login identity. The optional{" "}
+        <strong>From display name</strong> is combined with that address for the{" "}
+        <code>From</code> header customers see on replies.
       </p>
 
       <h2>Quick setup in the project wizard</h2>
@@ -42,9 +43,16 @@ export function DocsMailboxPage() {
 
       <h3>Support email address</h3>
       <p>
-        The address customers write to. ServiceBeard also uses it as the sender on outbound mail.
-        When you change this on an existing project, IMAP and SMTP usernames are updated to match
-        unless you override them in the server settings.
+        The address customers write to. ServiceBeard uses it for IMAP/SMTP login and as the email
+        part of the sender on outbound mail. When you change this on an existing project, IMAP and
+        SMTP usernames are updated to match unless you override them in the server settings.
+      </p>
+
+      <h3>From display name</h3>
+      <p>
+        Optional label shown before the support address on replies (for example{" "}
+        <code>Acme Support &lt;support@acme.com&gt;</code>). Leave blank to send with the address
+        only.
       </p>
 
       <h3>IMAP (incoming)</h3>

@@ -749,6 +749,16 @@ describe("mail from validation", () => {
     );
     expect(parseMailFromAddress("support@mail.test")).toBe("support@mail.test");
   });
+
+  test("parses and formats display name", async () => {
+    const { formatMailFrom, parseMailFromName } = await import("@servicebeard/shared");
+    expect(parseMailFromName("Support <support@mail.test>")).toBe("Support");
+    expect(parseMailFromName("support@mail.test")).toBeNull();
+    expect(formatMailFrom("support@mail.test", "Support")).toBe(
+      "Support <support@mail.test>",
+    );
+    expect(formatMailFrom("support@mail.test", "")).toBe("support@mail.test");
+  });
 });
 
 describe("email threading helpers", () => {

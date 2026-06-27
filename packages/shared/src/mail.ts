@@ -17,6 +17,17 @@ export function parseMailFromAddress(value: string): string {
   return named ? named[2].trim() : trimmed;
 }
 
+export function parseMailFromName(value: string): string | null {
+  const trimmed = value.trim();
+  const named = trimmed.match(MAIL_FROM_WITH_NAME);
+  const name = named?.[1]?.trim();
+  return name || null;
+}
+
+export function formatMailFrom(email: string, name?: string | null): string {
+  return formatMailboxAddress(email.trim(), name?.trim() || null);
+}
+
 export function formatMailboxAddress(email: string, name?: string | null): string {
   const trimmedName = name?.trim();
   if (trimmedName) return `${trimmedName} <${email}>`;
