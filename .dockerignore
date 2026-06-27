@@ -1,0 +1,16 @@
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.git/
+**/.git/
+.env
+.env.*
+!.env.example
+.logs/
+*.log
+.DS_Store
+coverage/
+.turbo/
+*.tsbuildinfo
+deploy/compose/.env

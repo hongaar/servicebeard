@@ -10,6 +10,7 @@
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
+  text-decoration: none;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
@@ -29,6 +30,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+.primary:hover,
+.primary:active,
+.primary:visited {
+  color: var(--color-primary-text);
+}
+
 .primary:hover {
   filter: brightness(1.06);
   box-shadow: var(--shadow);
@@ -37,6 +44,12 @@
 .secondary {
   background: var(--color-surface);
   border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.secondary:hover,
+.secondary:active,
+.secondary:visited {
   color: var(--color-text);
 }
 
@@ -51,9 +64,17 @@
   color: var(--color-text-muted);
 }
 
+.ghost:visited {
+  color: var(--color-text-muted);
+}
+
 .ghost:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.ghost:hover:visited {
   color: var(--color-text);
 }
 
@@ -63,7 +84,12 @@
   color: var(--color-danger);
 }
 
-.danger:hover {
+.danger:visited {
+  color: var(--color-danger);
+}
+
+.danger:hover,
+.danger:hover:visited {
   background: var(--color-danger);
   color: #fff;
   border-color: var(--color-danger);

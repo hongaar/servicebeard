@@ -1,8 +1,8 @@
 export type {
-  EntitlementsProvider,
-  TeamAccessContext,
-  TeamEntitlementUsage,
-  TeamListingMeta,
+    EntitlementsProvider,
+    TeamAccessContext,
+    TeamEntitlementUsage,
+    TeamListingMeta
 } from "../entitlements";
 
 export interface ExtensionApp {

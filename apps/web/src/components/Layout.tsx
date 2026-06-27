@@ -154,16 +154,6 @@ export function Layout({
                   </NavIcon>
                   Members
                 </Link>
-                <Link
-                  to="/teams/$teamId/settings"
-                  params={{ teamId }}
-                  className={navLinkClass(!!isTeamSettings)}
-                >
-                  <NavIcon>
-                    <Settings {...iconMd} />
-                  </NavIcon>
-                  Settings
-                </Link>
                 {extraTeamNavItems.map((item) => {
                   if (item.visible === false) return null;
                   const Icon = item.icon;
@@ -182,6 +172,16 @@ export function Layout({
                     </Link>
                   );
                 })}
+                <Link
+                  to="/teams/$teamId/settings"
+                  params={{ teamId }}
+                  className={navLinkClass(!!isTeamSettings)}
+                >
+                  <NavIcon>
+                    <Settings {...iconMd} />
+                  </NavIcon>
+                  Settings
+                </Link>
               </>
             )}
 

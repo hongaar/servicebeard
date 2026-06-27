@@ -4,6 +4,7 @@ export interface TeamAccessContext {
 
 export interface TeamEntitlementUsage {
   planId: string;
+  subscriptionRequired?: boolean;
   projects: { used: number; limit: number | null };
   rules: { used: number; limit: number | null };
 }

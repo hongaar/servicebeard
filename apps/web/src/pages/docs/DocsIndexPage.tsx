@@ -13,8 +13,7 @@ export function DocsIndexPage() {
         <Link to={DOC_PATHS.selfHost} className={styles.card}>
           <h2 className={styles.cardTitle}>Self-hosting</h2>
           <p className={styles.cardDesc}>
-            Kubernetes Helm chart for production deployments. Docker Compose for self-host coming
-            soon.
+            Docker Compose or Kubernetes Helm chart for production deployments.
           </p>
         </Link>
         <Link to={DOC_PATHS.mailbox} className={styles.card}>

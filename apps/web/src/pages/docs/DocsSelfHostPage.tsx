@@ -7,20 +7,39 @@ export function DocsSelfHostPage() {
   return (
     <DocsLayout
       title="Self-hosting"
-      lead="Run ServiceBeard on your own infrastructure with Kubernetes. The same codebase powers the managed cloud."
+      lead="Run ServiceBeard on your own infrastructure with Docker Compose or Kubernetes. The same codebase powers the managed cloud."
     >
       <p>
         ServiceBeard is open source under the MIT license. For production self-hosting, deploy with
-        the Helm chart and published container images. If you prefer not to operate the stack
-        yourself, use the managed cloud instead.
+        Docker Compose on a single server or with the Helm chart on Kubernetes. If you prefer not to
+        operate the stack yourself, use the managed cloud instead.
       </p>
       <p>
         For local development, see the{" "}
         <a href="https://github.com/hongaar/servicebeard" rel="noopener noreferrer">
           repository README
         </a>
-        — the existing Docker Compose stack is for dev workflows only (Postgres, GreenMail, hot
-        reload), not production deployments.
+        — the root <code>docker-compose.yml</code> is for dev workflows only (Postgres, GreenMail,
+        hot reload).
+      </p>
+
+      <h2>Production on Docker Compose</h2>
+      <p>
+        The production stack lives in{" "}
+        <code>deploy/compose/</code> in the repository: Postgres, API, worker, web (nginx), and Caddy
+        for HTTPS. You need a VPS with Docker, a public hostname, and a DNS <code>A</code> record
+        pointing at the server.
+      </p>
+      <pre>
+        <code>{`cd deploy/compose
+cp .env.example .env
+# Edit DOMAIN, secrets, and login providers
+
+docker compose --env-file .env -f docker-compose.yml up -d --build`}</code>
+      </pre>
+      <p>
+        Caddy obtains a Let&apos;s Encrypt certificate automatically. The API runs database migrations
+        on startup. See the repository README for extension overlays and environment variables.
       </p>
 
       <h2>Production on Kubernetes</h2>
@@ -48,13 +67,6 @@ export function DocsSelfHostPage() {
         directory.
       </p>
 
-      <h2>Docker Compose</h2>
-      <p>
-        A production-oriented Docker Compose deployment is planned but not available yet. The
-        Compose file in the repository today is dev-only and will be rewritten for self-hosted
-        production installs (without Kubernetes). Check back here once that stack ships.
-      </p>
-
       <h2>What you operate</h2>
       <ul>
         <li>
@@ -67,7 +79,7 @@ export function DocsSelfHostPage() {
           <strong>Web</strong> — React frontend (same UI as cloud)
         </li>
         <li>
-          <strong>Postgres</strong> — application database (included in the Helm chart)
+          <strong>Postgres</strong> — application database (included in Compose and Helm)
         </li>
       </ul>
       <p>
@@ -77,11 +89,11 @@ export function DocsSelfHostPage() {
 
       <h2>Managed cloud</h2>
       <p>
-        If you do not want to run Kubernetes or maintain Postgres yourself, use the hosted cloud at{" "}
-        <Link to="/">servicebeard.app</Link>. Setup guides for{" "}
+        If you do not want to run your own server or maintain Postgres yourself, use the hosted cloud
+        at <Link to="/">servicebeard.app</Link>. Setup guides for{" "}
         <Link to={DOC_PATHS.mailbox}>mailbox configuration</Link> and{" "}
-        <Link to={DOC_PATHS.issueProviders}>issue providers</Link> apply to both self-hosted and
-        cloud deployments.
+        <Link to={DOC_PATHS.issueProviders}>issue providers</Link> apply to both self-hosted and cloud
+        deployments.
       </p>
 
       <div className={styles.cardGrid}>
@@ -92,7 +104,8 @@ export function DocsSelfHostPage() {
         >
           <h2 className={styles.cardTitle}>Source &amp; README</h2>
           <p className={styles.cardDesc}>
-            Local development setup, environment variables, and architecture notes on GitHub.
+            Local development setup, Docker Compose production deploy, and architecture notes on
+            GitHub.
           </p>
         </a>
         <a

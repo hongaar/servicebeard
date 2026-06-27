@@ -46,16 +46,33 @@ async function resolveExtensionsAlias(): Promise<string> {
 export default defineConfig(async () => {
   const extensionsAlias = await resolveExtensionsAlias();
   const monorepoRoot = path.resolve(__dirname, "../..");
+  const sharedNodeModules = path.resolve(monorepoRoot, "node_modules");
+
+  // Embedded in the web bundle at build time. deploy/compose/extract-vite-env.ts
+  // reads these prefixes when generating .env.vite for Docker builds.
+  const envPrefix = ["VITE_", "CLOUD_PLAN_"] as const;
+
+  const sharedDep = (pkg: string) => {
+    const nested = path.resolve(__dirname, "node_modules", pkg);
+    if (existsSync(nested)) return nested;
+    return path.resolve(sharedNodeModules, pkg);
+  };
 
   return {
     plugins: [react()],
     envDir: monorepoRoot,
-    envPrefix: ["VITE_", "CLOUD_PLAN_"],
+    envPrefix: [...envPrefix],
     resolve: {
       alias: {
         "@extensions": extensionsAlias,
         "@servicebeard/web": path.resolve(__dirname, "src"),
+        // Extension packages must share the same React Query / Router instances as the app.
+        react: sharedDep("react"),
+        "react-dom": sharedDep("react-dom"),
+        "@tanstack/react-query": sharedDep("@tanstack/react-query"),
+        "@tanstack/react-router": sharedDep("@tanstack/react-router"),
       },
+      dedupe: ["react", "react-dom", "@tanstack/react-query", "@tanstack/react-router"],
     },
     server: {
       host: "127.0.0.1",

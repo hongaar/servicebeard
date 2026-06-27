@@ -134,15 +134,7 @@ export const dashboardRoute = createRoute({
 export const teamRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/teams/$teamId",
-  loader: async ({ params }) => {
-    const { teams } = await api.getTeams();
-    const team = teams.find((entry) => entry.id === params.teamId);
-    if (team?.subscriptionRequired && team.role === "owner") {
-      throw redirect({
-        to: "/teams/$teamId/billing",
-        params: { teamId: params.teamId },
-      });
-    }
+  beforeLoad: ({ params }) => {
     throw redirect({
       to: "/teams/$teamId/projects",
       params: { teamId: params.teamId },

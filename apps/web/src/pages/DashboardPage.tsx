@@ -35,10 +35,6 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
       await router.invalidate();
       setShowCreate(false);
       setName("");
-      if (ownedTeamCount >= 1) {
-        navigate({ to: "/teams/$teamId/billing", params: { teamId: team.id } });
-        return;
-      }
       navigate({ to: "/teams/$teamId/projects", params: { teamId: team.id } });
     },
   });
@@ -117,19 +113,14 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
           <div className={styles.grid}>
             {teams.map((team) => {
               const needsSubscription = Boolean(team.subscriptionRequired);
-              const teamLink =
-                needsSubscription && team.role === "owner"
-                  ? {
-                      to: "/teams/$teamId/billing" as const,
-                      params: { teamId: team.id },
-                    }
-                  : {
-                      to: "/teams/$teamId/projects" as const,
-                      params: { teamId: team.id },
-                    };
 
               return (
-                <Link key={team.id} {...teamLink} className={styles.teamCard}>
+                <Link
+                  key={team.id}
+                  to="/teams/$teamId/projects"
+                  params={{ teamId: team.id }}
+                  className={styles.teamCard}
+                >
                   <div className={styles.teamCardTop}>
                     <span className={styles.teamAvatar} aria-hidden>
                       {team.name.slice(0, 2).toUpperCase()}

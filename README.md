@@ -16,7 +16,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 - Bidirectional sync: email → issue/comment, issue comment → email reply
 - Loop prevention via bot-user filtering, sync markers, and note deduplication
 - Webhook + polling fallback for outbound comments
-- Kubernetes deployment via Helm (self-host from this repo)
+- Docker Compose or Kubernetes (Helm) for self-hosting from this repo
 
 ## Stack
 
@@ -26,7 +26,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 | Worker | Bun + pg-boss |
 | Frontend | Vite + React + Base UI + CSS Modules |
 | Database | PostgreSQL + Drizzle ORM |
-| Deploy | Helm + Docker |
+| Deploy | Docker Compose or Helm + Docker |
 
 ## Quickstart
 
@@ -322,6 +322,54 @@ The worker should append this as a comment on the existing issue instead of open
 
 ## Deploy
 
+### Docker Compose (single server)
+
+Production stack: Postgres, API, worker, web (nginx), and Caddy (HTTPS) in [`deploy/compose/`](deploy/compose/).
+
+**Prerequisites:** a VPS with Docker Engine and Compose plugin, and a DNS `A` record pointing at the server.
+
+```bash
+cd deploy/compose
+cp .env.example .env
+# Edit .env — DOMAIN, ACME_EMAIL, POSTGRES_PASSWORD, ENCRYPTION_KEY, SESSION_SECRET, login providers
+
+# Web image: embed VITE_* and CLOUD_PLAN_* vars from .env (see apps/web/vite.config.ts envPrefix)
+bun run extract-vite-env.ts .env .env.vite
+
+docker compose --env-file .env -f docker-compose.yml up -d --build
+```
+
+Point your domain at the server before starting Caddy so Let's Encrypt can issue a certificate. The API container runs database migrations on startup.
+
+**With a plugin extension** (e.g. the private cloud edition), set `EXTENSION_DIR` in `.env` to the extension checkout and add its compose overlay:
+
+```bash
+bun run extract-vite-env.ts .env .env.vite
+
+docker compose --env-file .env \
+  -f docker-compose.yml \
+  -f /path/to/extension/deploy/compose.cloud.yml \
+  up -d --build
+```
+
+Build images manually (OSS-only):
+
+```bash
+docker build --target api -t servicebeard-api .
+docker build --target worker -t servicebeard-worker .
+docker build --target web -t servicebeard-web .
+```
+
+With an extension build context:
+
+```bash
+docker build --build-context extension=/path/to/extension -f Dockerfile --target api .
+```
+
+The root [`docker-compose.yml`](docker-compose.yml) is for **local development only** (Postgres, GreenMail, Adminer).
+
+### Kubernetes (Helm)
+
 Container images and the Helm chart are published to [GHCR](https://github.com/hongaar?tab=packages&repo_name=servicebeard). New packages default to private; a maintainer must set each package to **Public** once under [Packages](https://github.com/hongaar?tab=packages&repo_name=servicebeard) (Package settings → Change visibility).
 
 **From GHCR (recommended for self-hosting):**
@@ -348,14 +396,6 @@ helm install servicebeard deploy/helm \
   --set secrets.sessionSecret=<secret>
 ```
 
-Build container images locally:
-
-```bash
-docker build --target api -t servicebeard-api .
-docker build --target worker -t servicebeard-worker .
-docker build --target web -t servicebeard-web .
-```
-
 ## Documentation
 
 In-app documentation lives under `/docs` in the web UI (mailbox setup, issue providers, GitHub/GitLab guides). Sync design and extension points are in [ARCHITECTURE.md](./ARCHITECTURE.md).
@@ -372,5 +412,6 @@ packages/
   providers/ Issue tracker adapters (GitLab, GitHub)
   shared/    Zod schemas + types
 deploy/
+  compose/   Production Docker Compose (API, worker, web, Postgres, Caddy)
   helm/      Kubernetes Helm chart
 ```

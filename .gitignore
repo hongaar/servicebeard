@@ -4,6 +4,8 @@ landing-dist/
 .landing-build-tmp/
 .env
 .env.local
+deploy/compose/.env
+deploy/compose/.env.vite
 .logs/
 *.log
 .DS_Store

@@ -1,0 +1,125 @@
+# Production Docker Compose stack for ServiceBeard.
+#
+# OSS-only:
+#   cp .env.example .env   # edit secrets and DOMAIN
+#   docker compose --env-file .env -f docker-compose.yml up -d --build
+#
+# With a plugin extension (e.g. serviceboard-cloud), add a second compose file
+# that sets EXTENSION_DIR and run:
+#   docker compose --env-file .env -f docker-compose.yml -f compose.cloud.yml up -d --build
+
+name: servicebeard
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-servicebeard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-servicebeard}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-servicebeard} -d ${POSTGRES_DB:-servicebeard}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: api
+      additional_contexts:
+        extension: ${EXTENSION_DIR:-../../extensions-stub}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-servicebeard}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-servicebeard}
+      PORT: "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../../secrets:/app/secrets:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "bun -e \"fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - internal
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: worker
+      additional_contexts:
+        extension: ${EXTENSION_DIR:-../../extensions-stub}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-servicebeard}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-servicebeard}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    volumes:
+      - ../../secrets:/app/secrets:ro
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: web
+      additional_contexts:
+        extension: ${EXTENSION_DIR:-../../extensions-stub}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:

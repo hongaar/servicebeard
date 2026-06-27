@@ -5,6 +5,7 @@ import { useLoaderData, useNavigate, useParams, useRouter, useSearch } from "@ta
 import { FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
+import { ButtonLink } from "../components/ButtonLink";
 import { Card } from "../components/Card";
 import { CreateProjectWizard } from "../components/CreateProjectWizard";
 import { EmptyIcon } from "../components/EmptyIcon";
@@ -47,6 +48,7 @@ export function ProjectsPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const needsSubscription = Boolean(entitlements?.subscriptionRequired);
   const atProjectLimit = Boolean(entitlementLimitMessage("project", entitlements));
 
   const openCreate = () => {
@@ -168,9 +170,11 @@ export function ProjectsPage() {
         <div className={styles.sectionHeaderText}>
           <h2 className={styles.sectionTitle}>All projects</h2>
           <p className={styles.sectionDescription}>
-            {projects.length === 0
-              ? "Create a project to start syncing email threads."
-              : `${projects.length} project${projects.length === 1 ? "" : "s"} configured`}
+            {needsSubscription
+              ? "Subscribe to create projects and sync mail for this team."
+              : projects.length === 0
+                ? "Create a project to start syncing email threads."
+                : `${projects.length} project${projects.length === 1 ? "" : "s"} configured`}
           </p>
         </div>
         <Button onClick={() => (showCreate ? closeCreate() : tryOpenCreate())}>
@@ -205,10 +209,17 @@ export function ProjectsPage() {
           <EmptyIcon icon={FolderPlus} />
           <p className={styles.emptyTitle}>No projects yet</p>
           <p className={styles.emptyHint}>
-            A project links your support inbox to GitLab so incoming mail becomes tracked issues
-            automatically.
+            {needsSubscription
+              ? "Choose a plan on the billing page to create projects. You can still invite members and update team settings in the meantime."
+              : "A project links your support inbox to GitLab so incoming mail becomes tracked issues automatically."}
           </p>
-          <Button onClick={tryOpenCreate}>Create your first project</Button>
+          {needsSubscription ? (
+            <ButtonLink to="/teams/$teamId/billing" params={{ teamId }}>
+              View plans
+            </ButtonLink>
+          ) : (
+            <Button onClick={tryOpenCreate}>Create your first project</Button>
+          )}
         </div>
       ) : projects.length > 0 ? (
         <div className={styles.tableWrap}>
