@@ -9,6 +9,7 @@ export * from "./issue-repository";
 export * from "./login";
 export * from "./mail";
 export * from "./mail-autoconfig";
+export * from "./mail-discover";
 export * from "./poll-config";
 export * from "./rules";
 export * from "./schemas";

@@ -1,4 +1,4 @@
-import type { TeamEntitlementUsage } from "@servicebeard/shared/entitlements";
+import type { TeamEntitlementUsage, TeamListingMeta } from "@servicebeard/shared/entitlements";
 import type { Project, ProjectSyncError, Rule, Thread } from "./api";
 import type { ProjectSection } from "./navigation";
 
@@ -13,7 +13,7 @@ export type TeamSummary = {
   name: string;
   slug: string;
   role: string;
-  subscriptionRequired?: boolean;
+  meta?: TeamListingMeta;
 };
 
 export type ProjectsLoaderData = {

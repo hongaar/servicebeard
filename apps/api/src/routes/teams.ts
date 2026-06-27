@@ -14,6 +14,7 @@ import {
 } from "@servicebeard/providers";
 import {
     createTeamSchema,
+    discoverMailSchema,
     inviteMemberSchema,
     parseGithubRepository,
     slugifyName,
@@ -29,6 +30,7 @@ import { testMailConnection, testProviderConnection } from "../lib/connection-te
 import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { startGithubAppInstall } from "../lib/github-app-install";
+import { discoverMailAutoconfig } from "../lib/mail-discover";
 import type { AppVariables } from "../middleware/auth";
 import { requireAuth } from "../middleware/auth";
 import { requireTeamMember } from "../middleware/team";
@@ -46,13 +48,16 @@ teamRoutes.get("/", async (c) => {
 
   const entitlements = getEntitlements();
   const teamsWithMeta = await Promise.all(
-    memberships.map(async (m) => ({
-      ...m.team,
-      role: m.role,
-      ...(entitlements.getTeamListingMeta
+    memberships.map(async (m) => {
+      const meta = entitlements.getTeamListingMeta
         ? await entitlements.getTeamListingMeta(m.team.id)
-        : {}),
-    })),
+        : undefined;
+      return {
+        ...m.team,
+        role: m.role,
+        ...(meta ? { meta } : {}),
+      };
+    }),
   );
 
   return c.json({
@@ -309,6 +314,13 @@ teamRoutes.post("/:teamId/test-mail", async (c) => {
   } catch (err) {
     return c.json(providerFailureResponse("test-mail", err), 400);
   }
+});
+
+teamRoutes.post("/:teamId/discover-mail", async (c) => {
+  const teamId = c.req.param("teamId");
+  await requireTeamMember(c, teamId, "admin");
+  const body = discoverMailSchema.parse(await c.req.json());
+  return c.json(await discoverMailAutoconfig(body.email));
 });
 
 teamRoutes.post("/:teamId/test-provider", async (c) => {

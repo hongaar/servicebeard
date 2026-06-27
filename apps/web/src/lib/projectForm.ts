@@ -1,3 +1,4 @@
+import type { MailAutoconfig } from "@servicebeard/shared";
 import {
     detectIssueProviderFromUrl,
     GREENMAIL_DEV_PROJECT_MAIL,
@@ -103,9 +104,10 @@ export const defaultProjectSettingsForm: ProjectSettingsFormValues = import.meta
 export function applySupportEmailAutoconfig(
   form: ProjectSettingsFormValues,
   email: string,
+  autoconfig?: MailAutoconfig | null,
 ): ProjectSettingsFormValues {
   const trimmed = email.trim();
-  const autoconfig = lookupMailAutoconfig(trimmed);
+  const config = autoconfig ?? lookupMailAutoconfig(trimmed);
   const mailUser = usesLocalPartMailAuth(trimmed)
     ? trimmed.slice(0, trimmed.indexOf("@"))
     : trimmed;
@@ -115,15 +117,15 @@ export function applySupportEmailAutoconfig(
     imapUser: mailUser,
     smtpUser: mailUser,
   };
-  if (!autoconfig) return next;
+  if (!config) return next;
   return {
     ...next,
-    imapHost: autoconfig.imap.host,
-    imapPort: autoconfig.imap.port,
-    imapSecure: autoconfig.imap.secure,
-    smtpHost: autoconfig.smtp.host,
-    smtpPort: autoconfig.smtp.port,
-    smtpSecure: autoconfig.smtp.secure,
+    imapHost: config.imap.host,
+    imapPort: config.imap.port,
+    imapSecure: config.imap.secure,
+    smtpHost: config.smtp.host,
+    smtpPort: config.smtp.port,
+    smtpSecure: config.smtp.secure,
   };
 }
 

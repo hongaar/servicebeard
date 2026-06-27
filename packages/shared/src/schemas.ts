@@ -183,6 +183,10 @@ export const testRuleSchema = z.object({
   isEnabled: z.boolean().optional(),
 });
 
+export const discoverMailSchema = z.object({
+  email: z.string().email(),
+});
+
 export const testMailConnectionSchema = mailConfigSchema.pick({
   imapHost: true,
   imapPort: true,
@@ -216,3 +220,4 @@ export interface UpdateProjectInput extends Partial<CreateProjectInput> {
 export type CreateRuleInput = z.infer<typeof createRuleSchema>;
 export type UpdateRuleInput = z.infer<typeof updateRuleSchema>;
 export type TestRuleInput = z.infer<typeof testRuleSchema>;
+export type DiscoverMailInput = z.infer<typeof discoverMailSchema>;

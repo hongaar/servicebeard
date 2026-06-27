@@ -30,6 +30,19 @@ export const LimitReachedDialog: ComponentType<LimitReachedDialogProps> | undefi
 
 export type { LimitReachedDialogProps, LimitResource } from "../lib/limitDialog";
 
+export {
+    extensionCreateTeamDialogHint,
+    extensionDashboardTeamsDescription,
+    extensionProjectsEmptyAction,
+    extensionProjectsEmptyHint,
+    extensionProjectsSectionDescription,
+    extensionTeamCardBadge
+} from "./ui";
+export type {
+    ExtensionCreateTeamContext,
+    ExtensionProjectsPageContext
+} from "./ui";
+
 export function extensionTeamNavItems(_teamId: string): ExtensionTeamNavItem[] {
   return [];
 }

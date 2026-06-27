@@ -1,4 +1,5 @@
-import type { TeamEntitlementUsage } from "@servicebeard/shared/entitlements";
+import type { MailDiscoverResult } from "@servicebeard/shared";
+import type { TeamEntitlementUsage, TeamListingMeta } from "@servicebeard/shared/entitlements";
 import type { AuthConfigResponse } from "@servicebeard/shared/login";
 import type {
     AuthenticationResponseJSON,
@@ -143,7 +144,7 @@ export const api = {
         name: string;
         slug: string;
         role: string;
-        subscriptionRequired?: boolean;
+        meta?: TeamListingMeta;
       }>;
     }>("/teams"),
 
@@ -201,6 +202,12 @@ export const api = {
 
   testMailForTeam: (teamId: string, data: MailConfig) =>
     request<ConnectionTestResult>(`/teams/${teamId}/test-mail`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  discoverMail: (teamId: string, data: { email: string }) =>
+    request<MailDiscoverResult>(`/teams/${teamId}/discover-mail`, {
       method: "POST",
       body: JSON.stringify(data),
     }),

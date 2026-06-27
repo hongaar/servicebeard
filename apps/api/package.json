@@ -15,6 +15,7 @@
     "./extensions": "./src/extensions.ts"
   },
   "dependencies": {
+    "@sentry/bun": "^10.62.0",
     "@servicebeard/db": "workspace:*",
     "@servicebeard/providers": "workspace:*",
     "@servicebeard/shared": "workspace:*",

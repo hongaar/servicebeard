@@ -6,6 +6,7 @@ import { getEntitlements } from "@servicebeard/shared/entitlements";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
 import { loadWorkerExtensions } from "./extensions";
+import { initBugsink } from "./lib/bugsink";
 import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
@@ -16,6 +17,8 @@ import {
     pollCommentsForProject,
     processOutboundComment,
 } from "./services/outbound";
+
+initBugsink();
 
 export const QUEUE_NAMES = {
   IMAP_POLL: "imap-poll",

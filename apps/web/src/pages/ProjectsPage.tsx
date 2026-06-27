@@ -1,11 +1,15 @@
-import { LimitReachedDialog } from "@extensions";
+import {
+    LimitReachedDialog,
+    extensionProjectsEmptyAction,
+    extensionProjectsEmptyHint,
+    extensionProjectsSectionDescription,
+} from "@extensions";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLoaderData, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
-import { ButtonLink } from "../components/ButtonLink";
 import { Card } from "../components/Card";
 import { CreateProjectWizard } from "../components/CreateProjectWizard";
 import { EmptyIcon } from "../components/EmptyIcon";
@@ -13,7 +17,7 @@ import { Layout } from "../components/Layout";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
-import { entitlementLimitMessage } from "../lib/entitlements";
+import { entitlementLimitMessage, isResourceCreateBlocked } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import type { ProjectsLoaderData } from "../lib/loaderTypes";
 import {
@@ -48,8 +52,21 @@ export function ProjectsPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
-  const needsSubscription = Boolean(entitlements?.subscriptionRequired);
-  const atProjectLimit = Boolean(entitlementLimitMessage("project", entitlements));
+  const projectsPageContext = {
+    teamId,
+    projectsCount: projects.length,
+    entitlements,
+  };
+  const atProjectLimit = isResourceCreateBlocked("project", entitlements);
+  const sectionDescription =
+    extensionProjectsSectionDescription(projectsPageContext) ??
+    (projects.length === 0
+      ? "Create a project to start syncing email threads."
+      : `${projects.length} project${projects.length === 1 ? "" : "s"} configured`);
+  const emptyHint =
+    extensionProjectsEmptyHint(projectsPageContext) ??
+    "A project links your support inbox to GitLab so incoming mail becomes tracked issues automatically.";
+  const emptyAction = extensionProjectsEmptyAction(projectsPageContext);
 
   const openCreate = () => {
     setForm(defaultProjectSettingsForm);
@@ -64,7 +81,7 @@ export function ProjectsPage() {
       if (LimitReachedDialog && entitlements) {
         setLimitDialogOpen(true);
       } else {
-        setError("Project limit reached");
+        setError(entitlementLimitMessage("project", entitlements) ?? "Project limit reached");
       }
       setShowCreate(false);
       return;
@@ -169,13 +186,7 @@ export function ProjectsPage() {
       <div className={styles.sectionHeader}>
         <div className={styles.sectionHeaderText}>
           <h2 className={styles.sectionTitle}>All projects</h2>
-          <p className={styles.sectionDescription}>
-            {needsSubscription
-              ? "Subscribe to create projects and sync mail for this team."
-              : projects.length === 0
-                ? "Create a project to start syncing email threads."
-                : `${projects.length} project${projects.length === 1 ? "" : "s"} configured`}
-          </p>
+          <p className={styles.sectionDescription}>{sectionDescription}</p>
         </div>
         <Button onClick={() => (showCreate ? closeCreate() : tryOpenCreate())}>
           {showCreate ? "Cancel" : "New project"}
@@ -208,18 +219,8 @@ export function ProjectsPage() {
         <div className={styles.empty}>
           <EmptyIcon icon={FolderPlus} />
           <p className={styles.emptyTitle}>No projects yet</p>
-          <p className={styles.emptyHint}>
-            {needsSubscription
-              ? "Choose a plan on the billing page to create projects. You can still invite members and update team settings in the meantime."
-              : "A project links your support inbox to GitLab so incoming mail becomes tracked issues automatically."}
-          </p>
-          {needsSubscription ? (
-            <ButtonLink to="/teams/$teamId/billing" params={{ teamId }}>
-              View plans
-            </ButtonLink>
-          ) : (
-            <Button onClick={tryOpenCreate}>Create your first project</Button>
-          )}
+          <p className={styles.emptyHint}>{emptyHint}</p>
+          {emptyAction ?? <Button onClick={tryOpenCreate}>Create your first project</Button>}
         </div>
       ) : projects.length > 0 ? (
         <div className={styles.tableWrap}>

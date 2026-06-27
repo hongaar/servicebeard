@@ -1,5 +1,6 @@
 import { extensionPublicRoutes, extensionRoutes } from "@extensions";
 import { createRouter } from "@tanstack/react-router";
+import { RouteError } from "./components/RouteError";
 import {
     dashboardRoute,
     docsGitHubRoute,
@@ -39,7 +40,10 @@ const routeTree = rootRoute.addChildren([
   projectSectionRoute,
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  defaultErrorComponent: RouteError,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

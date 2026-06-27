@@ -18,7 +18,7 @@ import { SyncErrorDetailDialog } from "../components/SyncErrorDetailDialog";
 import { TableRowAction } from "../components/TableRowAction";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
 import { api, type CreateRuleInput, type ProjectSyncError, type Rule } from "../lib/api";
-import { entitlementLimitMessage } from "../lib/entitlements";
+import { isResourceCreateBlocked } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import type { ProjectDetailLoaderData } from "../lib/loaderTypes";
 import type { ProjectSection } from "../lib/navigation";
@@ -108,7 +108,7 @@ export function ProjectDetailPage() {
   const [selectedThreadLabel, setSelectedThreadLabel] = useState("");
   const [selectedSyncErrorId, setSelectedSyncErrorId] = useState<string | null>(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
-  const atRuleLimit = Boolean(entitlementLimitMessage("rule", entitlements));
+  const atRuleLimit = isResourceCreateBlocked("rule", entitlements);
 
   const tryToggleRuleForm = () => {
     if (showRuleForm) {

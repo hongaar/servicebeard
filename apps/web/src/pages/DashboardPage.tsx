@@ -1,3 +1,8 @@
+import {
+    extensionCreateTeamDialogHint,
+    extensionDashboardTeamsDescription,
+    extensionTeamCardBadge,
+} from "@extensions";
 import { slugifyName } from "@servicebeard/shared";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
@@ -20,6 +25,8 @@ type DashboardPageProps = {
 
 export function DashboardPage({ user, teams }: DashboardPageProps) {
   const ownedTeamCount = teams.filter((team) => team.role === "owner").length;
+  const teamsDescription = extensionDashboardTeamsDescription();
+  const createTeamHint = extensionCreateTeamDialogHint({ ownedTeamCount });
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const navigate = useNavigate();
@@ -50,8 +57,8 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
           <div className={styles.sectionHeaderText}>
             <h2 className={styles.sectionTitle}>Your teams</h2>
             <p className={styles.sectionDescription}>
-              Each team has its own members and mail-sync projects. Your account includes one free
-              team; additional teams you create need their own subscription.
+              Each team has its own members and mail-sync projects.
+              {teamsDescription ? ` ${teamsDescription}` : ""}
             </p>
           </div>
           <Button onClick={() => setShowCreate(!showCreate)}>
@@ -63,13 +70,7 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
           <Dialog open={showCreate} onOpenChange={setShowCreate} title="Create a team">
             <p className={styles.formHint} style={{ marginTop: 0, marginBottom: "1rem" }}>
               Teams group people and projects together.
-              {ownedTeamCount >= 1 && (
-                <>
-                  {" "}
-                  Because you already own a team, this new team will require its own subscription
-                  before you can use it.
-                </>
-              )}
+              {createTeamHint ? ` ${createTeamHint}` : ""}
             </p>
             <form
               className={styles.form}
@@ -111,36 +112,28 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
           </div>
         ) : (
           <div className={styles.grid}>
-            {teams.map((team) => {
-              const needsSubscription = Boolean(team.subscriptionRequired);
-
-              return (
-                <Link
-                  key={team.id}
-                  to="/teams/$teamId/projects"
-                  params={{ teamId: team.id }}
-                  className={styles.teamCard}
-                >
-                  <div className={styles.teamCardTop}>
-                    <span className={styles.teamAvatar} aria-hidden>
-                      {team.name.slice(0, 2).toUpperCase()}
-                    </span>
-                    <span className={styles.teamArrow} aria-hidden>
-                      <ChevronRight {...iconMd} />
-                    </span>
-                  </div>
-                  <div className={styles.teamName}>{team.name}</div>
-                  <div className={styles.teamRole}>
-                    {team.role}
-                    {needsSubscription && (
-                      <span className={[styles.badge, styles.badgeInactive].join(" ")}>
-                        Subscription required
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
+            {teams.map((team) => (
+              <Link
+                key={team.id}
+                to="/teams/$teamId/projects"
+                params={{ teamId: team.id }}
+                className={styles.teamCard}
+              >
+                <div className={styles.teamCardTop}>
+                  <span className={styles.teamAvatar} aria-hidden>
+                    {team.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className={styles.teamArrow} aria-hidden>
+                    <ChevronRight {...iconMd} />
+                  </span>
+                </div>
+                <div className={styles.teamName}>{team.name}</div>
+                <div className={styles.teamRole}>
+                  {team.role}
+                  {extensionTeamCardBadge(team)}
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>

@@ -5,21 +5,21 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { DOC_PATHS } from "../lib/docs";
 import {
-  isGithubAppInstallMessage,
-  openGithubAppInstallPopup,
+    isGithubAppInstallMessage,
+    openGithubAppInstallPopup,
 } from "../lib/githubAppInstall";
 import {
-  applyIssueRepositoryUrl,
-  applyProjectName,
-  applyProvider,
-  applyProviderHosting,
-  applySupportEmailAutoconfig,
-  formToMailConfig,
-  formToProviderConfig,
-  githubProviderCredentialsReady,
-  isMailServerConfigured,
-  type ProjectSettingsFormValues,
-  type ProviderHosting,
+    applyIssueRepositoryUrl,
+    applyProjectName,
+    applyProvider,
+    applyProviderHosting,
+    applySupportEmailAutoconfig,
+    formToMailConfig,
+    formToProviderConfig,
+    githubProviderCredentialsReady,
+    isMailServerConfigured,
+    type ProjectSettingsFormValues,
+    type ProviderHosting,
 } from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
@@ -130,6 +130,7 @@ export function ProjectMailSection({
   );
   const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
+  const [detectingMail, setDetectingMail] = useState(false);
 
   const patchForm = (patch: Partial<ProjectSettingsFormValues>) => {
     for (const [key, val] of Object.entries(patch)) {
@@ -145,6 +146,7 @@ export function ProjectMailSection({
     setDetectedProvider(null);
     setTestState("idle");
     setTestMessage("");
+    setDetectingMail(false);
   };
 
   const handleSupportEmail = (email: string) => {
@@ -159,20 +161,44 @@ export function ProjectMailSection({
     setTestMessage("");
   };
 
-  const runAutodetect = () => {
+  const runAutodetect = async () => {
     const email = values.smtpFrom.trim();
     if (!email) return;
-    const autoconfig = lookupMailAutoconfig(email);
-    patchForm(applySupportEmailAutoconfig(values, email));
-    setSettingsRevealed(true);
+
+    const knownAutoconfig = lookupMailAutoconfig(email);
+    if (knownAutoconfig?.providerName) {
+      patchForm(applySupportEmailAutoconfig(values, email, knownAutoconfig));
+      setSettingsRevealed(true);
+      setDetectedProvider(knownAutoconfig.providerName);
+      setShowFullSettings(false);
+      setTestState("idle");
+      setTestMessage("");
+      return;
+    }
+
+    setDetectingMail(true);
     setTestState("idle");
     setTestMessage("");
-    if (autoconfig?.providerName) {
-      setDetectedProvider(autoconfig.providerName);
-      setShowFullSettings(false);
-    } else {
+    try {
+      const result = await api.discoverMail(teamId, { email });
+      if (result.found && result.config) {
+        patchForm(applySupportEmailAutoconfig(values, email, result.config));
+        setSettingsRevealed(true);
+        setDetectedProvider(result.config.providerName ?? email.split("@")[1] ?? "mail server");
+        setShowFullSettings(false);
+      } else {
+        patchForm(applySupportEmailAutoconfig(values, email));
+        setSettingsRevealed(true);
+        setDetectedProvider(null);
+        setShowFullSettings(true);
+      }
+    } catch {
+      patchForm(applySupportEmailAutoconfig(values, email));
+      setSettingsRevealed(true);
       setDetectedProvider(null);
       setShowFullSettings(true);
+    } finally {
+      setDetectingMail(false);
     }
   };
 
@@ -257,10 +283,22 @@ export function ProjectMailSection({
 
       {isCreate && hasSupportEmail && !settingsRevealed && (
         <div className={styles.detectRow}>
-          <Button type="button" variant="secondary" onClick={runAutodetect}>
-            Auto-detect mail settings
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={runAutodetect}
+            disabled={detectingMail}
+          >
+            {detectingMail ? (
+              <>
+                <Loader2 size={16} className={styles.spinIcon} aria-hidden />
+                Detecting mail settings…
+              </>
+            ) : (
+              "Auto-detect mail settings"
+            )}
           </Button>
-          <Button type="button" variant="ghost" onClick={showManualSettings}>
+          <Button type="button" variant="ghost" onClick={showManualSettings} disabled={detectingMail}>
             Enter manually
           </Button>
         </div>
@@ -268,8 +306,8 @@ export function ProjectMailSection({
 
       {showMailSettings && passwordOnly && (
         <p className={styles.autoconfigHint}>
-          Detected {detectedProvider} — we&apos;ll use the standard server settings for this
-          provider.
+          Detected {detectedProvider} — we&apos;ll use the discovered server settings for this
+          mailbox.
         </p>
       )}
 

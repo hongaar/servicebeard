@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { ZodError } from "zod";
 import { loadExtensions } from "./extensions";
+import { captureBugsinkError, initBugsink } from "./lib/bugsink";
 import { setEntitlementsProvider } from "./lib/entitlements";
 import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
@@ -19,6 +20,8 @@ import { healthRoutes } from "./routes/health";
 import { projectRoutes } from "./routes/projects";
 import { teamRoutes } from "./routes/teams";
 import { webhookRoutes } from "./routes/webhooks";
+
+initBugsink();
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -89,6 +92,11 @@ app.onError((err, c) => {
   const providerError = providerErrorDetails(err);
   if (providerError) {
     logExternalError("api", "unhandled", err);
+    captureBugsinkError(err, {
+      path: c.req.path,
+      method: c.req.method,
+      providerStatus: providerError.status,
+    });
     return c.json(
       {
         error: providerError.message,
@@ -105,6 +113,10 @@ app.onError((err, c) => {
     },
     "unhandled error",
   );
+  captureBugsinkError(err, {
+    path: c.req.path,
+    method: c.req.method,
+  });
   const message = err instanceof Error ? err.message : "Internal server error";
   return c.json({ error: message }, 500);
 });

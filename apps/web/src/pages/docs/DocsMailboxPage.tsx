@@ -23,9 +23,10 @@ export function DocsMailboxPage() {
           <code>support@acme.com</code>).
         </li>
         <li>
-          Click <strong>Auto-detect mail settings</strong> if your domain is a known provider
-          (Gmail, Outlook, iCloud, and others). ServiceBeard fills in IMAP and SMTP hostnames and
-          ports; you only need the mailbox password.
+          Click <strong>Auto-detect mail settings</strong> for known providers (Gmail, Outlook,
+          iCloud, and others) or custom domains with DNS autoconfig/autodiscovery records (for
+          example Migadu). ServiceBeard fills in IMAP and SMTP hostnames and ports; you only need
+          the mailbox password.
         </li>
         <li>
           If auto-detect is unavailable or fails, choose <strong>Enter manually</strong> and fill in
