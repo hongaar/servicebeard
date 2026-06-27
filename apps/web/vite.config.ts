@@ -2,7 +2,22 @@ import react from "@vitejs/plugin-react";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
+
+const UMAMI_SCRIPT_URL = "https://cloud.umami.is/script.js";
+
+function umamiPlugin(websiteId: string | undefined): Plugin {
+  return {
+    name: "umami-analytics",
+    transformIndexHtml(html) {
+      if (!websiteId) return html;
+      return html.replace(
+        "</head>",
+        `    <script defer src="${UMAMI_SCRIPT_URL}" data-website-id="${websiteId}"></script>\n  </head>`,
+      );
+    },
+  };
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,10 +58,12 @@ async function resolveExtensionsAlias(): Promise<string> {
   return path.resolve(path.dirname(absoluteManifestPath), webEntry);
 }
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ mode }) => {
   const extensionsAlias = await resolveExtensionsAlias();
   const monorepoRoot = path.resolve(__dirname, "../..");
   const sharedNodeModules = path.resolve(monorepoRoot, "node_modules");
+  const env = loadEnv(mode, monorepoRoot, "");
+  const umamiWebsiteId = env.VITE_UMAMI_WEBSITE_ID;
 
   // Embedded in the web bundle at build time. deploy/compose/extract-vite-env.ts
   // reads these prefixes when generating .env.vite for Docker builds.
@@ -59,7 +76,7 @@ export default defineConfig(async () => {
   };
 
   return {
-    plugins: [react()],
+    plugins: [react(), umamiPlugin(umamiWebsiteId)],
     envDir: monorepoRoot,
     envPrefix: [...envPrefix],
     resolve: {
