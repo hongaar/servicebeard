@@ -10,6 +10,13 @@ import type { z } from "zod";
 type TestMailInput = z.infer<typeof testMailConnectionSchema>;
 type TestProviderInput = z.infer<typeof testProviderConnectionSchema>;
 
+// Connection-test timeouts (ms). Kept well under the reverse-proxy read
+// timeout so an unreachable host fails fast with a clear error instead of
+// hanging until the transport's multi-minute default kicks in.
+const CONNECTION_TIMEOUT = 8000;
+const GREETING_TIMEOUT = 8000;
+const SOCKET_TIMEOUT = 12000;
+
 export async function testMailConnection(body: TestMailInput) {
   const client = new ImapFlow({
     host: body.imapHost,
@@ -17,6 +24,9 @@ export async function testMailConnection(body: TestMailInput) {
     secure: body.imapSecure,
     auth: { user: body.imapUser, pass: body.imapPassword },
     logger: false,
+    connectionTimeout: CONNECTION_TIMEOUT,
+    greetingTimeout: GREETING_TIMEOUT,
+    socketTimeout: SOCKET_TIMEOUT,
   });
 
   await client.connect();
@@ -27,6 +37,9 @@ export async function testMailConnection(body: TestMailInput) {
     port: body.smtpPort,
     secure: body.smtpSecure,
     auth: { user: body.smtpUser, pass: body.smtpPassword },
+    connectionTimeout: CONNECTION_TIMEOUT,
+    greetingTimeout: GREETING_TIMEOUT,
+    socketTimeout: SOCKET_TIMEOUT,
   });
   await transporter.verify();
 
