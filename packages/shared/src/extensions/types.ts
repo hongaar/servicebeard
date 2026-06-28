@@ -14,6 +14,15 @@ export interface ExtensionContext {
   setEntitlementsProvider: (
     provider: import("../entitlements").EntitlementsProvider,
   ) => void;
+  /**
+   * Asserts the authenticated request belongs to the given team (optionally with a
+   * minimum role). Provided by the host so extensions don't import app-internal middleware.
+   */
+  requireTeamMember(
+    c: unknown,
+    teamId: string,
+    minRole?: "member" | "admin" | "owner",
+  ): Promise<{ userId: string; role: string }>;
 }
 
 export interface ExtensionModule {

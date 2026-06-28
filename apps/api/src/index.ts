@@ -14,6 +14,7 @@ import { httpRequestDuration, httpRequestTotal } from "./lib/metrics";
 import type { AppVariables } from "./middleware/auth";
 import { authMiddleware } from "./middleware/auth";
 import { requestLogMiddleware } from "./middleware/request-log";
+import { requireTeamMember } from "./middleware/team";
 import { authRoutes } from "./routes/auth";
 import { githubAppRoutes } from "./routes/github-app";
 import { healthRoutes } from "./routes/health";
@@ -128,7 +129,7 @@ app.route("/api/teams", teamRoutes);
 app.route("/api/teams", projectRoutes);
 app.route("/webhooks", webhookRoutes);
 
-await loadExtensions({ app, setEntitlementsProvider });
+await loadExtensions({ app, setEntitlementsProvider, requireTeamMember });
 
 const port = Number(process.env.PORT ?? 3000);
 
