@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.4
-FROM oven/bun:1.2-alpine AS base
+# Bun >= 1.3.11 required: older versions crash in node:tls checkServerIdentity
+# during STARTTLS handshakes (getPeerCertificate returned undefined).
+# See https://github.com/oven-sh/bun/issues/24374
+FROM oven/bun:1.3-alpine AS base
 WORKDIR /app
 
 # ── OSS dependencies ──
