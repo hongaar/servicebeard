@@ -5,6 +5,7 @@ import type {
 } from "@servicebeard/shared";
 import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";
+import { smtpTlsOptions } from "./smtp-tls";
 import type { z } from "zod";
 
 type TestMailInput = z.infer<typeof testMailConnectionSchema>;
@@ -40,6 +41,7 @@ export async function testMailConnection(body: TestMailInput) {
     connectionTimeout: CONNECTION_TIMEOUT,
     greetingTimeout: GREETING_TIMEOUT,
     socketTimeout: SOCKET_TIMEOUT,
+    tls: smtpTlsOptions(body.smtpHost),
   });
   await transporter.verify();
 

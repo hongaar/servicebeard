@@ -2,6 +2,7 @@ import { normalizeMessageId, parseMailFromAddress } from "@servicebeard/shared";
 import { randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { logExternalError } from "../lib/external-error";
+import { smtpTlsOptions } from "../lib/smtp-tls";
 
 export interface SmtpCredentials {
   smtpHost: string;
@@ -41,6 +42,7 @@ export async function sendEmail(
     port: creds.smtpPort,
     secure: creds.smtpSecure,
     auth: { user: creds.smtpUser, pass: creds.smtpPassword },
+    tls: smtpTlsOptions(creds.smtpHost),
   });
 
   const domain = parseMailFromAddress(creds.smtpFrom).split("@")[1] ?? "servicebeard.local";
