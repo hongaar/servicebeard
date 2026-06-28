@@ -11,7 +11,7 @@ import { ButtonLink } from "./ButtonLink";
 
 export function RouteError({ error, reset }: ErrorComponentProps) {
   const details = describeRouteError(error);
-  const [showDetails, setShowDetails] = useState(import.meta.env.DEV);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     if (!shouldReportRouteError(error)) return;
@@ -29,21 +29,24 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
             src="/favicon.png"
             alt=""
             className={styles.brandLogo}
-            width={24}
-            height={24}
+            width={36}
+            height={36}
           />
-          Service<span className={styles.brandAccent}>Beard</span>
+          <span className={styles.brandName}>
+            Service<span className={styles.brandAccent}>Beard</span>
+          </span>
         </Link>
-
-        <div className={styles.icon} aria-hidden>
-          <AlertTriangle {...iconLg} />
-        </div>
 
         {details.status !== undefined && (
           <p className={styles.status}>HTTP {details.status}</p>
         )}
 
-        <h1 className={styles.title}>{details.title}</h1>
+        <div className={styles.heading}>
+          <div className={styles.icon} aria-hidden>
+            <AlertTriangle {...iconLg} />
+          </div>
+          <h1 className={styles.title}>{details.title}</h1>
+        </div>
         <p className={styles.hint}>{details.hint}</p>
 
         <div className={styles.actions}>
