@@ -10,21 +10,29 @@
 }
 
 .card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-10);
   max-width: 32rem;
   width: 100%;
-  text-align: center;
   box-shadow: var(--shadow-lg);
 }
 
+.brandRow {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: var(--space-8);
+}
+
 .brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-6);
   text-decoration: none;
   color: inherit;
   transition: opacity var(--transition-fast);
@@ -60,16 +68,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   flex-shrink: 0;
   border-radius: var(--radius-full);
   background: var(--color-danger-subtle);
@@ -88,12 +97,13 @@
   color: var(--color-text-muted);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
-  margin-bottom: var(--space-6);
+  margin: 0 0 var(--space-6);
+  text-align: center;
 }
 
 .status {
-  display: inline-block;
-  margin-bottom: var(--space-4);
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   background: var(--color-danger-subtle);
@@ -101,6 +111,7 @@
   font-size: var(--text-xs);
   font-weight: 700;
   font-family: var(--font-mono);
+  white-space: nowrap;
 }
 
 .actions {
@@ -133,6 +144,7 @@
   border-radius: var(--radius);
   border: var(--border-width) solid var(--color-border);
   background: var(--color-bg-subtle);
+  width: 100%;
   text-align: left;
 }
 
@@ -160,4 +172,5 @@
   margin-top: var(--space-4);
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+  text-align: center;
 }

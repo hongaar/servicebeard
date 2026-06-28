@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { captureBugsinkError, isBugsinkEnabled } from "../lib/bugsink";
-import { iconLg } from "../lib/icons";
+import { iconMd } from "../lib/icons";
 import { describeRouteError, shouldReportRouteError } from "../lib/routeError";
 import styles from "../styles/error.module.css";
 import { Button } from "./Button";
@@ -24,29 +24,31 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <Link to="/" className={styles.brand}>
-          <img
-            src="/favicon.png"
-            alt=""
-            className={styles.brandLogo}
-            width={36}
-            height={36}
-          />
-          <span className={styles.brandName}>
-            Service<span className={styles.brandAccent}>Beard</span>
-          </span>
-        </Link>
-
-        {details.status !== undefined && (
-          <p className={styles.status}>HTTP {details.status}</p>
-        )}
+        <div className={styles.brandRow}>
+          <Link to="/" className={styles.brand}>
+            <img
+              src="/favicon.png"
+              alt=""
+              className={styles.brandLogo}
+              width={36}
+              height={36}
+            />
+            <span className={styles.brandName}>
+              Service<span className={styles.brandAccent}>Beard</span>
+            </span>
+          </Link>
+        </div>
 
         <div className={styles.heading}>
           <div className={styles.icon} aria-hidden>
-            <AlertTriangle {...iconLg} />
+            <AlertTriangle {...iconMd} />
           </div>
           <h1 className={styles.title}>{details.title}</h1>
+          {details.status !== undefined && (
+            <span className={styles.status}>HTTP {details.status}</span>
+          )}
         </div>
+
         <p className={styles.hint}>{details.hint}</p>
 
         <div className={styles.actions}>
