@@ -94,9 +94,12 @@ app.onError((err, c) => {
   if (providerError) {
     logExternalError("api", "unhandled", err);
     captureBugsinkError(err, {
-      path: c.req.path,
-      method: c.req.method,
-      providerStatus: providerError.status,
+      user: c.get("user"),
+      extra: {
+        path: c.req.path,
+        method: c.req.method,
+        providerStatus: providerError.status,
+      },
     });
     return c.json(
       {
@@ -115,8 +118,11 @@ app.onError((err, c) => {
     "unhandled error",
   );
   captureBugsinkError(err, {
-    path: c.req.path,
-    method: c.req.method,
+    user: c.get("user"),
+    extra: {
+      path: c.req.path,
+      method: c.req.method,
+    },
   });
   const message = err instanceof Error ? err.message : "Internal server error";
   return c.json({ error: message }, 500);

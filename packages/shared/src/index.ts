@@ -1,3 +1,4 @@
+export * from "./bugsink";
 export * from "./constants";
 export * from "./default-rule";
 export * from "./entitlements";

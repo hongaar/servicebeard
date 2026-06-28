@@ -1,5 +1,6 @@
 import { recordProjectSyncError } from "@servicebeard/db";
 import { providerErrorDetails } from "@servicebeard/providers";
+import { captureBugsinkError } from "./bugsink";
 import { logger } from "./logger";
 
 function projectIdFromContext(context?: Record<string, unknown>): string | undefined {
@@ -54,6 +55,15 @@ export function logExternalError(
     );
     if (providerError.status !== 404) {
       persistProjectSyncError(service, operation, err, context);
+      captureBugsinkError(err, {
+        extra: {
+          operation,
+          externalService: service,
+          provider: providerError.name,
+          providerStatus: providerError.status,
+          ...context,
+        },
+      });
     }
     return;
   }
@@ -69,6 +79,13 @@ export function logExternalError(
     "external service error",
   );
   persistProjectSyncError(service, operation, err, context);
+  captureBugsinkError(err, {
+    extra: {
+      operation,
+      externalService: service,
+      ...context,
+    },
+  });
 }
 
 export async function withExternalErrorLogging<T>(
