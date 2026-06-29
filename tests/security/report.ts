@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const REPORT_DIR = join(import.meta.dir, "../../reports/security");
@@ -169,6 +169,11 @@ function buildHtml(cases: TestCase[], totals: Record<string, number>): string {
 
 function main(): void {
   mkdirSync(REPORT_DIR, { recursive: true });
+  if (!existsSync(JUNIT_PATH)) {
+    console.warn(`Skipping security report: ${JUNIT_PATH} not found (tests did not run)`);
+    return;
+  }
+
   const xml = readFileSync(JUNIT_PATH, "utf8");
   const { cases, totals } = parseJUnit(xml);
 
