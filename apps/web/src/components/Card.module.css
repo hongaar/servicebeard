@@ -29,3 +29,23 @@
   margin-top: var(--space-2);
   line-height: var(--leading-relaxed);
 }
+
+@media (max-width: 768px) {
+  .card {
+    padding: var(--space-4);
+  }
+
+  .header {
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+
+  .title {
+    font-size: var(--text-lg);
+  }
+
+  .subtitle {
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+  }
+}

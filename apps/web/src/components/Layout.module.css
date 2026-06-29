@@ -265,24 +265,52 @@
 @media (max-width: 900px) {
   .navbar {
     padding: 0 var(--space-4);
-    flex-wrap: wrap;
-    height: auto;
-    min-height: var(--navbar-height);
-    padding-top: var(--space-3);
-    padding-bottom: var(--space-3);
-  }
-
-  .navbarLeft {
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .pickers {
-    width: 100%;
   }
 }
 
 @media (max-width: 768px) {
+  .navbar {
+    gap: var(--space-2);
+    height: auto;
+    min-height: 3rem;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    flex-wrap: nowrap;
+  }
+
+  .navbarLeft {
+    gap: var(--space-2);
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .brandName {
+    display: none;
+  }
+
+  .brandLogo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .brand {
+    padding: var(--space-1);
+    gap: 0;
+  }
+
+  .pickers {
+    flex: 1;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    margin-left: 0;
+    min-width: 0;
+  }
+
+  .pickers > * {
+    flex: 1;
+    min-width: 0;
+  }
+
   .body {
     flex-direction: column;
   }
@@ -291,13 +319,20 @@
     width: 100%;
     border-right: none;
     border-bottom: var(--border-width) solid var(--color-border);
-    padding: var(--space-4);
+    padding: var(--space-2) var(--space-3);
   }
 
   .nav {
     flex-direction: row;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
   }
 
   .navSection {
@@ -305,8 +340,23 @@
   }
 
   .navLink {
-    padding: var(--space-2) var(--space-3);
+    flex-shrink: 0;
+    padding: var(--space-2);
     font-size: var(--text-xs);
+    gap: var(--space-2);
+    position: relative;
+  }
+
+  .navLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .sidebarFooter {
@@ -314,10 +364,23 @@
   }
 
   .main {
-    padding: var(--space-5);
+    padding: var(--space-4);
+  }
+
+  .pageHeader {
+    margin-bottom: var(--space-4);
   }
 
   .pageTitle {
-    font-size: var(--text-2xl);
+    font-size: var(--text-xl);
+  }
+
+  .pageDescription {
+    display: none;
+  }
+
+  .pageInbox {
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
   }
 }

@@ -122,11 +122,11 @@ export function Layout({
             {sidebarContext === "home" && (
               <>
                 <p className={styles.navSection}>Home</p>
-                <Link to="/" className={navLinkClass(isDashboard)}>
+                <Link to="/" className={navLinkClass(isDashboard)} title="Dashboard">
                   <NavIcon>
                     <LayoutDashboard {...iconMd} />
                   </NavIcon>
-                  Dashboard
+                  <span className={styles.navLabel}>Dashboard</span>
                 </Link>
               </>
             )}
@@ -138,21 +138,23 @@ export function Layout({
                   to="/teams/$teamId/projects"
                   params={{ teamId }}
                   className={navLinkClass(!!isProjectsList)}
+                  title="Projects"
                 >
                   <NavIcon>
                     <Folder {...iconMd} />
                   </NavIcon>
-                  Projects
+                  <span className={styles.navLabel}>Projects</span>
                 </Link>
                 <Link
                   to="/teams/$teamId/members"
                   params={{ teamId }}
                   className={navLinkClass(!!isTeamMembers)}
+                  title="Members"
                 >
                   <NavIcon>
                     <Users {...iconMd} />
                   </NavIcon>
-                  Members
+                  <span className={styles.navLabel}>Members</span>
                 </Link>
                 {extraTeamNavItems.map((item) => {
                   if (item.visible === false) return null;
@@ -164,11 +166,12 @@ export function Layout({
                       to={item.to}
                       params={item.params ?? { teamId }}
                       className={navLinkClass(active)}
+                      title={item.label}
                     >
                       <NavIcon>
                         <Icon {...iconMd} />
                       </NavIcon>
-                      {item.label}
+                      <span className={styles.navLabel}>{item.label}</span>
                     </Link>
                   );
                 })}
@@ -176,11 +179,12 @@ export function Layout({
                   to="/teams/$teamId/settings"
                   params={{ teamId }}
                   className={navLinkClass(!!isTeamSettings)}
+                  title="Settings"
                 >
                   <NavIcon>
                     <Settings {...iconMd} />
                   </NavIcon>
-                  Settings
+                  <span className={styles.navLabel}>Settings</span>
                 </Link>
               </>
             )}
@@ -201,11 +205,12 @@ export function Layout({
                     to="/teams/$teamId/projects/$projectId/$section"
                     params={{ teamId, projectId, section: key }}
                     className={navLinkClass(section === key)}
+                    title={label}
                   >
                     <NavIcon>
                       <Icon {...iconMd} />
                     </NavIcon>
-                    {label}
+                    <span className={styles.navLabel}>{label}</span>
                   </Link>
                 ))}
               </>

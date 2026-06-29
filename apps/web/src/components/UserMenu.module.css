@@ -128,4 +128,14 @@
   .triggerMeta {
     display: none;
   }
+
+  .trigger {
+    padding: var(--space-1);
+    gap: var(--space-2);
+  }
+
+  .avatar {
+    width: 2rem;
+    height: 2rem;
+  }
 }

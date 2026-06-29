@@ -896,8 +896,27 @@
   }
 
   .sectionHeader {
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .sectionHeader > button {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    font-size: var(--text-xs);
+  }
+
+  .sectionTitle {
+    font-size: var(--text-base);
+  }
+
+  .sectionDescription {
+    display: none;
+  }
+
+  .section {
+    margin-bottom: var(--space-5);
   }
 
   .tabs {
