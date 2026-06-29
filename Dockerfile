@@ -20,6 +20,18 @@ COPY packages/shared/package.json ./packages/shared/
 # Bun 1.3 defaults workspaces to the isolated linker, which breaks that.
 RUN bun install --linker hoisted --frozen-lockfile || bun install --linker hoisted
 
+# Production runtime images omit devDependencies (Playwright, ESLint, Vite in other packages, etc.).
+FROM base AS deps-prod
+COPY package.json bun.lock ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/worker/package.json ./apps/worker/
+COPY apps/web/package.json ./apps/web/
+COPY packages/db/package.json ./packages/db/
+COPY packages/mail/package.json ./packages/mail/
+COPY packages/providers/package.json ./packages/providers/
+COPY packages/shared/package.json ./packages/shared/
+RUN bun install --linker hoisted --production --frozen-lockfile || bun install --linker hoisted --production
+
 # ── Extension sources (optional named build context: extension) ──
 FROM base AS extension-context
 COPY --from=extension . /extension
@@ -32,7 +44,7 @@ COPY packages/mail /serviceboard/packages/mail
 COPY packages/shared /serviceboard/packages/shared
 COPY packages/providers /serviceboard/packages/providers
 WORKDIR /extension
-RUN if [ -f package.json ]; then bun install --linker hoisted --frozen-lockfile || bun install --linker hoisted; else mkdir -p node_modules; fi
+RUN if [ -f package.json ]; then bun install --linker hoisted --production --frozen-lockfile || bun install --linker hoisted --production; else mkdir -p node_modules; fi
 
 # ── Web build (bundles extension UI when manifest is present) ──
 FROM base AS web-build
@@ -58,7 +70,7 @@ RUN SB_EXTENSION_MANIFEST=; \
 
 # ── API image ──
 FROM base AS api
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps-prod /app/node_modules ./node_modules
 COPY . .
 COPY --from=extension-context /extension /extension
 COPY --from=extension-deps /extension/node_modules /extension/node_modules
@@ -79,7 +91,7 @@ CMD ["sh", "-c", "if [ -f /extension/extension.config.ts ]; then export SB_EXTEN
 
 # ── Worker image ──
 FROM base AS worker
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps-prod /app/node_modules ./node_modules
 COPY . .
 COPY --from=extension-context /extension /extension
 COPY --from=extension-deps /extension/node_modules /extension/node_modules
