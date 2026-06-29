@@ -101,7 +101,22 @@ export interface ExtensionAdminNavItem {
   icon: LucideIcon;
 }
 
+export type ExtensionAdminBreadcrumbItem = {
+  label: string;
+  to?: string;
+  params?: Record<string, string>;
+  icon?: NavIconKey;
+  Icon?: LucideIcon;
+};
+
 export function extensionAdminNavItems(): ExtensionAdminNavItem[] {
+  return [];
+}
+
+export function extensionAdminBreadcrumbs(
+  _pathname: string,
+  _title: string,
+): ExtensionAdminBreadcrumbItem[] {
   return [];
 }
 

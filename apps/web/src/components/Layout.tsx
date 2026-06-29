@@ -1,4 +1,5 @@
 import {
+    extensionAdminBreadcrumbs,
     extensionAdminNavItems,
     extensionAppFooterLinks,
     extensionTeamNavItems,
@@ -114,6 +115,13 @@ export function Layout({
 
   const breadcrumbs: BreadcrumbItem[] = (() => {
     const homeCrumb: BreadcrumbItem = { label: "Home", to: "/", icon: "home" };
+
+    if (pathname.startsWith("/admin/")) {
+      const adminCrumbs = extensionAdminBreadcrumbs(pathname, title);
+      if (adminCrumbs.length > 0) {
+        return [homeCrumb, ...adminCrumbs];
+      }
+    }
 
     if (sidebarContext === "home") {
       return [homeCrumb, { label: title, icon: homePageIcon(pathname) }];
