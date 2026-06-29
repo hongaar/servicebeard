@@ -12,6 +12,7 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/worker/package.json ./apps/worker/
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
+COPY packages/mail/package.json ./packages/mail/
 COPY packages/providers/package.json ./packages/providers/
 COPY packages/shared/package.json ./packages/shared/
 # Force hoisted node_modules: the build stages below copy only the root
@@ -27,6 +28,7 @@ FROM base AS extension-deps
 COPY --from=extension-context /extension /extension
 # Cloud extensions link OSS packages via file:../serviceboard/packages/* (sibling checkout).
 COPY packages/db /serviceboard/packages/db
+COPY packages/mail /serviceboard/packages/mail
 COPY packages/shared /serviceboard/packages/shared
 COPY packages/providers /serviceboard/packages/providers
 WORKDIR /extension
@@ -61,12 +63,13 @@ COPY . .
 COPY --from=extension-context /extension /extension
 COPY --from=extension-deps /extension/node_modules /extension/node_modules
 COPY packages/db /serviceboard/packages/db
+COPY packages/mail /serviceboard/packages/mail
 COPY packages/shared /serviceboard/packages/shared
 COPY packages/providers /serviceboard/packages/providers
 RUN if [ -f /extension/package.json ]; then \
       ln -sfn /app/node_modules /serviceboard/node_modules && \
       mkdir -p /extension/node_modules/@servicebeard && \
-      for pkg in api db providers shared; do \
+      for pkg in api db mail providers shared; do \
         ln -sfn "/app/node_modules/@servicebeard/${pkg}" "/extension/node_modules/@servicebeard/${pkg}"; \
       done; \
     fi
@@ -81,12 +84,13 @@ COPY . .
 COPY --from=extension-context /extension /extension
 COPY --from=extension-deps /extension/node_modules /extension/node_modules
 COPY packages/db /serviceboard/packages/db
+COPY packages/mail /serviceboard/packages/mail
 COPY packages/shared /serviceboard/packages/shared
 COPY packages/providers /serviceboard/packages/providers
 RUN if [ -f /extension/package.json ]; then \
       ln -sfn /app/node_modules /serviceboard/node_modules && \
       mkdir -p /extension/node_modules/@servicebeard && \
-      for pkg in api db providers shared; do \
+      for pkg in api db mail providers shared; do \
         ln -sfn "/app/node_modules/@servicebeard/${pkg}" "/extension/node_modules/@servicebeard/${pkg}"; \
       done; \
     fi
