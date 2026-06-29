@@ -59,7 +59,7 @@ jobs:
       - name: Build web
         run: bun run --filter @servicebeard/web build
 
-  e2e-security:
+  integration:
     runs-on: ubuntu-latest
     needs: [lint-typecheck-test]
     services:
@@ -106,23 +106,23 @@ jobs:
       - name: Migrate database
         run: bun run db:migrate
 
-      - name: Seed e2e data
-        run: bun run e2e:seed
+      - name: Seed integration test data
+        run: bun run test:integration:seed
 
       - name: Start stack
         run: |
           bun tests/e2e/fixtures/stack.ts start
           bun tests/e2e/fixtures/stack.ts wait
 
-      - name: Security tests
-        run: bun run test:security
+      - name: Integration — security tests
+        run: bun run test:integration:security
 
-      - name: Security report
+      - name: Integration — security report
         if: always()
-        run: bun run test:security:report
+        run: bun run test:integration:security:report
 
-      - name: E2E tests
-        run: bun run test:e2e
+      - name: Integration — UI tests
+        run: bun run test:integration:ui
 
       - name: Stop stack
         if: always()
