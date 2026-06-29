@@ -6,16 +6,13 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  # Avoid flaky Docker Hub pulls on GitHub-hosted runners.
-  CI_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
-
 jobs:
   lint-typecheck-test:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: ${{ env.CI_POSTGRES_IMAGE }}
+        # ECR public mirror — Docker Hub pulls are flaky on GitHub-hosted runners.
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: servicebeard
           POSTGRES_PASSWORD: servicebeard
@@ -69,7 +66,7 @@ jobs:
     needs: [lint-typecheck-test]
     services:
       postgres:
-        image: ${{ env.CI_POSTGRES_IMAGE }}
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: servicebeard
           POSTGRES_PASSWORD: servicebeard
