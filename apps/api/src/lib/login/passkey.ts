@@ -18,6 +18,7 @@ import {
 import { and, eq, gt, lt } from "drizzle-orm";
 import { isLocalLoginEnabled } from "../env";
 import { logger } from "../logger";
+import { localAccountExternalSub } from "./dev-account";
 import type { LoginIdentity } from "./types";
 import { emailToUserHandle, getWebAuthnConfig } from "./webauthn-config";
 
@@ -71,7 +72,7 @@ async function consumeChallenge(
 }
 
 function externalSubForEmail(email: string): string {
-  return `dev:${email.toLowerCase()}`;
+  return localAccountExternalSub(email);
 }
 
 function parseClientDataChallenge(clientDataJSON: string): string {

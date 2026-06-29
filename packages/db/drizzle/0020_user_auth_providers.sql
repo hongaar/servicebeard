@@ -12,13 +12,17 @@ CREATE UNIQUE INDEX "user_auth_providers_provider_sub_idx" ON "user_auth_provide
 --> statement-breakpoint
 CREATE UNIQUE INDEX "user_auth_providers_user_provider_idx" ON "user_auth_providers" USING btree ("user_id","provider");
 --> statement-breakpoint
+UPDATE "users"
+SET "oidc_sub" = 'local:' || substring("oidc_sub" from 5)
+WHERE "oidc_sub" LIKE 'dev:%';
+--> statement-breakpoint
 INSERT INTO "user_auth_providers" ("user_id", "provider", "external_sub")
 SELECT
 	"id",
 	CASE
 		WHEN "oidc_sub" LIKE 'github:%' THEN 'github'
 		WHEN "oidc_sub" LIKE 'gitlab:%' THEN 'gitlab'
-		WHEN "oidc_sub" LIKE 'dev:%' THEN 'local'
+		WHEN "oidc_sub" LIKE 'local:%' THEN 'local'
 		ELSE 'oidc'
 	END,
 	"oidc_sub"

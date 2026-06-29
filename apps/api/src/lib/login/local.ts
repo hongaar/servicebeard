@@ -3,10 +3,10 @@ import { eq } from "drizzle-orm";
 import { isLocalLoginEnabled } from "../env";
 import { logger } from "../logger";
 import {
-  DEV_ACCOUNT_EMAIL,
-  DEV_ACCOUNT_NAME,
-  DEV_ACCOUNT_PASSWORD,
-  devAccountExternalSub,
+    DEV_ACCOUNT_EMAIL,
+    DEV_ACCOUNT_NAME,
+    DEV_ACCOUNT_PASSWORD,
+    localAccountExternalSub,
 } from "./dev-account";
 import { hashPassword, verifyPassword } from "./password";
 import type { CredentialLoginAdapter } from "./types";
@@ -22,7 +22,7 @@ function isLocalSignupEnabled(): boolean {
 }
 
 function externalSubForEmail(email: string): string {
-  return devAccountExternalSub(email);
+  return localAccountExternalSub(email);
 }
 
 export class LocalLoginAdapter implements CredentialLoginAdapter {

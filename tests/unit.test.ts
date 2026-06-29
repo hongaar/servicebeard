@@ -1340,7 +1340,7 @@ describe("auth providers", () => {
 
     expect(inferProviderFromExternalSub("github:123")).toBe("github");
     expect(inferProviderFromExternalSub("gitlab:456")).toBe("gitlab");
-    expect(inferProviderFromExternalSub("dev:user@example.com")).toBe("local");
+    expect(inferProviderFromExternalSub("local:user@example.com")).toBe("local");
     expect(inferProviderFromExternalSub("auth0|abc")).toBe("oidc");
 
     expect(isRedirectProvider("github")).toBe(true);

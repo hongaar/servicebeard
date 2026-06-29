@@ -6,8 +6,8 @@ export const DEV_ACCOUNT_EMAIL = "dev@localhost";
 export const DEV_ACCOUNT_NAME = "Dev User";
 export const DEV_ACCOUNT_PASSWORD = "dev";
 
-export function devAccountExternalSub(email = DEV_ACCOUNT_EMAIL): string {
-  return `dev:${email.toLowerCase()}`;
+export function localAccountExternalSub(email = DEV_ACCOUNT_EMAIL): string {
+  return `local:${email.toLowerCase()}`;
 }
 
 /** Bcrypt hash for DEV_ACCOUNT_PASSWORD (cost 12). Used by SQL backfill migration. */
@@ -37,7 +37,7 @@ export async function seedDevLocalAccount(): Promise<SeedDevAccountResult> {
   }
 
   const db = getDb();
-  const externalSub = devAccountExternalSub();
+  const externalSub = localAccountExternalSub();
   const passwordHash = await hashPassword(DEV_ACCOUNT_PASSWORD);
 
   const existing = await db.query.users.findFirst({

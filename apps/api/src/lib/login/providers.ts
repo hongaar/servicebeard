@@ -12,7 +12,7 @@ const REDIRECT_PROVIDERS = new Set<LoginProviderType>(["github", "gitlab", "oidc
 export function inferProviderFromExternalSub(externalSub: string): LoginProviderType {
   if (externalSub.startsWith("github:")) return "github";
   if (externalSub.startsWith("gitlab:")) return "gitlab";
-  if (externalSub.startsWith("dev:")) return "local";
+  if (externalSub.startsWith("local:")) return "local";
   return "oidc";
 }
 
