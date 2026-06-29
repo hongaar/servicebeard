@@ -1,3 +1,4 @@
+import { extensionGlobalSearchGroupOrder } from "@extensions";
 import type { GlobalSearchResponse } from "../lib/api";
 import type { GlobalSearchResultItem } from "./globalSearch";
 
@@ -84,7 +85,7 @@ export interface SearchResultGroup {
   items: GlobalSearchResultItem[];
 }
 
-const GROUP_ORDER = [
+const CORE_GROUP_ORDER = [
   "Navigation",
   "Project",
   "Help",
@@ -93,7 +94,17 @@ const GROUP_ORDER = [
   "Members",
   "Conversations",
   "Status events",
-];
+] as const;
+
+function buildGroupOrder(): string[] {
+  const extensionGroups = extensionGlobalSearchGroupOrder();
+  const helpIndex = CORE_GROUP_ORDER.indexOf("Help");
+  return [
+    ...CORE_GROUP_ORDER.slice(0, helpIndex + 1),
+    ...extensionGroups,
+    ...CORE_GROUP_ORDER.slice(helpIndex + 1),
+  ];
+}
 
 export function groupSearchResults(items: GlobalSearchResultItem[]): SearchResultGroup[] {
   const byGroup = new Map<string, GlobalSearchResultItem[]>();
@@ -104,9 +115,10 @@ export function groupSearchResults(items: GlobalSearchResultItem[]): SearchResul
     byGroup.set(item.group, list);
   }
 
+  const groupOrder = buildGroupOrder();
   const orderedLabels = [
-    ...GROUP_ORDER.filter((label) => byGroup.has(label)),
-    ...[...byGroup.keys()].filter((label) => !GROUP_ORDER.includes(label)),
+    ...groupOrder.filter((label) => byGroup.has(label)),
+    ...[...byGroup.keys()].filter((label) => !groupOrder.includes(label)),
   ];
 
   return orderedLabels.map((label) => ({

@@ -1,4 +1,4 @@
-import { extensionGlobalSearchActions, extensionTeamNavItems } from "@extensions";
+import { extensionGlobalSearchGroups, extensionTeamNavItems } from "@extensions";
 import { DOC_PATHS } from "./docs";
 import { PROJECT_SECTION_LABELS, type NavIconKey, type ProjectSection } from "./navigation";
 
@@ -190,7 +190,11 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
     }
   }
 
-  actions.push(...extensionGlobalSearchActions(context));
+  for (const { label, actions: groupActions } of extensionGlobalSearchGroups(context)) {
+    for (const action of groupActions) {
+      actions.push({ ...action, group: label });
+    }
+  }
 
   return actions;
 }

@@ -1,4 +1,5 @@
 import {
+    extensionAppFooterLinks,
     extensionTeamNavItems,
     extensionTeamPageIcon,
     isExtensionTeamNavActive,
@@ -73,6 +74,7 @@ export function Layout({
   const teams = teamsData?.teams ?? [];
   const projects = projectsData?.projects ?? [];
   const extraTeamNavItems = teamId ? extensionTeamNavItems(teamId) : [];
+  const appFooterLinks = extensionAppFooterLinks();
 
   const isDashboard = pathname === "/";
   const isAdminStatus = pathname === "/admin/status";
@@ -416,6 +418,17 @@ export function Layout({
             {description && <p className={styles.pageDescription}>{description}</p>}
           </div>
           {children}
+          {appFooterLinks.length > 0 && (
+            <footer className={styles.appFooter}>
+              <nav className={styles.appFooterLinks} aria-label="Legal and product">
+                {appFooterLinks.map((link) => (
+                  <Link key={link.to} to={link.to} className={styles.appFooterLink}>
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </footer>
+          )}
         </main>
       </div>
     </div>

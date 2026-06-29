@@ -1,16 +1,21 @@
 import type { LucideIcon } from "lucide-react";
 import {
     Activity,
+    BookOpen,
     Building2,
     CreditCard,
     FileText,
     Home,
     LayoutDashboard,
+    Mail,
     Mailbox,
     MessagesSquare,
+    Scale,
     Server,
     Settings,
+    Shield,
     SlidersHorizontal,
+    Sparkles,
     Users,
 } from "lucide-react";
 
@@ -58,6 +63,11 @@ export const NAV_ICONS = {
   status: Activity,
   templates: FileText,
   settings: Settings,
+  features: Sparkles,
+  contact: Mail,
+  privacy: Shield,
+  terms: Scale,
+  docs: BookOpen,
 } as const satisfies Record<string, LucideIcon>;
 
 export type NavIconKey = keyof typeof NAV_ICONS;

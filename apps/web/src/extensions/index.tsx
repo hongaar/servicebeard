@@ -6,6 +6,11 @@ import type { GlobalSearchAction, GlobalSearchContext } from "../lib/globalSearc
 import type { LimitReachedDialogProps } from "../lib/limitDialog";
 import type { NavIconKey } from "../lib/navigation";
 
+export interface ExtensionGlobalSearchGroup {
+  label: string;
+  actions: Omit<GlobalSearchAction, "group">[];
+}
+
 export interface ExtensionTeamNavItem {
   to: string;
   params?: Record<string, string>;
@@ -20,6 +25,11 @@ export interface ExtensionTeamNavItem {
 export interface EntitlementRedirect {
   to: string;
   params?: Record<string, string>;
+}
+
+export interface ExtensionAppFooterLink {
+  label: string;
+  to: string;
 }
 
 export const extensionRoutes: AnyRoute[] = [];
@@ -59,7 +69,14 @@ export function extensionTeamPageIcon(
   return undefined;
 }
 
-export function extensionGlobalSearchActions(_context: GlobalSearchContext): GlobalSearchAction[] {
+export function extensionGlobalSearchGroups(
+  _context: GlobalSearchContext,
+): ExtensionGlobalSearchGroup[] {
+  return [];
+}
+
+/** Extension search group labels, inserted after Help in result ordering. */
+export function extensionGlobalSearchGroupOrder(): string[] {
   return [];
 }
 
@@ -72,6 +89,10 @@ export function handleApiError(
 
 export function extensionAppExtras(): null {
   return null;
+}
+
+export function extensionAppFooterLinks(): ExtensionAppFooterLink[] {
+  return [];
 }
 
 export function isExtensionTeamNavActive(
