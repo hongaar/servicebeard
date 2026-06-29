@@ -95,6 +95,16 @@ export function extensionAppFooterLinks(): ExtensionAppFooterLink[] {
   return [];
 }
 
+export interface ExtensionAdminNavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+export function extensionAdminNavItems(): ExtensionAdminNavItem[] {
+  return [];
+}
+
 export function isExtensionTeamNavActive(
   pathname: string,
   teamId: string,

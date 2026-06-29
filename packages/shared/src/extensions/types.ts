@@ -23,6 +23,8 @@ export interface ExtensionContext {
     teamId: string,
     minRole?: "member" | "admin" | "owner",
   ): Promise<{ userId: string; role: string }>;
+  /** Platform admin gate (users.is_admin). Provided by the host API. */
+  requirePlatformAdmin(c: unknown): { id: string; email: string; isAdmin: boolean };
 }
 
 export interface ExtensionModule {

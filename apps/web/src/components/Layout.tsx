@@ -1,4 +1,5 @@
 import {
+    extensionAdminNavItems,
     extensionAppFooterLinks,
     extensionTeamNavItems,
     extensionTeamPageIcon,
@@ -75,6 +76,7 @@ export function Layout({
   const teams = teamsData?.teams ?? [];
   const projects = projectsData?.projects ?? [];
   const extraTeamNavItems = teamId ? extensionTeamNavItems(teamId) : [];
+  const adminNavItems = user?.isAdmin ? extensionAdminNavItems() : [];
   const appFooterLinks = extensionAppFooterLinks();
 
   const isDashboard = pathname === "/";
@@ -224,6 +226,18 @@ export function Layout({
                     System status
                   </Link>
                 )}
+                {adminNavItems.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={navLinkClass(pathname === item.to || pathname.startsWith(`${item.to}/`))}
+                  >
+                    <NavIcon>
+                      <item.icon {...iconMd} />
+                    </NavIcon>
+                    {item.label}
+                  </Link>
+                ))}
               </>
             )}
 

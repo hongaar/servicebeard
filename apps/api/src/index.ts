@@ -14,6 +14,7 @@ import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
 import { seedDevLocalAccount } from "./lib/login/dev-account";
 import { httpRequestDuration, httpRequestTotal } from "./lib/metrics";
+import { requirePlatformAdmin } from "./middleware/admin";
 import type { AppVariables } from "./middleware/auth";
 import { authMiddleware } from "./middleware/auth";
 import { requestLogMiddleware } from "./middleware/request-log";
@@ -142,7 +143,7 @@ app.route("/api/teams", teamRoutes);
 app.route("/api/teams", projectRoutes);
 app.route("/webhooks", webhookRoutes);
 
-await loadExtensions({ app, setEntitlementsProvider, requireTeamMember });
+await loadExtensions({ app, setEntitlementsProvider, requireTeamMember, requirePlatformAdmin });
 
 const port = Number(process.env.PORT ?? 3000);
 
