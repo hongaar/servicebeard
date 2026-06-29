@@ -6,6 +6,7 @@ import {
     isProjectSection,
     type ProjectSection,
 } from "../lib/navigation";
+import { AccountPage } from "../pages/AccountPage";
 import { AdminStatusPage } from "../pages/AdminStatusPage";
 import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
 import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
@@ -41,11 +42,11 @@ async function loadTeamContext(teamId: string) {
 async function loadProjectContext(teamId: string, projectId: string) {
   const user = await requireUser();
   try {
-    const [team, projectData, { threads }, { errors: syncErrors }] = await Promise.all([
+    const [team, projectData, { threads }, { events: statusEvents }] = await Promise.all([
       api.getTeam(teamId),
       api.getProject(teamId, projectId),
       api.getThreads(teamId, projectId),
-      api.getSyncErrors(teamId, projectId),
+      api.getStatusEvents(teamId, projectId),
     ]);
     const { entitlements, rules, ...project } = projectData;
     return {
@@ -53,7 +54,7 @@ async function loadProjectContext(teamId: string, projectId: string) {
       project: { ...project, rules },
       entitlements,
       threads,
-      syncErrors,
+      statusEvents,
       teamName: team.name,
     };
   } catch (err) {
@@ -140,6 +141,16 @@ export const adminStatusRoute = createRoute({
     const { user } = await api.getMe();
     if (!user) throw redirect({ to: "/login" });
     if (!user.isAdmin) throw redirect({ to: "/" });
+    return { user };
+  },
+});
+
+export const accountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/account",
+  component: AccountPage,
+  loader: async () => {
+    const user = await requireUser();
     return { user };
   },
 });

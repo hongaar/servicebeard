@@ -1,5 +1,5 @@
 import type { TeamEntitlementUsage, TeamListingMeta } from "@servicebeard/shared/entitlements";
-import type { Project, ProjectSyncError, Rule, Thread } from "./api";
+import type { Project, ProjectStatusEvent, Rule, Thread } from "./api";
 import type { ProjectSection } from "./navigation";
 
 export type AppUser = {
@@ -29,7 +29,7 @@ export type ProjectDetailLoaderData = {
   project: Project & { rules: Rule[] };
   entitlements: TeamEntitlementUsage | null;
   threads: Thread[];
-  syncErrors: ProjectSyncError[];
+  statusEvents: ProjectStatusEvent[];
   teamName: string;
   section: ProjectSection;
 };

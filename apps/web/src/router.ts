@@ -2,6 +2,7 @@ import { extensionPublicRoutes, extensionRoutes } from "@extensions";
 import { createRouter } from "@tanstack/react-router";
 import { RouteError } from "./components/RouteError";
 import {
+    accountRoute,
     adminStatusRoute,
     dashboardRoute,
     docsGitHubRoute,
@@ -33,6 +34,7 @@ const routeTree = rootRoute.addChildren([
   githubAppInstallCompleteRoute,
   dashboardRoute,
   adminStatusRoute,
+  accountRoute,
   teamRedirectRoute,
   teamMembersRoute,
   teamSettingsRoute,

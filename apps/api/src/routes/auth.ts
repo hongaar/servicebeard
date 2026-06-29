@@ -1,22 +1,37 @@
+import type { LoginProviderType } from "@servicebeard/shared/login";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { deleteCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
     auditLog,
+    completeProviderIdentity,
     completeProviderLogin,
+    countSignInMethods,
     credentialProviderLogin,
     destroySession,
+    getLoginAdapter,
     getPublicLoginConfig,
     getSessionCookieName,
+    isRedirectProvider,
+    linkProviderToUser,
+    listLinkedProviders,
     passkeyAuthenticationOptions,
     passkeyAuthenticationVerify,
     passkeyRegistrationOptions,
     passkeyRegistrationVerify,
     startProviderLogin,
+    unlinkProviderFromUser,
 } from "../lib/auth";
+import { logger } from "../lib/logger";
+import { isRedirectLoginAdapter } from "../lib/login";
 import type { AppVariables } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 
 const authRoutes = new Hono<{ Variables: AppVariables }>();
+
+function webUrl(): string {
+  return (process.env.WEB_URL ?? "http://localhost:5173").replace(/\/$/, "");
+}
 
 function setSessionCookie(c: Context, token: string) {
   setCookie(c, getSessionCookieName(), token, {
@@ -28,26 +43,98 @@ function setSessionCookie(c: Context, token: string) {
   });
 }
 
+function setOAuthStateCookie(
+  c: Context,
+  value: string,
+) {
+  setCookie(c, "sd_oauth_state", value, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Lax",
+    maxAge: 600,
+    path: "/",
+  });
+}
+
+function parseOAuthStateCookie(value: string) {
+  const parts = value.split("|");
+  const [storedState, codeVerifier, provider, mode, linkUserId] = parts;
+  if (!storedState || !codeVerifier || !provider) return null;
+  return {
+    storedState,
+    codeVerifier,
+    provider,
+    linkUserId: mode === "link" && linkUserId ? linkUserId : null,
+  };
+}
+
 function mapAuthError(err: unknown) {
   if (!(err instanceof Error)) {
-    return { status: 400 as const, message: "Login failed" };
+    return { status: 400 as const, message: "Login failed", code: "login_failed" as const };
   }
 
   switch (err.message) {
     case "LOGIN_PROVIDER_DISABLED":
-      return { status: 404 as const, message: "Not available" };
+      return { status: 404 as const, message: "Not available", code: "not_available" as const };
     case "SIGNUP_DISABLED":
-      return { status: 403 as const, message: "Sign-up is disabled for this provider" };
+      return {
+        status: 403 as const,
+        message: "Sign-up is disabled for this provider",
+        code: "signup_disabled" as const,
+      };
     case "INVALID_CREDENTIALS":
-      return { status: 401 as const, message: "Invalid email or password" };
+      return {
+        status: 401 as const,
+        message: "Invalid email or password",
+        code: "invalid_credentials" as const,
+      };
     case "EMAIL_TAKEN":
-      return { status: 409 as const, message: "An account with this email already exists" };
+      return {
+        status: 409 as const,
+        message:
+          "An account with this email already exists. Sign in with your existing method, then link this provider from Account settings.",
+        code: "email_taken" as const,
+      };
+    case "PROVIDER_ALREADY_LINKED":
+      return {
+        status: 409 as const,
+        message: "This provider is already linked to an account",
+        code: "provider_already_linked" as const,
+      };
+    case "PROVIDER_NOT_LINKED":
+      return {
+        status: 404 as const,
+        message: "Provider is not linked to your account",
+        code: "provider_not_linked" as const,
+      };
+    case "LAST_AUTH_METHOD":
+      return {
+        status: 400 as const,
+        message: "Cannot remove your only sign-in method",
+        code: "last_auth_method" as const,
+      };
+    case "PROVIDER_LINK_NOT_SUPPORTED":
+    case "PROVIDER_UNLINK_NOT_SUPPORTED":
+      return {
+        status: 400 as const,
+        message: "This provider cannot be linked or unlinked",
+        code: "provider_not_supported" as const,
+      };
     case "WEBAUTHN_CHALLENGE_EXPIRED":
     case "WEBAUTHN_VERIFICATION_FAILED":
-      return { status: 400 as const, message: "Passkey verification failed" };
+      return {
+        status: 400 as const,
+        message: "Passkey verification failed",
+        code: "passkey_failed" as const,
+      };
     default:
-      return { status: 400 as const, message: "Login failed" };
+      return { status: 400 as const, message: "Login failed", code: "login_failed" as const };
   }
+}
+
+function redirectWithAuthError(c: Context, code: string, isLink: boolean) {
+  const base = isLink ? `${webUrl()}/account` : `${webUrl()}/login`;
+  return c.redirect(`${base}?error=${encodeURIComponent(code)}`);
 }
 
 authRoutes.get("/config", (c) => {
@@ -59,13 +146,28 @@ authRoutes.get("/login/:provider", async (c) => {
 
   try {
     const { redirectUrl, state, codeVerifier } = await startProviderLogin(provider);
-    setCookie(c, "sd_oauth_state", `${state}|${codeVerifier}|${provider}`, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      maxAge: 600,
-      path: "/",
-    });
+    setOAuthStateCookie(c, `${state}|${codeVerifier}|${provider}`);
+    return c.redirect(redirectUrl);
+  } catch {
+    return c.json({ error: "Login provider not available" }, 404);
+  }
+});
+
+authRoutes.get("/link/:provider", async (c) => {
+  const provider = c.req.param("provider");
+  const user = requireAuth(c);
+
+  const adapter = getLoginAdapter(provider);
+  if (!adapter?.isEnabled() || !isRedirectLoginAdapter(adapter)) {
+    return c.json({ error: "Login provider not available" }, 404);
+  }
+  if (!isRedirectProvider(provider as LoginProviderType)) {
+    return c.json({ error: "This provider cannot be linked" }, 400);
+  }
+
+  try {
+    const { redirectUrl, state, codeVerifier } = await startProviderLogin(provider);
+    setOAuthStateCookie(c, `${state}|${codeVerifier}|${provider}|link|${user.id}`);
     return c.redirect(redirectUrl);
   } catch {
     return c.json({ error: "Login provider not available" }, 404);
@@ -75,19 +177,51 @@ authRoutes.get("/login/:provider", async (c) => {
 authRoutes.get("/callback", async (c) => {
   const code = c.req.query("code");
   const state = c.req.query("state");
-  const oauthCookie = c.req.header("cookie")?.match(/sd_oauth_state=([^;]+)/)?.[1];
+  const oauthCookie = getCookie(c, "sd_oauth_state");
 
   if (!code || !state || !oauthCookie) {
     return c.json({ error: "Invalid callback" }, 400);
   }
 
-  const [storedState, codeVerifier, provider] =
-    decodeURIComponent(oauthCookie).split("|");
-  if (!storedState || !codeVerifier || !provider || storedState !== state) {
+  const parsed = parseOAuthStateCookie(oauthCookie);
+  if (!parsed || parsed.storedState !== state) {
     return c.json({ error: "State mismatch" }, 400);
   }
 
+  const { codeVerifier, provider, linkUserId } = parsed;
+  const isLink = Boolean(linkUserId);
+
   try {
+    if (isLink) {
+      const sessionUser = c.get("user");
+      if (!sessionUser || sessionUser.id !== linkUserId) {
+        logger.warn(
+          { provider, linkUserId, sessionUserId: sessionUser?.id },
+          "oauth link callback session mismatch",
+        );
+        deleteCookie(c, "sd_oauth_state");
+        return redirectWithAuthError(c, "link_session_expired", true);
+      }
+
+      const identity = await completeProviderIdentity(provider, { code, codeVerifier });
+      await linkProviderToUser(
+        sessionUser.id,
+        provider as LoginProviderType,
+        identity.externalSub,
+      );
+      deleteCookie(c, "sd_oauth_state");
+
+      await auditLog({
+        userId: sessionUser.id,
+        action: "link_provider",
+        resourceType: "user",
+        resourceId: sessionUser.id,
+        metadata: { provider },
+      });
+
+      return c.redirect(`${webUrl()}/account?linked=${encodeURIComponent(provider)}`);
+    }
+
     const { token, user } = await completeProviderLogin(provider, {
       code,
       codeVerifier,
@@ -104,10 +238,68 @@ authRoutes.get("/callback", async (c) => {
       metadata: { provider },
     });
 
-    const webUrl = process.env.WEB_URL ?? "http://localhost:5173";
-    return c.redirect(webUrl);
-  } catch {
-    return c.json({ error: "Login failed" }, 400);
+    return c.redirect(webUrl());
+  } catch (err) {
+    logger.warn(
+      {
+        err,
+        provider,
+        mode: isLink ? "link" : "login",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      "oauth callback failed",
+    );
+    deleteCookie(c, "sd_oauth_state");
+    const mapped = mapAuthError(err);
+    return redirectWithAuthError(c, mapped.code, isLink);
+  }
+});
+
+authRoutes.get("/account", async (c) => {
+  const user = requireAuth(c);
+  const [linked, signInMethodCount] = await Promise.all([
+    listLinkedProviders(user.id),
+    countSignInMethods(user.id),
+  ]);
+
+  const linkedTypes = new Set(linked.map((row) => row.provider));
+  const redirectProviders = getPublicLoginConfig().filter(
+    (config) => config.type !== "local" && isRedirectProvider(config.type),
+  );
+
+  return c.json({
+    user,
+    linkedProviders: linked.map((row) => ({
+      provider: row.provider,
+      linkedAt: row.createdAt.toISOString(),
+      canUnlink: signInMethodCount > 1,
+    })),
+    availableProviders: redirectProviders.map((config) => ({
+      type: config.type,
+      label: config.label,
+      linked: linkedTypes.has(config.type),
+    })),
+    hasLocalSignIn: linkedTypes.has("local"),
+  });
+});
+
+authRoutes.delete("/account/providers/:provider", async (c) => {
+  const user = requireAuth(c);
+  const provider = c.req.param("provider") as LoginProviderType;
+
+  try {
+    await unlinkProviderFromUser(user.id, provider);
+    await auditLog({
+      userId: user.id,
+      action: "unlink_provider",
+      resourceType: "user",
+      resourceId: user.id,
+      metadata: { provider },
+    });
+    return c.json({ ok: true });
+  } catch (err) {
+    const mapped = mapAuthError(err);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
   }
 });
 
@@ -143,7 +335,7 @@ authRoutes.post("/login/:provider", async (c) => {
     return c.json({ user });
   } catch (err) {
     const mapped = mapAuthError(err);
-    return c.json({ error: mapped.message }, mapped.status);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
   }
 });
 
@@ -162,7 +354,7 @@ authRoutes.post("/login/:provider/passkey/register/options", async (c) => {
     return c.json(options);
   } catch (err) {
     const mapped = mapAuthError(err);
-    return c.json({ error: mapped.message }, mapped.status);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
   }
 });
 
@@ -196,7 +388,7 @@ authRoutes.post("/login/:provider/passkey/register/verify", async (c) => {
     return c.json({ user });
   } catch (err) {
     const mapped = mapAuthError(err);
-    return c.json({ error: mapped.message }, mapped.status);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
   }
 });
 
@@ -208,7 +400,7 @@ authRoutes.post("/login/:provider/passkey/authenticate/options", async (c) => {
     return c.json(options);
   } catch (err) {
     const mapped = mapAuthError(err);
-    return c.json({ error: mapped.message }, mapped.status);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
   }
 });
 
@@ -236,7 +428,7 @@ authRoutes.post("/login/:provider/passkey/authenticate/verify", async (c) => {
     return c.json({ user });
   } catch (err) {
     const mapped = mapAuthError(err);
-    return c.json({ error: mapped.message }, mapped.status);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
   }
 });
 

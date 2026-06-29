@@ -1,4 +1,4 @@
-import { recordProjectSyncError } from "@servicebeard/db";
+import { recordProjectStatusEvent } from "@servicebeard/db";
 import { providerErrorDetails } from "@servicebeard/providers";
 import { captureBugsinkError } from "./bugsink";
 import { logger } from "./logger";
@@ -19,7 +19,7 @@ function persistProjectSyncError(
   const providerError = providerErrorDetails(err);
   if (providerError?.status === 404) return;
 
-  void recordProjectSyncError({
+  void recordProjectStatusEvent({
     projectId,
     service,
     operation,

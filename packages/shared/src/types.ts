@@ -92,6 +92,7 @@ export interface IssueThread {
   originalSenderEmail: string;
   originalSenderName: string | null;
   subjectNormalized: string;
+  matchedRuleId: string | null;
   lastSeenNoteAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

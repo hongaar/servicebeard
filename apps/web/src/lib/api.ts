@@ -1,6 +1,6 @@
 import type { MailDiscoverResult } from "@servicebeard/shared";
 import type { TeamEntitlementUsage, TeamListingMeta } from "@servicebeard/shared/entitlements";
-import type { AuthConfigResponse } from "@servicebeard/shared/login";
+import type { AuthConfigResponse, LoginProviderType } from "@servicebeard/shared/login";
 import type {
     AuthenticationResponseJSON,
     PublicKeyCredentialCreationOptionsJSON,
@@ -48,6 +48,21 @@ type ConnectionTestResult = {
   user?: { id: string; username: string };
 };
 
+export type AccountResponse = {
+  user: { id: string; email: string; name: string | null; isAdmin: boolean };
+  linkedProviders: Array<{
+    provider: string;
+    linkedAt: string;
+    canUnlink: boolean;
+  }>;
+  availableProviders: Array<{
+    type: LoginProviderType;
+    label: string;
+    linked: boolean;
+  }>;
+  hasLocalSignIn: boolean;
+};
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -88,6 +103,39 @@ async function request<T>(
   }
 
   return res.json();
+}
+
+export interface GlobalSearchResponse {
+  teams: Array<{ id: string; name: string }>;
+  projects: Array<{ id: string; name: string; teamId: string; teamName: string }>;
+  members: Array<{
+    id: string;
+    name: string | null;
+    email: string;
+    role: string;
+    teamId: string;
+    teamName: string;
+  }>;
+  conversations: Array<{
+    id: string;
+    subject: string;
+    senderEmail: string;
+    senderName: string | null;
+    projectId: string;
+    projectName: string;
+    teamId: string;
+    teamName: string;
+  }>;
+  statusEvents: Array<{
+    id: string;
+    message: string;
+    operation: string;
+    severity: string;
+    projectId: string;
+    projectName: string;
+    teamId: string;
+    teamName: string;
+  }>;
 }
 
 export const api = {
@@ -143,6 +191,14 @@ export const api = {
     ),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
 
+  getAccount: () =>
+    request<AccountResponse>("/auth/account"),
+
+  unlinkProvider: (provider: string) =>
+    request<{ ok: boolean }>(`/auth/account/providers/${provider}`, {
+      method: "DELETE",
+    }),
+
   getTeams: () =>
     request<{
       teams: Array<{
@@ -153,6 +209,11 @@ export const api = {
         meta?: TeamListingMeta;
       }>;
     }>("/teams"),
+
+  globalSearch: (q: string, limit = 5) =>
+    request<GlobalSearchResponse>(
+      `/search?${new URLSearchParams({ q, limit: String(limit) })}`,
+    ),
 
   createTeam: (data: { name: string; slug: string }) =>
     request<{ id: string; name: string; slug: string }>("/teams", {
@@ -301,21 +362,26 @@ export const api = {
   getThreads: (teamId: string, projectId: string) =>
     request<{ threads: Thread[] }>(`/teams/${teamId}/projects/${projectId}/threads`),
 
-  getSyncErrors: (teamId: string, projectId: string) =>
-    request<{ errors: ProjectSyncError[] }>(
-      `/teams/${teamId}/projects/${projectId}/sync-errors`,
+  getStatusEvents: (teamId: string, projectId: string) =>
+    request<{ events: ProjectStatusEvent[] }>(
+      `/teams/${teamId}/projects/${projectId}/status-events`,
     ),
 
-  dismissSyncError: (teamId: string, projectId: string, errorId: string) =>
+  dismissStatusEvent: (teamId: string, projectId: string, eventId: string) =>
     request<{ ok: boolean }>(
-      `/teams/${teamId}/projects/${projectId}/sync-errors/${errorId}/dismiss`,
+      `/teams/${teamId}/projects/${projectId}/status-events/${eventId}/dismiss`,
       { method: "POST" },
     ),
 
-  dismissAllSyncErrors: (teamId: string, projectId: string) =>
+  dismissAllStatusEvents: (teamId: string, projectId: string) =>
     request<{ ok: boolean; dismissed: number }>(
-      `/teams/${teamId}/projects/${projectId}/sync-errors/dismiss-all`,
+      `/teams/${teamId}/projects/${projectId}/status-events/dismiss-all`,
       { method: "POST" },
+    ),
+
+  getMessageVolume: (teamId: string, projectId: string, days: 7 | 30 | 365) =>
+    request<{ days: number; points: MessageVolumePoint[] }>(
+      `/teams/${teamId}/projects/${projectId}/message-volume?days=${days}`,
     ),
 
   getThread: (teamId: string, projectId: string, threadId: string) =>
@@ -415,6 +481,8 @@ export interface Thread {
   originalSenderEmail: string;
   originalSenderName: string | null;
   subjectNormalized: string;
+  matchedRuleId: string | null;
+  matchedRuleName: string | null;
   updatedAt: string;
   messages: ThreadMessage[];
 }
@@ -434,10 +502,11 @@ export interface ThreadDetail {
   messages: ThreadMessageDetail[];
 }
 
-export interface ProjectSyncError {
+export interface ProjectStatusEvent {
   id: string;
   projectId: string;
   category: "mail" | "provider";
+  severity: "error" | "warning" | "info";
   operation: string;
   message: string;
   status: number | null;
@@ -445,6 +514,12 @@ export interface ProjectSyncError {
   metadata: Record<string, unknown> | null;
   createdAt: string;
   dismissedAt: string | null;
+}
+
+export interface MessageVolumePoint {
+  date: string;
+  inbound: number;
+  outbound: number;
 }
 
 export interface MailConfig {

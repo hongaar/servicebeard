@@ -1,11 +1,12 @@
 import {
-    dismissAllProjectSyncErrors,
-    dismissProjectSyncError,
+    dismissAllProjectStatusEvents,
+    dismissProjectStatusEvent,
     encrypt,
     generateWebhookSecret,
     getDb,
+    getProjectMessageVolume,
     issueThreads,
-    listProjectSyncErrors,
+    listProjectStatusEvents,
     projects,
     rules,
 } from "@servicebeard/db";
@@ -595,8 +596,8 @@ projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
   }
 });
 
-// Sync errors
-projectRoutes.get("/:teamId/projects/:projectId/sync-errors", async (c) => {
+// Project status events
+projectRoutes.get("/:teamId/projects/:projectId/status-events", async (c) => {
   const teamId = c.req.param("teamId");
   const projectId = c.req.param("projectId");
   await requireTeamMember(c, teamId);
@@ -607,11 +608,11 @@ projectRoutes.get("/:teamId/projects/:projectId/sync-errors", async (c) => {
   });
   if (!project) return c.json({ error: "Not found" }, 404);
 
-  const errors = await listProjectSyncErrors(projectId);
-  return c.json({ errors });
+  const events = await listProjectStatusEvents(projectId);
+  return c.json({ events });
 });
 
-projectRoutes.post("/:teamId/projects/:projectId/sync-errors/dismiss-all", async (c) => {
+projectRoutes.post("/:teamId/projects/:projectId/status-events/dismiss-all", async (c) => {
   const teamId = c.req.param("teamId");
   const projectId = c.req.param("projectId");
   await requireTeamMember(c, teamId, "admin");
@@ -622,15 +623,35 @@ projectRoutes.post("/:teamId/projects/:projectId/sync-errors/dismiss-all", async
   });
   if (!project) return c.json({ error: "Not found" }, 404);
 
-  const dismissed = await dismissAllProjectSyncErrors(projectId);
+  const dismissed = await dismissAllProjectStatusEvents(projectId);
   return c.json({ ok: true, dismissed });
 });
 
-projectRoutes.post("/:teamId/projects/:projectId/sync-errors/:errorId/dismiss", async (c) => {
+projectRoutes.post(
+  "/:teamId/projects/:projectId/status-events/:eventId/dismiss",
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const projectId = c.req.param("projectId");
+    const eventId = c.req.param("eventId");
+    await requireTeamMember(c, teamId, "admin");
+    const db = getDb();
+
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+    });
+    if (!project) return c.json({ error: "Not found" }, 404);
+
+    const dismissed = await dismissProjectStatusEvent(projectId, eventId);
+    if (!dismissed) return c.json({ error: "Not found" }, 404);
+
+    return c.json({ ok: true });
+  },
+);
+
+projectRoutes.get("/:teamId/projects/:projectId/message-volume", async (c) => {
   const teamId = c.req.param("teamId");
   const projectId = c.req.param("projectId");
-  const errorId = c.req.param("errorId");
-  await requireTeamMember(c, teamId, "admin");
+  await requireTeamMember(c, teamId);
   const db = getDb();
 
   const project = await db.query.projects.findFirst({
@@ -638,10 +659,14 @@ projectRoutes.post("/:teamId/projects/:projectId/sync-errors/:errorId/dismiss", 
   });
   if (!project) return c.json({ error: "Not found" }, 404);
 
-  const dismissed = await dismissProjectSyncError(projectId, errorId);
-  if (!dismissed) return c.json({ error: "Not found" }, 404);
+  const rawDays = Number(c.req.query("days") ?? "30");
+  const days = rawDays === 7 || rawDays === 30 || rawDays === 365 ? rawDays : 30;
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  since.setUTCDate(since.getUTCDate() - (days - 1));
 
-  return c.json({ ok: true });
+  const points = await getProjectMessageVolume(projectId, since);
+  return c.json({ days, points });
 });
 
 // Threads
@@ -658,12 +683,22 @@ projectRoutes.get("/:teamId/projects/:projectId/threads", async (c) => {
 
   const threads = await db.query.issueThreads.findMany({
     where: eq(issueThreads.projectId, projectId),
-    with: { messages: true },
+    with: {
+      messages: true,
+      matchedRule: {
+        columns: { id: true, name: true },
+      },
+    },
     orderBy: [desc(issueThreads.updatedAt)],
     limit: 100,
   });
 
-  return c.json({ threads });
+  return c.json({
+    threads: threads.map(({ matchedRule, ...thread }) => ({
+      ...thread,
+      matchedRuleName: matchedRule?.name ?? null,
+    })),
+  });
 });
 
 projectRoutes.get("/:teamId/projects/:projectId/threads/:threadId", async (c) => {

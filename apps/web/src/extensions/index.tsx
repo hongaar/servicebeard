@@ -2,13 +2,17 @@ import type { AnyRoute } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import type { EntitlementRequiredError } from "../lib/api";
+import type { GlobalSearchAction, GlobalSearchContext } from "../lib/globalSearch";
 import type { LimitReachedDialogProps } from "../lib/limitDialog";
+import type { NavIconKey } from "../lib/navigation";
 
 export interface ExtensionTeamNavItem {
   to: string;
   params?: Record<string, string>;
   label: string;
   icon: LucideIcon;
+  /** Icon key for global search results (sidebar uses `icon`). */
+  searchIcon?: NavIconKey;
   /** When false, the nav item is hidden. Defaults to true. */
   visible?: boolean;
 }
@@ -44,6 +48,18 @@ export type {
 } from "./ui";
 
 export function extensionTeamNavItems(_teamId: string): ExtensionTeamNavItem[] {
+  return [];
+}
+
+/** Breadcrumb icon for extension team pages (e.g. billing). */
+export function extensionTeamPageIcon(
+  _pathname: string,
+  _teamId: string,
+): LucideIcon | undefined {
+  return undefined;
+}
+
+export function extensionGlobalSearchActions(_context: GlobalSearchContext): GlobalSearchAction[] {
   return [];
 }
 

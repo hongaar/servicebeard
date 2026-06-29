@@ -6,10 +6,21 @@ const TAG_LENGTH = 16;
 
 function getKey(): Buffer {
   const keyHex = process.env.ENCRYPTION_KEY;
-  if (!keyHex || keyHex.length !== 64) {
-    throw new Error("ENCRYPTION_KEY must be a 64-character hex string (32 bytes)");
+  if (!keyHex) {
+    throw new Error("ENCRYPTION_KEY is not set");
   }
-  return Buffer.from(keyHex, "hex");
+  if (keyHex.length !== 64 || !/^[0-9a-fA-F]+$/.test(keyHex)) {
+    throw new Error(
+      "ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Generate one with: openssl rand -hex 32",
+    );
+  }
+  const key = Buffer.from(keyHex, "hex");
+  if (key.length !== 32) {
+    throw new Error(
+      "ENCRYPTION_KEY must decode to 32 bytes. Generate one with: openssl rand -hex 32",
+    );
+  }
+  return key;
 }
 
 export function encrypt(plaintext: string): string {

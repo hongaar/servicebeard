@@ -333,6 +333,7 @@ export async function processInboundEmail(
       originalSenderEmail: email.fromEmail,
       originalSenderName: email.fromName,
       subjectNormalized: normalizeSubject(email.subject),
+      matchedRuleId: rule.id,
     })
     .returning();
 

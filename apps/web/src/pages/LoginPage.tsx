@@ -1,18 +1,20 @@
 import type { LoginProviderPublicConfig, LoginProviderType } from "@servicebeard/shared/login";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  ArrowLeft,
-  Fingerprint,
-  Github,
-  Gitlab,
-  KeyRound,
-  Mail,
+    ArrowLeft,
+    Fingerprint,
+    Github,
+    Gitlab,
+    KeyRound,
+    Lock,
+    LogIn,
+    Mail,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { api } from "../lib/api";
-import { ssoIconProps as baseSsoIconProps } from "../lib/icons";
+import { ssoIconProps as baseSsoIconProps, iconMd, iconSm } from "../lib/icons";
 import { authenticateWithPasskey, isPasskeySupported, registerPasskey } from "../lib/passkey";
 import styles from "../styles/pages.module.css";
 
@@ -29,6 +31,32 @@ function SsoIcon({ type }: { type: LoginProviderType }) {
     default:
       return <KeyRound {...ssoIconProps} />;
   }
+}
+
+function PasskeyLoginButton({
+  loading,
+  disabled,
+  onClick,
+  label = "Sign in with passkey",
+  loadingLabel = "Signing in…",
+}: {
+  loading?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label?: string;
+  loadingLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={[styles.ssoButton, styles.ssoButton_passkey].join(" ")}
+      onClick={onClick}
+      disabled={disabled || loading}
+    >
+      <Fingerprint {...ssoIconProps} />
+      <span>{loading ? loadingLabel : label}</span>
+    </button>
+  );
 }
 
 function SsoLoginButton({
@@ -169,6 +197,7 @@ function CredentialAuthForm({
                     .join(" ")}
                   onClick={() => setSignupMethod("password")}
                 >
+                  <Lock {...iconSm} />
                   Password
                 </button>
                 <button
@@ -181,6 +210,7 @@ function CredentialAuthForm({
                     .join(" ")}
                   onClick={() => setSignupMethod("passkey")}
                 >
+                  <Fingerprint {...iconSm} />
                   Passkey
                 </button>
               </div>
@@ -216,6 +246,7 @@ function CredentialAuthForm({
                     disabled={loading || !email || !name}
                     className={styles.fullWidth}
                   >
+                    <Fingerprint {...iconMd} />
                     {loading ? "Creating account…" : "Create account with passkey"}
                   </Button>
                 </div>
@@ -267,17 +298,14 @@ function CredentialAuthForm({
             autoComplete="current-password"
           />
           <Button type="submit" disabled={loading} className={styles.fullWidth}>
+            <LogIn {...iconMd} />
             {loading ? "Signing in…" : "Sign in"}
           </Button>
           {passkeySupported && (
-            <button
-              type="button"
-              className={styles.passkeyLink}
+            <PasskeyLoginButton
+              loading={loading}
               onClick={onPasskeyLogin}
-              disabled={loading}
-            >
-              Sign in with passkey
-            </button>
+            />
           )}
         </form>
       )}
@@ -312,6 +340,21 @@ export function LoginPage() {
       const hasSso = config.providers.some((provider) => provider.type !== "local");
       setShowEmailLogin(!hasSso);
     });
+
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("error");
+    if (authError === "email_taken") {
+      setError(
+        "An account with this email already exists. Sign in with your existing method, then link this provider from Account settings.",
+      );
+      window.history.replaceState({}, "", "/login");
+    } else if (authError === "login_failed") {
+      setError("Login failed. Please try again.");
+      window.history.replaceState({}, "", "/login");
+    } else if (authError) {
+      setError("Sign-in failed. Please try again.");
+      window.history.replaceState({}, "", "/login");
+    }
   }, []);
 
   const handleRedirectLogin = (type: LoginProviderType) => {
@@ -404,15 +447,11 @@ export function LoginPage() {
                 />
               ))}
               {passkeyQuickLogin && (
-                <button
-                  type="button"
-                  className={[styles.ssoButton, styles.ssoButton_passkey].join(" ")}
-                  onClick={() => handlePasskeyLogin("local")}
+                <PasskeyLoginButton
+                  loading={loading}
                   disabled={ssoBusy}
-                >
-                  <Fingerprint {...ssoIconProps} />
-                  <span>{loading ? "Signing in…" : "Sign in with passkey"}</span>
-                </button>
+                  onClick={() => handlePasskeyLogin("local")}
+                />
               )}
               {hasLocal && (
                 <button

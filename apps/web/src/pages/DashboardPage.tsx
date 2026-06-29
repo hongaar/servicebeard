@@ -48,7 +48,7 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
 
   return (
     <Layout
-      title="Dashboard"
+      title="Teams"
       description="Your teams and projects live here. Open a team to invite members and connect mailboxes."
       user={user}
     >

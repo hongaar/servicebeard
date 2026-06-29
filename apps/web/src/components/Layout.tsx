@@ -1,23 +1,22 @@
 import {
     extensionTeamNavItems,
+    extensionTeamPageIcon,
     isExtensionTeamNavActive,
 } from "@extensions";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-    Activity,
-    FileText,
-    Folder,
-    LayoutDashboard,
-    Server,
-    Settings,
-    SlidersHorizontal,
-    Users,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { iconMd } from "../lib/icons";
-import type { ProjectSection } from "../lib/navigation";
-import { BackLink, ProjectPicker, TeamPicker } from "./ContextPicker";
+import {
+    NAV_ICONS,
+    PROJECT_SECTION_LABELS,
+    teamPageIcon,
+    type NavIconKey,
+    type ProjectSection,
+} from "../lib/navigation";
+import { BackLink, BreadcrumbProjectPicker, BreadcrumbTeamPicker } from "./ContextPicker";
+import { GlobalSearch } from "./GlobalSearch";
 import styles from "./Layout.module.css";
 import { ProviderLogo } from "./ProviderLogo";
 import { UserMenu } from "./UserMenu";
@@ -53,7 +52,7 @@ export function Layout({
   teamName,
   projectId,
   projectName,
-  section = "rules",
+  section = "overview",
   inboxEmail,
   issueLink,
 }: LayoutProps) {
@@ -91,6 +90,90 @@ export function Layout({
       ? "team"
       : "home";
 
+  const sidebarSectionLabel =
+    sidebarContext === "project"
+      ? "Project"
+      : sidebarContext === "team"
+        ? "Team"
+        : "Home";
+
+  type BreadcrumbItem = {
+    label: string;
+    to?: string;
+    params?: Record<string, string>;
+    icon?: NavIconKey;
+    Icon?: LucideIcon;
+    picker?: "team" | "project";
+  };
+
+  const breadcrumbs: BreadcrumbItem[] = (() => {
+    if (sidebarContext === "home") {
+      if (!isDashboard) {
+        const pageIcon: NavIconKey = isAdminStatus ? "adminStatus" : "teams";
+        return [
+          { label: "Home", to: "/", icon: "home" },
+          { label: title, icon: pageIcon },
+        ];
+      }
+      return [];
+    }
+
+    if (sidebarContext === "team" && teamId) {
+      const pageIcon = teamPageIcon(pathname, teamId);
+      const extensionIcon = pageIcon ? undefined : extensionTeamPageIcon(pathname, teamId);
+      const items: BreadcrumbItem[] = [
+        {
+          label: teamName ?? "Team",
+          ...(pageIcon !== "projects" && {
+            to: "/teams/$teamId/projects",
+            params: { teamId },
+          }),
+          icon: "team",
+          picker: "team",
+        },
+      ];
+      if (pageIcon || extensionIcon) {
+        items.push({ label: title, icon: pageIcon, Icon: extensionIcon });
+      }
+      return items;
+    }
+
+    if (sidebarContext === "project" && teamId && projectId) {
+      const items: BreadcrumbItem[] = [
+        {
+          label: teamName ?? "Team",
+          to: "/teams/$teamId/projects",
+          params: { teamId },
+          icon: "team",
+          picker: "team",
+        },
+      ];
+      items.push({
+        label: projectName ?? "Project",
+        ...(section !== "overview" && {
+          to: "/teams/$teamId/projects/$projectId/$section",
+          params: { teamId, projectId, section: "overview" },
+        }),
+        icon: "project",
+        picker: "project",
+      });
+      items.push({ label: PROJECT_SECTION_LABELS[section], icon: section });
+      return items;
+    }
+
+    return [];
+  })();
+
+  const breadcrumbIcon = (item: Pick<BreadcrumbItem, "icon" | "Icon">) => {
+    if (item.Icon) {
+      const Icon = item.Icon;
+      return <Icon {...iconMd} />;
+    }
+    if (!item.icon) return null;
+    const Icon = NAV_ICONS[item.icon];
+    return <Icon {...iconMd} />;
+  };
+
   return (
     <div className={styles.app}>
       <header className={styles.navbar}>
@@ -101,18 +184,16 @@ export function Layout({
               Service<span className={styles.brandAccent}>Beard</span>
             </span>
           </Link>
-
-          <div className={styles.pickers}>
-            <TeamPicker teams={teams} teamId={teamId} />
-            {teamId && (
-              <ProjectPicker
-                projects={projects}
-                teamId={teamId}
-                projectId={projectId}
-                section={section}
-              />
-            )}
-          </div>
+          <GlobalSearch
+            context={{
+              teamId,
+              teamName,
+              projectId,
+              projectName,
+              section,
+              isAdmin: user.isAdmin,
+            }}
+          />
         </div>
 
         <UserMenu user={user} />
@@ -123,17 +204,17 @@ export function Layout({
           <nav className={styles.nav}>
             {sidebarContext === "home" && (
               <>
-                <p className={styles.navSection}>Home</p>
-                <Link to="/" className={navLinkClass(isDashboard)} title="Dashboard">
+                <p className={styles.navSection}>{sidebarSectionLabel}</p>
+                <Link to="/" className={navLinkClass(isDashboard)} title="Teams">
                   <NavIcon>
-                    <LayoutDashboard {...iconMd} />
+                    <NAV_ICONS.teams {...iconMd} />
                   </NavIcon>
-                  <span className={styles.navLabel}>Dashboard</span>
+                  <span className={styles.navLabel}>Teams</span>
                 </Link>
                 {user?.isAdmin && (
                   <Link to="/admin/status" className={navLinkClass(isAdminStatus)}>
                     <NavIcon>
-                      <Server {...iconMd} />
+                      <NAV_ICONS.adminStatus {...iconMd} />
                     </NavIcon>
                     System status
                   </Link>
@@ -143,7 +224,7 @@ export function Layout({
 
             {sidebarContext === "team" && teamId && (
               <>
-                <p className={styles.navSection}>{teamName ?? "Team"}</p>
+                <p className={styles.navSection}>{sidebarSectionLabel}</p>
                 <Link
                   to="/teams/$teamId/projects"
                   params={{ teamId }}
@@ -151,7 +232,7 @@ export function Layout({
                   title="Projects"
                 >
                   <NavIcon>
-                    <Folder {...iconMd} />
+                    <NAV_ICONS.projects {...iconMd} />
                   </NavIcon>
                   <span className={styles.navLabel}>Projects</span>
                 </Link>
@@ -162,7 +243,7 @@ export function Layout({
                   title="Members"
                 >
                   <NavIcon>
-                    <Users {...iconMd} />
+                    <NAV_ICONS.members {...iconMd} />
                   </NavIcon>
                   <span className={styles.navLabel}>Members</span>
                 </Link>
@@ -192,7 +273,7 @@ export function Layout({
                   title="Settings"
                 >
                   <NavIcon>
-                    <Settings {...iconMd} />
+                    <NAV_ICONS.teamSettings {...iconMd} />
                   </NavIcon>
                   <span className={styles.navLabel}>Settings</span>
                 </Link>
@@ -201,28 +282,33 @@ export function Layout({
 
             {sidebarContext === "project" && teamId && projectId && (
               <>
-                <p className={styles.navSection}>{projectName ?? "Project"}</p>
+                <p className={styles.navSection}>{sidebarSectionLabel}</p>
                 {(
                   [
-                    ["rules", "Rules", SlidersHorizontal],
-                    ["status", "Status", Activity],
-                    ["templates", "Templates", FileText],
-                    ["settings", "Settings", Settings],
+                    ["overview", "Overview"],
+                    ["rules", "Rules"],
+                    ["conversations", "Conversations"],
+                    ["status", "Status"],
+                    ["templates", "Templates"],
+                    ["settings", "Settings"],
                   ] as const
-                ).map(([key, label, Icon]) => (
-                  <Link
-                    key={key}
-                    to="/teams/$teamId/projects/$projectId/$section"
-                    params={{ teamId, projectId, section: key }}
-                    className={navLinkClass(section === key)}
-                    title={label}
-                  >
-                    <NavIcon>
-                      <Icon {...iconMd} />
-                    </NavIcon>
-                    <span className={styles.navLabel}>{label}</span>
-                  </Link>
-                ))}
+                ).map(([key, label]) => {
+                  const Icon = NAV_ICONS[key];
+                  return (
+                    <Link
+                      key={key}
+                      to="/teams/$teamId/projects/$projectId/$section"
+                      params={{ teamId, projectId, section: key }}
+                      className={navLinkClass(section === key)}
+                      title={label}
+                    >
+                      <NavIcon>
+                        <Icon {...iconMd} />
+                      </NavIcon>
+                      <span className={styles.navLabel}>{label}</span>
+                    </Link>
+                  );
+                })}
               </>
             )}
           </nav>
@@ -241,6 +327,71 @@ export function Layout({
 
         <main className={styles.main}>
           <div className={styles.pageHeader}>
+            {breadcrumbs.length > 0 && (
+              <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+                <ol className={styles.breadcrumbList}>
+                  {breadcrumbs.map((item, index) => {
+                    const isLast = index === breadcrumbs.length - 1;
+                    const asLink = !!(item.to && !isLast);
+                    const icon = (item.icon || item.Icon) ? breadcrumbIcon(item) : undefined;
+
+                    return (
+                      <li key={`${item.label}-${index}`} className={styles.breadcrumbItem}>
+                        {item.picker === "team" ? (
+                          <BreadcrumbTeamPicker
+                            label={item.label}
+                            to={item.to}
+                            params={item.params}
+                            asLink={asLink}
+                            ariaCurrent={isLast}
+                            icon={icon}
+                            teams={teams}
+                            teamId={teamId}
+                            linkClassName={styles.breadcrumbLink}
+                            currentClassName={styles.breadcrumbCurrent}
+                            iconClassName={styles.breadcrumbIcon}
+                          />
+                        ) : item.picker === "project" && teamId ? (
+                          <BreadcrumbProjectPicker
+                            label={item.label}
+                            to={item.to}
+                            params={item.params}
+                            asLink={asLink}
+                            ariaCurrent={isLast}
+                            icon={icon}
+                            projects={projects}
+                            teamId={teamId}
+                            projectId={projectId}
+                            section={section}
+                            linkClassName={styles.breadcrumbLink}
+                            currentClassName={styles.breadcrumbCurrent}
+                            iconClassName={styles.breadcrumbIcon}
+                          />
+                        ) : item.to && !isLast ? (
+                          <Link to={item.to} params={item.params} className={styles.breadcrumbLink}>
+                            {icon && <span className={styles.breadcrumbIcon}>{icon}</span>}
+                            {item.label}
+                          </Link>
+                        ) : (
+                          <span
+                            className={styles.breadcrumbCurrent}
+                            aria-current={isLast ? "page" : undefined}
+                          >
+                            {icon && <span className={styles.breadcrumbIcon}>{icon}</span>}
+                            {item.label}
+                          </span>
+                        )}
+                        {!isLast && (
+                          <span className={styles.breadcrumbSeparator} aria-hidden>
+                            /
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </nav>
+            )}
             <h1 className={styles.pageTitle}>{title}</h1>
             {inboxEmail && (
               <p className={styles.pageInbox}>

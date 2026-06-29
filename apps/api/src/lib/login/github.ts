@@ -1,4 +1,4 @@
-import { isGithubLoginEnabled } from "../env";
+import { getOAuthCallbackUrl, isGithubLoginEnabled } from "../env";
 import { createPkceOAuthStart, exchangeOAuthCode } from "./oauth2-pkce";
 import type { RedirectLoginAdapter } from "./types";
 
@@ -14,9 +14,9 @@ function isGithubSignupEnabled(): boolean {
 function getGithubConfig() {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const redirectUri = process.env.GITHUB_REDIRECT_URI;
+  const redirectUri = getOAuthCallbackUrl();
 
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!clientId || !clientSecret) {
     throw new Error("GitHub OAuth configuration is incomplete");
   }
 

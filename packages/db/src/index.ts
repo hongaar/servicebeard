@@ -36,8 +36,10 @@ export async function closeDb(): Promise<void> {
 }
 
 export * from "./crypto";
+export * from "./global-search";
+export * from "./message-volume";
+export * from "./project-status-events";
 export * from "./schema";
 export * from "./seed-dev-account";
-export * from "./sync-errors";
 
 export { and, asc, count, eq, gte, lt, sql } from "drizzle-orm";

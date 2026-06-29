@@ -19,13 +19,10 @@ data:
   LOCAL_LOGIN_SIGNUP: {{ .Values.env.LOCAL_LOGIN_SIGNUP | quote }}
   OIDC_ISSUER: {{ .Values.env.OIDC_ISSUER | quote }}
   OIDC_CLIENT_ID: {{ .Values.env.OIDC_CLIENT_ID | quote }}
-  OIDC_REDIRECT_URI: {{ .Values.env.OIDC_REDIRECT_URI | quote }}
   GITHUB_CLIENT_ID: {{ .Values.env.GITHUB_CLIENT_ID | quote }}
-  GITHUB_REDIRECT_URI: {{ .Values.env.GITHUB_REDIRECT_URI | quote }}
   GITHUB_APP_ID: {{ .Values.env.GITHUB_APP_ID | quote }}
   GITLAB_BASE_URL: {{ .Values.env.GITLAB_BASE_URL | quote }}
   GITLAB_CLIENT_ID: {{ .Values.env.GITLAB_CLIENT_ID | quote }}
-  GITLAB_REDIRECT_URI: {{ .Values.env.GITLAB_REDIRECT_URI | quote }}
   API_URL: {{ .Values.env.API_URL | quote }}
   WEB_URL: {{ .Values.env.WEB_URL | quote }}
   WEBHOOK_BASE_URL: {{ .Values.env.WEBHOOK_BASE_URL | quote }}

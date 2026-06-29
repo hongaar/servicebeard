@@ -6,7 +6,7 @@ import {
 } from "@servicebeard/shared";
 
 const SERVICE = "api";
-const dsn = process.env.BUGSINK_DSN;
+const dsn = process.env.BUGSINK_API_DSN;
 
 export function initBugsink() {
   if (!dsn) return;

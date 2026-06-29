@@ -148,7 +148,7 @@ export function ProjectsPage() {
       await router.invalidate();
       navigate({
         to: "/teams/$teamId/projects/$projectId/$section",
-        params: { teamId, projectId: project.id, section: "rules" },
+        params: { teamId, projectId: project.id, section: "overview" },
       });
     },
     onError: (err) => handleMutationError(err, setError, setFieldErrors),
@@ -171,7 +171,7 @@ export function ProjectsPage() {
   const openProject = (projectId: string) => {
     navigate({
       to: "/teams/$teamId/projects/$projectId/$section",
-      params: { teamId, projectId, section: "rules" },
+      params: { teamId, projectId, section: "overview" },
     });
   };
 
@@ -280,7 +280,7 @@ export function ProjectsPage() {
                       onActivate={(e) => e.stopPropagation()}
                       link={{
                         to: "/teams/$teamId/projects/$projectId/$section",
-                        params: { teamId, projectId: p.id, section: "rules" },
+                        params: { teamId, projectId: p.id, section: "overview" },
                       }}
                     />
                   </td>

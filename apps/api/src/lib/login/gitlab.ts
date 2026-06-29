@@ -1,4 +1,4 @@
-import { isGitlabLoginEnabled } from "../env";
+import { getOAuthCallbackUrl, isGitlabLoginEnabled } from "../env";
 import { createPkceOAuthStart, exchangeOAuthCode } from "./oauth2-pkce";
 import type { RedirectLoginAdapter } from "./types";
 
@@ -14,10 +14,10 @@ function getGitlabBaseUrl(): string {
 function getGitlabConfig() {
   const clientId = process.env.GITLAB_CLIENT_ID;
   const clientSecret = process.env.GITLAB_CLIENT_SECRET;
-  const redirectUri = process.env.GITLAB_REDIRECT_URI;
+  const redirectUri = getOAuthCallbackUrl();
   const baseUrl = getGitlabBaseUrl();
 
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!clientId || !clientSecret) {
     throw new Error("GitLab OAuth configuration is incomplete");
   }
 

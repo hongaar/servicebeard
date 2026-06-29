@@ -1,4 +1,5 @@
-import { CircleHelp, LogOut } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CircleHelp, LogOut, UserRound } from "lucide-react";
 import { api } from "../lib/api";
 import { DOC_PATHS } from "../lib/docs";
 import { iconSm } from "../lib/icons";
@@ -67,6 +68,15 @@ export function UserMenu({ user }: UserMenuProps) {
             </div>
           </div>
           <div className={styles.menuActions}>
+            <Link
+              to="/account"
+              className={[btn.button, btn.ghost, btn.small, styles.menuAction].join(" ")}
+              role="menuitem"
+              onClick={close}
+            >
+              <UserRound {...iconSm} />
+              Account
+            </Link>
             <DocsLink
               to={DOC_PATHS.index}
               className={[btn.button, btn.ghost, btn.small, styles.menuAction].join(" ")}

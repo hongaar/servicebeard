@@ -23,6 +23,23 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const userAuthProviders = pgTable(
+  "user_auth_providers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    externalSub: text("external_sub").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_auth_providers_provider_sub_idx").on(table.provider, table.externalSub),
+    uniqueIndex("user_auth_providers_user_provider_idx").on(table.userId, table.provider),
+  ],
+);
+
 export const sessions = pgTable(
   "sessions",
   {
@@ -226,6 +243,7 @@ export const issueThreads = pgTable(
     originalSenderEmail: text("original_sender_email").notNull(),
     originalSenderName: text("original_sender_name"),
     subjectNormalized: text("subject_normalized").notNull(),
+    matchedRuleId: uuid("matched_rule_id").references(() => rules.id, { onDelete: "set null" }),
     lastSeenNoteAt: timestamp("last_seen_note_at", { withTimezone: true }),
     issueMissingAt: timestamp("issue_missing_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -331,14 +349,15 @@ export const jobRuns = pgTable(
   ],
 );
 
-export const projectSyncErrors = pgTable(
-  "project_sync_errors",
+export const projectStatusEvents = pgTable(
+  "project_status_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     category: text("category").notNull(),
+    severity: text("severity").notNull().default("error"),
     operation: text("operation").notNull(),
     message: text("message").notNull(),
     status: integer("status"),
@@ -348,8 +367,8 @@ export const projectSyncErrors = pgTable(
     dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
   },
   (table) => [
-    index("project_sync_errors_project_id_idx").on(table.projectId),
-    index("project_sync_errors_project_created_idx").on(table.projectId, table.createdAt),
+    index("project_status_events_project_id_idx").on(table.projectId),
+    index("project_status_events_project_created_idx").on(table.projectId, table.createdAt),
   ],
 );
 
@@ -357,6 +376,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   teamMembers: many(teamMembers),
   webauthnCredentials: many(webauthnCredentials),
+  authProviders: many(userAuthProviders),
+}));
+
+export const userAuthProvidersRelations = relations(userAuthProviders, ({ one }) => ({
+  user: one(users, { fields: [userAuthProviders.userId], references: [users.id] }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -386,7 +410,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   team: one(teams, { fields: [projects.teamId], references: [teams.id] }),
   rules: many(rules),
   threads: many(issueThreads),
-  syncErrors: many(projectSyncErrors),
+  statusEvents: many(projectStatusEvents),
   imapIngestedMessages: many(projectImapIngestedMessages),
 }));
 
@@ -406,6 +430,10 @@ export const rulesRelations = relations(rules, ({ one }) => ({
 
 export const issueThreadsRelations = relations(issueThreads, ({ one, many }) => ({
   project: one(projects, { fields: [issueThreads.projectId], references: [projects.id] }),
+  matchedRule: one(rules, {
+    fields: [issueThreads.matchedRuleId],
+    references: [rules.id],
+  }),
   messages: many(emailMessages),
 }));
 
@@ -420,9 +448,9 @@ export const emailMessagesRelations = relations(emailMessages, ({ one }) => ({
   }),
 }));
 
-export const projectSyncErrorsRelations = relations(projectSyncErrors, ({ one }) => ({
+export const projectStatusEventsRelations = relations(projectStatusEvents, ({ one }) => ({
   project: one(projects, {
-    fields: [projectSyncErrors.projectId],
+    fields: [projectStatusEvents.projectId],
     references: [projects.id],
   }),
 }));

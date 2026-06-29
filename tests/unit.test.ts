@@ -1025,6 +1025,15 @@ describe("crypto", () => {
     expect(hashToken("abc")).toBe(hashToken("abc"));
     expect(hashToken("abc")).not.toBe(hashToken("def"));
   });
+
+  test("rejects non-hex encryption keys", async () => {
+    process.env.ENCRYPTION_KEY =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/";
+    const { encrypt } = await import("@servicebeard/db");
+    expect(() => encrypt("secret")).toThrow(/64-character hex string/);
+    process.env.ENCRYPTION_KEY =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  });
 });
 
 describe("GitLab webhook parsing", () => {
@@ -1190,17 +1199,14 @@ describe("login provider env", () => {
     OIDC_ISSUER: "https://idp.example.com",
     OIDC_CLIENT_ID: "client",
     OIDC_CLIENT_SECRET: "secret",
-    OIDC_REDIRECT_URI: "http://localhost:3000/api/auth/callback",
   };
   const githubEnv = {
     GITHUB_CLIENT_ID: "client",
     GITHUB_CLIENT_SECRET: "secret",
-    GITHUB_REDIRECT_URI: "http://localhost:3000/api/auth/callback",
   };
   const gitlabEnv = {
     GITLAB_CLIENT_ID: "client",
     GITLAB_CLIENT_SECRET: "secret",
-    GITLAB_REDIRECT_URI: "http://localhost:3000/api/auth/callback",
   };
 
   function withEnv(
@@ -1262,13 +1268,10 @@ describe("login provider env", () => {
       OIDC_ISSUER: undefined,
       OIDC_CLIENT_ID: undefined,
       OIDC_CLIENT_SECRET: undefined,
-      OIDC_REDIRECT_URI: undefined,
       GITHUB_CLIENT_ID: undefined,
       GITHUB_CLIENT_SECRET: undefined,
-      GITHUB_REDIRECT_URI: undefined,
       GITLAB_CLIENT_ID: undefined,
       GITLAB_CLIENT_SECRET: undefined,
-      GITLAB_REDIRECT_URI: undefined,
     }, () => {
       expect(isOidcLoginEnabled()).toBe(false);
       expect(isGithubLoginEnabled()).toBe(false);
@@ -1284,9 +1287,13 @@ describe("login provider env", () => {
     } = await import("../apps/api/src/lib/env");
 
     withEnv({
-      ...oidcEnv,
-      ...githubEnv,
-      ...gitlabEnv,
+      OIDC_ISSUER: oidcEnv.OIDC_ISSUER,
+      OIDC_CLIENT_ID: oidcEnv.OIDC_CLIENT_ID,
+      OIDC_CLIENT_SECRET: oidcEnv.OIDC_CLIENT_SECRET,
+      GITHUB_CLIENT_ID: githubEnv.GITHUB_CLIENT_ID,
+      GITHUB_CLIENT_SECRET: githubEnv.GITHUB_CLIENT_SECRET,
+      GITLAB_CLIENT_ID: gitlabEnv.GITLAB_CLIENT_ID,
+      GITLAB_CLIENT_SECRET: gitlabEnv.GITLAB_CLIENT_SECRET,
       OIDC_LOGIN: "true",
       GITHUB_LOGIN: "true",
       GITLAB_LOGIN: "true",
@@ -1295,6 +1302,21 @@ describe("login provider env", () => {
       expect(isGithubLoginEnabled()).toBe(true);
       expect(isGitlabLoginEnabled()).toBe(true);
     });
+  });
+
+  test("oauth callback URL prefers WEB_URL for browser cookie flow", async () => {
+    const { getOAuthCallbackUrl } = await import("../apps/api/src/lib/env");
+
+    withEnv(
+      {
+        OAUTH_REDIRECT_URI: undefined,
+        WEB_URL: "http://localhost:5173",
+        API_URL: "http://localhost:3000",
+      },
+      () => {
+        expect(getOAuthCallbackUrl()).toBe("http://localhost:5173/api/auth/callback");
+      },
+    );
   });
 
   test("local login requires LOCAL_LOGIN=true", async () => {
@@ -1307,6 +1329,22 @@ describe("login provider env", () => {
     withEnv({ LOCAL_LOGIN: "true" }, () => {
       expect(isLocalLoginEnabled()).toBe(true);
     });
+  });
+});
+
+describe("auth providers", () => {
+  test("infers provider type from external subject", async () => {
+    const { inferProviderFromExternalSub, isRedirectProvider } = await import(
+      "../apps/api/src/lib/login/providers"
+    );
+
+    expect(inferProviderFromExternalSub("github:123")).toBe("github");
+    expect(inferProviderFromExternalSub("gitlab:456")).toBe("gitlab");
+    expect(inferProviderFromExternalSub("dev:user@example.com")).toBe("local");
+    expect(inferProviderFromExternalSub("auth0|abc")).toBe("oidc");
+
+    expect(isRedirectProvider("github")).toBe(true);
+    expect(isRedirectProvider("local")).toBe(false);
   });
 });
 
@@ -1398,6 +1436,45 @@ describe("mail discovery parsers", () => {
   });
 });
 
+describe("mail connection errors", () => {
+  test("maps SMTP connection closed on port 465 to actionable guidance", async () => {
+    const { formatMailConnectionError } = await import("../apps/api/src/lib/mail-connection-error");
+
+    const err = formatMailConnectionError(
+      { protocol: "SMTP", host: "smtp.migadu.com", port: 465, secure: true },
+      new Error("Connection closed"),
+    );
+
+    expect(err.message).toContain("SMTP connection to smtp.migadu.com:465 (TLS)");
+    expect(err.message).toContain("Port 465 is often blocked");
+    expect(err.message).toContain("587");
+  });
+
+  test("maps SMTP timeout on port 465 to actionable guidance", async () => {
+    const { formatMailConnectionError } = await import("../apps/api/src/lib/mail-connection-error");
+
+    const err = formatMailConnectionError(
+      { protocol: "SMTP", host: "smtp.migadu.com", port: 465, secure: true },
+      new Error("Connection timeout"),
+    );
+
+    expect(err.message).toContain("timed out");
+    expect(err.message).toContain("587");
+  });
+
+  test("maps authentication failures clearly", async () => {
+    const { formatMailConnectionError } = await import("../apps/api/src/lib/mail-connection-error");
+
+    const err = formatMailConnectionError(
+      { protocol: "IMAP", host: "imap.migadu.com", port: 993, secure: true },
+      new Error("Invalid login: 535 5.7.8 Error: authentication failed"),
+    );
+
+    expect(err.message).toContain("IMAP authentication failed");
+    expect(err.message).toContain("username and password");
+  });
+});
+
 describe("provider project URLs", () => {
   test("builds GitHub and GitLab issues URLs", async () => {
     const { providerIssuesWebUrl } = await import("@servicebeard/shared");
@@ -1424,5 +1501,50 @@ describe("entitlements", () => {
     await expect(
       getEntitlements().assertTeamAccess("team-1", { path: "/api/teams/team-1/projects" }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("global search", () => {
+  test("filterSearchActions matches labels and keywords", async () => {
+    const { buildSearchActions, filterSearchActions } = await import(
+      "../apps/web/src/lib/globalSearch"
+    );
+
+    const actions = buildSearchActions({
+      teamId: "team-1",
+      projectId: "project-1",
+      isAdmin: true,
+    });
+
+    expect(filterSearchActions(actions, "templates").some((a) => a.label === "Templates")).toBe(
+      true,
+    );
+    expect(filterSearchActions(actions, "help").some((a) => a.group === "Help")).toBe(true);
+    expect(filterSearchActions(actions, "status").some((a) => a.label === "System status")).toBe(
+      true,
+    );
+  });
+
+  test("groupSearchResults preserves group order", async () => {
+    const { groupSearchResults } = await import("../apps/web/src/lib/globalSearchResults");
+
+    const groups = groupSearchResults([
+      {
+        id: "1",
+        label: "Teams",
+        group: "Teams",
+        kind: "navigate",
+        to: "/",
+      },
+      {
+        id: "2",
+        label: "Projects",
+        group: "Navigation",
+        kind: "navigate",
+        to: "/",
+      },
+    ]);
+
+    expect(groups.map((group) => group.label)).toEqual(["Navigation", "Teams"]);
   });
 });

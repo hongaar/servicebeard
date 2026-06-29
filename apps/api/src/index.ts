@@ -20,6 +20,7 @@ import { authRoutes } from "./routes/auth";
 import { githubAppRoutes } from "./routes/github-app";
 import { healthRoutes } from "./routes/health";
 import { projectRoutes } from "./routes/projects";
+import { searchRoutes } from "./routes/search";
 import { teamRoutes } from "./routes/teams";
 import { webhookRoutes } from "./routes/webhooks";
 
@@ -132,6 +133,7 @@ app.onError((err, c) => {
 app.route("/", healthRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/auth", authRoutes);
+app.route("/api/search", searchRoutes);
 app.route("/api/github-app", githubAppRoutes);
 app.route("/api/teams", teamRoutes);
 app.route("/api/teams", projectRoutes);

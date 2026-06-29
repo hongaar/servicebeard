@@ -144,11 +144,11 @@ export async function discoverMailAutoconfig(email: string): Promise<MailDiscove
 
   const trimmedEmail = email.trim();
 
-  const mozilla = await discoverFromMozillaAutoconfig(trimmedEmail, domain);
-  if (mozilla.found) return mozilla;
-
   const srv = await discoverFromDnsSrv(domain);
   if (srv.found) return srv;
+
+  const mozilla = await discoverFromMozillaAutoconfig(trimmedEmail, domain);
+  if (mozilla.found) return mozilla;
 
   return discoverFromMicrosoftAutodiscover(trimmedEmail, domain);
 }

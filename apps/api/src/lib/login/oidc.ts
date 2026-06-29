@@ -1,5 +1,5 @@
 import * as client from "openid-client";
-import { isOidcLoginEnabled } from "../env";
+import { getOAuthCallbackUrl, isOidcLoginEnabled } from "../env";
 import type { RedirectLoginAdapter } from "./types";
 
 let oidcConfig: client.Configuration | null = null;
@@ -9,9 +9,8 @@ async function getOidcConfig(): Promise<client.Configuration> {
     const issuer = process.env.OIDC_ISSUER;
     const clientId = process.env.OIDC_CLIENT_ID;
     const clientSecret = process.env.OIDC_CLIENT_SECRET;
-    const redirectUri = process.env.OIDC_REDIRECT_URI;
 
-    if (!issuer || !clientId || !clientSecret || !redirectUri) {
+    if (!issuer || !clientId || !clientSecret) {
       throw new Error("OIDC configuration is incomplete");
     }
 
@@ -53,12 +52,13 @@ export class OidcLoginAdapter implements RedirectLoginAdapter {
 
   async startLogin() {
     const config = await getOidcConfig();
+    const redirectUri = getOAuthCallbackUrl();
     const codeVerifier = client.randomPKCECodeVerifier();
     const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
     const state = client.randomState();
 
     const authUrl = client.buildAuthorizationUrl(config, {
-      redirect_uri: process.env.OIDC_REDIRECT_URI!,
+      redirect_uri: redirectUri,
       scope: "openid email profile",
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
@@ -74,7 +74,7 @@ export class OidcLoginAdapter implements RedirectLoginAdapter {
 
   async completeLogin(params: { code: string; codeVerifier: string }) {
     const config = await getOidcConfig();
-    const redirectUri = process.env.OIDC_REDIRECT_URI!;
+    const redirectUri = getOAuthCallbackUrl();
 
     const tokens = await client.authorizationCodeGrant(
       config,

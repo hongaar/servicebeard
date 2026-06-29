@@ -1,4 +1,5 @@
 import { getDb } from "@servicebeard/db";
+import type { LoginProviderType } from "@servicebeard/shared/login";
 import type {
     AuthenticationResponseJSON,
     RegistrationResponseJSON,
@@ -23,6 +24,13 @@ export {
     getPublicLoginConfig
 } from "./login";
 export {
+    countSignInMethods,
+    isRedirectProvider,
+    linkProviderToUser,
+    listLinkedProviders,
+    unlinkProviderFromUser
+} from "./login/providers";
+export {
     createSessionForIdentity,
     destroySession,
     getSessionCookieName,
@@ -37,7 +45,7 @@ export async function startProviderLogin(type: string) {
   return adapter.startLogin();
 }
 
-export async function completeProviderLogin(
+export async function completeProviderIdentity(
   type: string,
   params: { code: string; codeVerifier: string },
 ) {
@@ -45,10 +53,18 @@ export async function completeProviderLogin(
   if (!adapter?.isEnabled() || !isRedirectLoginAdapter(adapter)) {
     throw new Error("LOGIN_PROVIDER_DISABLED");
   }
+  return adapter.completeLogin(params);
+}
 
-  const identity = await adapter.completeLogin(params);
+export async function completeProviderLogin(
+  type: string,
+  params: { code: string; codeVerifier: string },
+) {
+  const identity = await completeProviderIdentity(type, params);
+  const adapter = getLoginAdapter(type);
   return createSessionForIdentity(identity, {
-    allowSignup: adapter.settings.signupEnabled,
+    allowSignup: adapter!.settings.signupEnabled,
+    provider: type as LoginProviderType,
   });
 }
 
@@ -67,7 +83,7 @@ export async function credentialProviderLogin(
   }
 
   const identity = await adapter.login(credentials);
-  return createSessionForIdentity(identity, { allowSignup: false });
+  return createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
 }
 
 export async function passkeyRegistrationOptions(
@@ -96,7 +112,7 @@ export async function passkeyRegistrationVerify(
     ...input,
     signupEnabled: adapter.settings.signupEnabled,
   });
-  return createSessionForIdentity(identity, { allowSignup: false });
+  return createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
 }
 
 export async function passkeyAuthenticationOptions(type: string) {
@@ -116,7 +132,7 @@ export async function passkeyAuthenticationVerify(
   if (!adapter?.isEnabled()) throw new Error("LOGIN_PROVIDER_DISABLED");
 
   const identity = await verifyPasskeyAuthentication(response);
-  return createSessionForIdentity(identity, { allowSignup: false });
+  return createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
 }
 
 export async function auditLog(entry: {

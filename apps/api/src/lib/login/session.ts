@@ -6,7 +6,13 @@ import {
     users,
 } from "@servicebeard/db";
 import type { SessionUser } from "@servicebeard/shared";
+import type { LoginProviderType } from "@servicebeard/shared/login";
 import { and, eq, gt } from "drizzle-orm";
+import {
+    assertEmailAvailableForSignup,
+    ensureProviderLink,
+    findUserIdByProviderIdentity,
+} from "./providers";
 import type { LoginIdentity } from "./types";
 
 const SESSION_COOKIE = "sd_session";
@@ -18,18 +24,18 @@ export function getSessionCookieName(): string {
 
 export async function createSessionForIdentity(
   identity: LoginIdentity,
-  opts: { allowSignup: boolean },
+  opts: { allowSignup: boolean; provider: LoginProviderType },
 ): Promise<{ token: string; user: SessionUser }> {
   const db = getDb();
 
-  let user = await db.query.users.findFirst({
-    where: eq(users.oidcSub, identity.externalSub),
-  });
+  let userId = await findUserIdByProviderIdentity(opts.provider, identity.externalSub);
 
-  if (!user) {
+  if (!userId) {
     if (!opts.allowSignup) {
       throw new Error("SIGNUP_DISABLED");
     }
+
+    await assertEmailAvailableForSignup(identity.email, identity.externalSub);
 
     const [created] = await db
       .insert(users)
@@ -40,7 +46,8 @@ export async function createSessionForIdentity(
         oidcSub: identity.externalSub,
       })
       .returning();
-    user = created!;
+    userId = created!.id;
+    await ensureProviderLink(userId, opts.provider, identity.externalSub);
   } else {
     await db
       .update(users)
@@ -50,7 +57,15 @@ export async function createSessionForIdentity(
         avatarUrl: identity.avatarUrl ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, userId));
+    await ensureProviderLink(userId, opts.provider, identity.externalSub);
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
   }
 
   const sessionToken = generateToken();

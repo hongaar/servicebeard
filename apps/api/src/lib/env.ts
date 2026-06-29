@@ -6,12 +6,25 @@ function parseEnvFlag(
   return undefined;
 }
 
+/** Browser OAuth callback — must match the origin that sets the OAuth state cookie. */
+export function getOAuthCallbackUrl(): string {
+  if (process.env.OAUTH_REDIRECT_URI?.trim()) {
+    return process.env.OAUTH_REDIRECT_URI.trim();
+  }
+
+  const webUrl = process.env.WEB_URL?.trim();
+  if (webUrl) {
+    return `${webUrl.replace(/\/$/, "")}/api/auth/callback`;
+  }
+
+  return `${(process.env.API_URL ?? "http://localhost:3000").replace(/\/$/, "")}/api/auth/callback`;
+}
+
 function isOidcConfigured(): boolean {
   return Boolean(
     process.env.OIDC_ISSUER &&
       process.env.OIDC_CLIENT_ID &&
-      process.env.OIDC_CLIENT_SECRET &&
-      process.env.OIDC_REDIRECT_URI,
+      process.env.OIDC_CLIENT_SECRET,
   );
 }
 
@@ -25,11 +38,7 @@ export function isLocalLoginEnabled(): boolean {
 }
 
 function isGithubConfigured(): boolean {
-  return Boolean(
-    process.env.GITHUB_CLIENT_ID &&
-      process.env.GITHUB_CLIENT_SECRET &&
-      process.env.GITHUB_REDIRECT_URI,
-  );
+  return Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
 }
 
 export function isGithubLoginEnabled(): boolean {
@@ -38,11 +47,7 @@ export function isGithubLoginEnabled(): boolean {
 }
 
 function isGitlabConfigured(): boolean {
-  return Boolean(
-    process.env.GITLAB_CLIENT_ID &&
-      process.env.GITLAB_CLIENT_SECRET &&
-      process.env.GITLAB_REDIRECT_URI,
-  );
+  return Boolean(process.env.GITLAB_CLIENT_ID && process.env.GITLAB_CLIENT_SECRET);
 }
 
 export function isGitlabLoginEnabled(): boolean {

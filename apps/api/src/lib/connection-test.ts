@@ -6,6 +6,7 @@ import type {
 import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";
 import type { z } from "zod";
+import { formatMailConnectionError } from "./mail-connection-error";
 import { smtpTlsOptions } from "./smtp-tls";
 
 type TestMailInput = z.infer<typeof testMailConnectionSchema>;
@@ -19,31 +20,55 @@ const GREETING_TIMEOUT = 8000;
 const SOCKET_TIMEOUT = 12000;
 
 export async function testMailConnection(body: TestMailInput) {
-  const client = new ImapFlow({
-    host: body.imapHost,
-    port: body.imapPort,
-    secure: body.imapSecure,
-    auth: { user: body.imapUser, pass: body.imapPassword },
-    logger: false,
-    connectionTimeout: CONNECTION_TIMEOUT,
-    greetingTimeout: GREETING_TIMEOUT,
-    socketTimeout: SOCKET_TIMEOUT,
-  });
+  try {
+    const client = new ImapFlow({
+      host: body.imapHost,
+      port: body.imapPort,
+      secure: body.imapSecure,
+      auth: { user: body.imapUser, pass: body.imapPassword },
+      logger: false,
+      connectionTimeout: CONNECTION_TIMEOUT,
+      greetingTimeout: GREETING_TIMEOUT,
+      socketTimeout: SOCKET_TIMEOUT,
+    });
 
-  await client.connect();
-  await client.logout();
+    await client.connect();
+    await client.logout();
+  } catch (err) {
+    throw formatMailConnectionError(
+      {
+        protocol: "IMAP",
+        host: body.imapHost,
+        port: body.imapPort,
+        secure: body.imapSecure,
+      },
+      err,
+    );
+  }
 
-  const transporter = nodemailer.createTransport({
-    host: body.smtpHost,
-    port: body.smtpPort,
-    secure: body.smtpSecure,
-    auth: { user: body.smtpUser, pass: body.smtpPassword },
-    connectionTimeout: CONNECTION_TIMEOUT,
-    greetingTimeout: GREETING_TIMEOUT,
-    socketTimeout: SOCKET_TIMEOUT,
-    tls: smtpTlsOptions(body.smtpHost),
-  });
-  await transporter.verify();
+  try {
+    const transporter = nodemailer.createTransport({
+      host: body.smtpHost,
+      port: body.smtpPort,
+      secure: body.smtpSecure,
+      auth: { user: body.smtpUser, pass: body.smtpPassword },
+      connectionTimeout: CONNECTION_TIMEOUT,
+      greetingTimeout: GREETING_TIMEOUT,
+      socketTimeout: SOCKET_TIMEOUT,
+      tls: smtpTlsOptions(body.smtpHost),
+    });
+    await transporter.verify();
+  } catch (err) {
+    throw formatMailConnectionError(
+      {
+        protocol: "SMTP",
+        host: body.smtpHost,
+        port: body.smtpPort,
+        secure: body.smtpSecure,
+      },
+      err,
+    );
+  }
 
   return { ok: true as const, imap: true, smtp: true };
 }

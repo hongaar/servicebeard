@@ -134,7 +134,7 @@ In development (`NODE_ENV=development`), the API and worker also append structur
 
 ### Authentication
 
-Servicebeard supports multiple login providers. Enable one or more by setting `*_LOGIN=true` and the required credentials (see `.env.example`). All OAuth/OIDC providers share the same callback URL: `{API_URL}/api/auth/callback`.
+Servicebeard supports multiple login providers. Enable one or more by setting `*_LOGIN=true` and the required credentials (see `.env.example`). All OAuth/OIDC providers share one callback URL, defaulting to `{WEB_URL}/api/auth/callback` so the OAuth state cookie matches the browser origin (in local dev, register `http://localhost:5173/api/auth/callback` in your OAuth app). Override with `OAUTH_REDIRECT_URI` if needed.
 
 #### Local (email/password & passkey)
 
@@ -157,12 +157,13 @@ Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
 | `OIDC_ISSUER` | Issuer URL (e.g. `https://auth.example.com/realms/myrealm`) |
 | `OIDC_CLIENT_ID` | Client ID |
 | `OIDC_CLIENT_SECRET` | Client secret |
-| `OIDC_REDIRECT_URI` | Callback URL (e.g. `http://localhost:3000/api/auth/callback`) |
+
+Register `{WEB_URL}/api/auth/callback` as the redirect URI in your IdP.
 
 #### GitHub OAuth
 
 1. Go to [GitHub Developer settings → OAuth Apps](https://github.com/settings/developers) → **New OAuth App**
-2. Set **Authorization callback URL** to your API callback (e.g. `http://localhost:3000/api/auth/callback` for local dev)
+2. Set **Authorization callback URL** to `{WEB_URL}/api/auth/callback` (local dev: `http://localhost:5173/api/auth/callback`)
 3. Copy the Client ID and generate a Client Secret into `.env`:
 
 | Variable | Description |
@@ -171,7 +172,6 @@ Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
 | `GITHUB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
 | `GITHUB_CLIENT_ID` | OAuth App client ID |
 | `GITHUB_CLIENT_SECRET` | OAuth App client secret |
-| `GITHUB_REDIRECT_URI` | Same callback URL registered in GitHub |
 
 #### GitHub App (issue sync)
 
@@ -197,7 +197,7 @@ Optional alternative to per-project personal access tokens. When configured, pro
 Works with GitLab.com or self-hosted GitLab.
 
 1. Create an application under **User Settings → Applications** (GitLab.com) or **Admin → Applications** (self-hosted)
-2. Set **Redirect URI** to your API callback (e.g. `http://localhost:3000/api/auth/callback`)
+2. Set **Redirect URI** to `{WEB_URL}/api/auth/callback` (local dev: `http://localhost:5173/api/auth/callback`)
 3. Enable the `read_user` scope
 4. Copy Application ID and Secret into `.env`:
 
@@ -208,9 +208,8 @@ Works with GitLab.com or self-hosted GitLab.
 | `GITLAB_BASE_URL` | GitLab instance URL (default: `https://gitlab.com`) |
 | `GITLAB_CLIENT_ID` | Application ID |
 | `GITLAB_CLIENT_SECRET` | Application secret |
-| `GITLAB_REDIRECT_URI` | Same callback URL registered in GitLab |
 
-For production, use your public API URL for all `*_REDIRECT_URI` values and register the same URL in each OAuth app.
+For production, register `{WEB_URL}/api/auth/callback` in each OAuth app (same host users sign in from).
 
 ### Database UI
 

@@ -2,26 +2,28 @@ import { LimitReachedDialog } from "@extensions";
 import { providerIssuesWebUrl } from "@servicebeard/shared";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLoaderData, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { MessagesSquare, SlidersHorizontal } from "lucide-react";
+import { Link, useLoaderData, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Activity, MessagesSquare, Settings, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { ConversationVolumeChart } from "../components/ConversationVolumeChart";
 import { DestructiveConfirmDialog } from "../components/DestructiveConfirmDialog";
 import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
 import { ProjectSettingsForm } from "../components/ProjectSettingsForm";
+import { ProjectStatusEventDialog } from "../components/ProjectStatusEventDialog";
 import { ProjectTemplatesForm } from "../components/ProjectTemplatesForm";
 import { RuleActionsCell } from "../components/RuleActionsCell";
 import { RuleForm } from "../components/RuleForm";
-import { SyncErrorDetailDialog } from "../components/SyncErrorDetailDialog";
 import { TableRowAction } from "../components/TableRowAction";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
-import { api, type CreateRuleInput, type ProjectSyncError, type Rule } from "../lib/api";
+import { api, type CreateRuleInput, type ProjectStatusEvent, type Rule } from "../lib/api";
 import { isResourceCreateBlocked } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import { iconMd } from "../lib/icons";
 import type { ProjectDetailLoaderData } from "../lib/loaderTypes";
-import type { ProjectSection } from "../lib/navigation";
+import { PROJECT_SECTION_LABELS, type ProjectSection } from "../lib/navigation";
 import {
     formToUpdateInput,
     projectToSettingsForm,
@@ -36,12 +38,17 @@ import { formatRuleMatch } from "../lib/ruleDisplay";
 import styles from "../styles/pages.module.css";
 
 const SECTION_INFO: Record<ProjectSection, { description: string }> = {
+  overview: {
+    description: "Key metrics and configuration for this project.",
+  },
   rules: {
     description: "Define how incoming emails are matched and what happens on your issue board.",
   },
   status: {
-    description:
-      "Conversations, plus recent mailbox and issue-provider errors for this project.",
+    description: "Mailbox and issue provider events for this project.",
+  },
+  conversations: {
+    description: "Email threads linked to issues for this project.",
   },
   templates: {
     description: "Email and issue tracker templates for customer-facing messages.",
@@ -67,7 +74,7 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, entitlements, threads, syncErrors, teamName, section } =
+  const { user, project, entitlements, threads, statusEvents, teamName, section } =
     useLoaderData({
       from: "/teams/$teamId/projects/$projectId/$section",
     }) as ProjectDetailLoaderData;
@@ -106,7 +113,7 @@ export function ProjectDetailPage() {
   const [ruleFieldErrors, setRuleFieldErrors] = useState<Record<string, string>>({});
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedThreadLabel, setSelectedThreadLabel] = useState("");
-  const [selectedSyncErrorId, setSelectedSyncErrorId] = useState<string | null>(null);
+  const [selectedStatusEventId, setSelectedStatusEventId] = useState<string | null>(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const atRuleLimit = isResourceCreateBlocked("rule", entitlements);
 
@@ -130,8 +137,8 @@ export function ProjectDetailPage() {
     setShowRuleForm(true);
   };
 
-  const selectedSyncError =
-    syncErrors.find((error) => error.id === selectedSyncErrorId) ?? null;
+  const selectedStatusEvent =
+    statusEvents.find((event) => event.id === selectedStatusEventId) ?? null;
 
   useEffect(() => {
     setSettingsForm(projectToSettingsForm(project));
@@ -146,7 +153,7 @@ export function ProjectDetailPage() {
     setRuleFieldErrors({});
     setSelectedThreadId(null);
     setSelectedThreadLabel("");
-    setSelectedSyncErrorId(null);
+    setSelectedStatusEventId(null);
     setShowDeleteDialog(false);
     setDeleteError("");
   }, [project.id]);
@@ -248,13 +255,13 @@ export function ProjectDetailPage() {
     },
   });
 
-  const dismissSyncError = useMutation({
-    mutationFn: (errorId: string) => api.dismissSyncError(teamId, project.id, errorId),
+  const dismissStatusEvent = useMutation({
+    mutationFn: (eventId: string) => api.dismissStatusEvent(teamId, project.id, eventId),
     onSuccess: () => window.location.reload(),
   });
 
-  const dismissAllSyncErrors = useMutation({
-    mutationFn: () => api.dismissAllSyncErrors(teamId, project.id),
+  const dismissAllStatusEvents = useMutation({
+    mutationFn: () => api.dismissAllStatusEvents(teamId, project.id),
     onSuccess: () => window.location.reload(),
   });
 
@@ -291,16 +298,27 @@ export function ProjectDetailPage() {
     setEditingRuleId(ruleId);
   };
 
-  const syncErrorCategoryLabel = (category: ProjectSyncError["category"]) =>
+  const statusCategoryLabel = (category: ProjectStatusEvent["category"]) =>
     category === "mail" ? "Mailbox" : "Issue provider";
+
+  const statusSeverityClass = (severity: ProjectStatusEvent["severity"]) => {
+    if (severity === "warning") return styles.statusSeverityWarning;
+    if (severity === "info") return styles.statusSeverityInfo;
+    return styles.statusSeverityError;
+  };
+
+  const errorStatusCount = statusEvents.filter((event) => event.severity === "error").length;
 
   const editingRule = editingRuleId
     ? project.rules.find((rule) => rule.id === editingRuleId)
     : undefined;
 
+  const enabledRules = project.rules.filter((rule) => rule.isEnabled).length;
+  const totalMessages = threads.reduce((sum, thread) => sum + thread.messages.length, 0);
+
   return (
     <Layout
-      title={project.name}
+      title={PROJECT_SECTION_LABELS[section]}
       description={SECTION_INFO[section].description}
       user={user}
       teamId={teamId}
@@ -308,17 +326,100 @@ export function ProjectDetailPage() {
       projectId={projectId}
       projectName={project.name}
       section={section}
-      inboxEmail={parseMailFromAddress(project.smtpFrom)}
-      issueLink={{
-        provider: project.provider,
-        label: project.providerProjectId,
-        href: providerIssuesWebUrl(
-          project.provider,
-          project.providerBaseUrl,
-          project.providerProjectId,
-        ),
-      }}
+      inboxEmail={section === "overview" ? parseMailFromAddress(project.smtpFrom) : undefined}
+      issueLink={
+        section === "overview"
+          ? {
+              provider: project.provider,
+              label: project.providerProjectId,
+              href: providerIssuesWebUrl(
+                project.provider,
+                project.providerBaseUrl,
+                project.providerProjectId,
+              ),
+            }
+          : undefined
+      }
     >
+      {section === "overview" && (
+        <div className={styles.overviewContent}>
+          <div className={styles.metricGrid}>
+            <Link
+              to="/teams/$teamId/projects/$projectId/$section"
+              params={{ teamId, projectId, section: "rules" }}
+              className={styles.metricCardLink}
+            >
+              <div className={styles.metricCardTop}>
+                <span className={styles.metricIcon} aria-hidden>
+                  <SlidersHorizontal {...iconMd} />
+                </span>
+                <span className={styles.metricValue}>{project.rules.length}</span>
+              </div>
+              <span className={styles.metricLabel}>Rules</span>
+              <span className={styles.metricHint}>{enabledRules} enabled</span>
+            </Link>
+            <Link
+              to="/teams/$teamId/projects/$projectId/$section"
+              params={{ teamId, projectId, section: "conversations" }}
+              className={styles.metricCardLink}
+            >
+              <div className={styles.metricCardTop}>
+                <span className={styles.metricIcon} aria-hidden>
+                  <MessagesSquare {...iconMd} />
+                </span>
+                <span className={styles.metricValue}>{threads.length}</span>
+              </div>
+              <span className={styles.metricLabel}>Conversations</span>
+              <span className={styles.metricHint}>
+                {totalMessages} message{totalMessages === 1 ? "" : "s"}
+              </span>
+            </Link>
+            <Link
+              to="/teams/$teamId/projects/$projectId/$section"
+              params={{ teamId, projectId, section: "status" }}
+              className={styles.metricCardLink}
+            >
+              <div className={styles.metricCardTop}>
+                <span className={styles.metricIcon} aria-hidden>
+                  <Activity {...iconMd} />
+                </span>
+                <span className={styles.metricValue}>{statusEvents.length}</span>
+              </div>
+              <span className={styles.metricLabel}>Status</span>
+              <span className={styles.metricHint}>
+                {errorStatusCount === 0 ? "All clear" : `${errorStatusCount} need attention`}
+              </span>
+            </Link>
+            <Link
+              to="/teams/$teamId/projects/$projectId/$section"
+              params={{ teamId, projectId, section: "settings" }}
+              className={styles.metricCardLink}
+            >
+              <div className={styles.metricCardTop}>
+                <span className={styles.metricIcon} aria-hidden>
+                  <Settings {...iconMd} />
+                </span>
+                <span
+                  className={[
+                    styles.metricValue,
+                    project.isActive ? styles.testOk : styles.testError,
+                  ].join(" ")}
+                  style={{ fontSize: "var(--text-xl)" }}
+                >
+                  {project.isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
+              <span className={styles.metricLabel}>Settings</span>
+              <span className={styles.metricHint}>
+                {project.isActive ? "Mailbox sync enabled" : "Sync paused"}
+              </span>
+            </Link>
+          </div>
+
+          <ConversationVolumeChart teamId={teamId} projectId={projectId} />
+        </div>
+      )}
+
       {section === "rules" && (
         <>
           <div className={styles.sectionHeader}>
@@ -447,178 +548,195 @@ export function ProjectDetailPage() {
         </>
       )}
 
+      {section === "conversations" && (
+        <>
+          {threads.length === 0 ? (
+            <div className={styles.empty}>
+              <EmptyIcon icon={MessagesSquare} />
+              <p className={styles.emptyTitle}>No conversations yet</p>
+              <p className={styles.emptyHint}>
+                Once mail starts flowing and rules match, conversations will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Issue</th>
+                    <th>Sender</th>
+                    <th>Subject</th>
+                    <th>Messages</th>
+                    <th>Rule</th>
+                    <th>Updated</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {threads.map((t) => {
+                    const issueLabel = `#${t.issueIid}`;
+                    return (
+                      <tr
+                        key={t.id}
+                        className={styles.tableRowClickable}
+                        onClick={() => openThread(t.id, issueLabel)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openThread(t.id, issueLabel);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="link"
+                        aria-label={`View thread ${issueLabel}`}
+                      >
+                        <td>
+                          <a
+                            href={t.issueUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {issueLabel}
+                          </a>
+                        </td>
+                        <td>
+                          {t.originalSenderName ? (
+                            <>
+                              {t.originalSenderName}{" "}
+                              <span className={styles.ruleMeta}>
+                                &lt;{t.originalSenderEmail}&gt;
+                              </span>
+                            </>
+                          ) : (
+                            t.originalSenderEmail
+                          )}
+                        </td>
+                        <td className={styles.tableCellTruncate}>{t.subjectNormalized}</td>
+                        <td>{t.messages.length}</td>
+                        <td>
+                          {t.matchedRuleName ? (
+                            <Link
+                              to="/teams/$teamId/projects/$projectId/$section"
+                              params={{ teamId, projectId, section: "rules" }}
+                              onClick={(e) => e.stopPropagation()}
+                              className={styles.ruleLink}
+                            >
+                              {t.matchedRuleName}
+                            </Link>
+                          ) : (
+                            <span className={styles.ruleMeta}>—</span>
+                          )}
+                        </td>
+                        <td>{new Date(t.updatedAt).toLocaleString()}</td>
+                        <td className={styles.tableActions}>
+                          <TableRowAction
+                            label="Details"
+                            onActivate={(e) => {
+                              e.stopPropagation();
+                              openThread(t.id, issueLabel);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <ThreadDetailDialog
+            teamId={teamId}
+            projectId={project.id}
+            threadId={selectedThreadId}
+            issueLabel={selectedThreadLabel}
+            onClose={() => setSelectedThreadId(null)}
+          />
+        </>
+      )}
+
       {section === "status" && (
         <>
-          <Card title="Conversations" subtitle="Email threads linked to issues">
-            {threads.length === 0 ? (
-              <div className={styles.empty}>
-                <EmptyIcon icon={MessagesSquare} />
-                <p className={styles.emptyTitle}>No conversations yet</p>
-                <p className={styles.emptyHint}>
-                  Once mail starts flowing and rules match, conversations will appear here.
-                </p>
+          {statusEvents.length === 0 ? (
+            <p className={styles.formHint}>No active status events for this project.</p>
+          ) : (
+            <>
+              <div className={styles.statusEventActions}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => dismissAllStatusEvents.mutate()}
+                  disabled={dismissAllStatusEvents.isPending}
+                >
+                  Dismiss all
+                </Button>
               </div>
-            ) : (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Issue</th>
-                      <th>Sender</th>
-                      <th>Subject</th>
-                      <th>Messages</th>
-                      <th>Updated</th>
+                      <th>Severity</th>
+                      <th>Category</th>
+                      <th>Operation</th>
+                      <th>Message</th>
+                      <th>Time</th>
                       <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {threads.map((t) => {
-                      const issueLabel = `#${t.issueIid}`;
-                      return (
-                        <tr
-                          key={t.id}
-                          className={styles.tableRowClickable}
-                          onClick={() => openThread(t.id, issueLabel)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              openThread(t.id, issueLabel);
-                            }
-                          }}
-                          tabIndex={0}
-                          role="link"
-                          aria-label={`View thread ${issueLabel}`}
-                        >
-                          <td>
-                            <a
-                              href={t.issueUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {issueLabel}
-                            </a>
-                          </td>
-                          <td>
-                            {t.originalSenderName ? (
-                              <>
-                                {t.originalSenderName}{" "}
-                                <span className={styles.ruleMeta}>
-                                  &lt;{t.originalSenderEmail}&gt;
-                                </span>
-                              </>
-                            ) : (
-                              t.originalSenderEmail
-                            )}
-                          </td>
-                          <td className={styles.tableCellTruncate}>{t.subjectNormalized}</td>
-                          <td>{t.messages.length}</td>
-                          <td>{new Date(t.updatedAt).toLocaleString()}</td>
-                          <td className={styles.tableActions}>
-                            <TableRowAction
-                              label="Details"
-                              onActivate={(e) => {
-                                e.stopPropagation();
-                                openThread(t.id, issueLabel);
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {statusEvents.map((event) => (
+                      <tr
+                        key={event.id}
+                        className={styles.tableRowClickable}
+                        onClick={() => setSelectedStatusEventId(event.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedStatusEventId(event.id);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="link"
+                        aria-label={`View status event: ${event.operation}`}
+                      >
+                        <td>
+                          <span className={[styles.badge, statusSeverityClass(event.severity)].join(" ")}>
+                            {event.severity}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={[styles.badge, styles.badgeInactive].join(" ")}>
+                            {statusCategoryLabel(event.category)}
+                          </span>
+                        </td>
+                        <td>
+                          {event.operation}
+                          {event.status != null ? ` · HTTP ${event.status}` : ""}
+                        </td>
+                        <td className={styles.tableCellTruncate}>{event.message}</td>
+                        <td>{new Date(event.createdAt).toLocaleString()}</td>
+                        <td className={styles.tableActions}>
+                          <TableRowAction
+                            label="Details"
+                            onActivate={(e) => {
+                              e.stopPropagation();
+                              setSelectedStatusEventId(event.id);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-            )}
-            <ThreadDetailDialog
-              teamId={teamId}
-              projectId={project.id}
-              threadId={selectedThreadId}
-              issueLabel={selectedThreadLabel}
-              onClose={() => setSelectedThreadId(null)}
-            />
-          </Card>
-
-          <Card
-            title="Sync errors"
-            subtitle="Recent mailbox and issue API failures for this project"
-            className={styles.section}
-          >
-            {syncErrors.length === 0 ? (
-              <p className={styles.formHint}>No active sync errors. Failures will appear here.</p>
-            ) : (
-              <>
-                <div className={styles.syncErrorActions}>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => dismissAllSyncErrors.mutate()}
-                    disabled={dismissAllSyncErrors.isPending}
-                  >
-                    Dismiss all
-                  </Button>
-                </div>
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Category</th>
-                        <th>Operation</th>
-                        <th>Message</th>
-                        <th>Time</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {syncErrors.map((error) => (
-                        <tr
-                          key={error.id}
-                          className={styles.tableRowClickable}
-                          onClick={() => setSelectedSyncErrorId(error.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setSelectedSyncErrorId(error.id);
-                            }
-                          }}
-                          tabIndex={0}
-                          role="link"
-                          aria-label={`View sync error: ${error.operation}`}
-                        >
-                          <td>
-                            <span className={[styles.badge, styles.badgeInactive].join(" ")}>
-                              {syncErrorCategoryLabel(error.category)}
-                            </span>
-                          </td>
-                          <td>
-                            {error.operation}
-                            {error.status != null ? ` · HTTP ${error.status}` : ""}
-                          </td>
-                          <td className={styles.tableCellTruncate}>{error.message}</td>
-                          <td>{new Date(error.createdAt).toLocaleString()}</td>
-                          <td className={styles.tableActions}>
-                            <TableRowAction
-                              label="Details"
-                              onActivate={(e) => {
-                                e.stopPropagation();
-                                setSelectedSyncErrorId(error.id);
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <SyncErrorDetailDialog
-                  error={selectedSyncError}
-                  onClose={() => setSelectedSyncErrorId(null)}
-                  onDismiss={(errorId) => dismissSyncError.mutate(errorId)}
-                  isDismissing={dismissSyncError.isPending}
-                />
-              </>
-            )}
-          </Card>
+              <ProjectStatusEventDialog
+                event={selectedStatusEvent}
+                onClose={() => setSelectedStatusEventId(null)}
+                onDismiss={(eventId) => dismissStatusEvent.mutate(eventId)}
+                isDismissing={dismissStatusEvent.isPending}
+              />
+            </>
+          )}
         </>
       )}
 

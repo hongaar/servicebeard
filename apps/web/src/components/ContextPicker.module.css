@@ -95,6 +95,89 @@
   text-decoration: none;
 }
 
+.breadcrumbPicker {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.breadcrumbPickerInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.breadcrumbPickerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.breadcrumbPickerLabel {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.25rem;
+  min-width: 0;
+}
+
+.breadcrumbPickerTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.1875rem;
+  margin-left: 0.0625rem;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.breadcrumbPickerChevron {
+  color: inherit;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2.25;
+  transition: transform var(--transition-fast);
+}
+
+.breadcrumbPickerChevron:global(.popoverChevronOpen) {
+  transform: rotate(180deg);
+}
+
+.breadcrumbPickerTrigger:hover:not(:disabled) {
+  color: var(--color-primary);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.breadcrumbPickerTrigger:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.breadcrumbPickerTrigger:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.breadcrumbPickerTrigger[aria-expanded="true"] {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  border-color: var(--color-border-strong);
+}
+
 @media (max-width: 768px) {
   .trigger {
     max-width: none;

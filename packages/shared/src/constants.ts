@@ -1,5 +1,10 @@
+export const PROJECT_STATUS_SEVERITIES = ["error", "warning", "info"] as const;
+export type ProjectStatusSeverity = (typeof PROJECT_STATUS_SEVERITIES)[number];
+
 export const SYNC_ERROR_CATEGORIES = ["mail", "provider"] as const;
 export type SyncErrorCategory = (typeof SYNC_ERROR_CATEGORIES)[number];
+export const PROJECT_STATUS_CATEGORIES = SYNC_ERROR_CATEGORIES;
+export type ProjectStatusCategory = SyncErrorCategory;
 
 export function classifySyncError(
   service: string,
