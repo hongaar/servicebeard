@@ -5,8 +5,8 @@ import type {
 } from "@servicebeard/shared";
 import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";
-import { smtpTlsOptions } from "./smtp-tls";
 import type { z } from "zod";
+import { smtpTlsOptions } from "./smtp-tls";
 
 type TestMailInput = z.infer<typeof testMailConnectionSchema>;
 type TestProviderInput = z.infer<typeof testProviderConnectionSchema>;
