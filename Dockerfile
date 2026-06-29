@@ -14,7 +14,10 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
 COPY packages/providers/package.json ./packages/providers/
 COPY packages/shared/package.json ./packages/shared/
-RUN bun install --frozen-lockfile || bun install
+# Force hoisted node_modules: the build stages below copy only the root
+# /app/node_modules between stages, which requires a flat (hoisted) layout.
+# Bun 1.3 defaults workspaces to the isolated linker, which breaks that.
+RUN bun install --linker hoisted --frozen-lockfile || bun install --linker hoisted
 
 # ── Extension sources (optional named build context: extension) ──
 FROM base AS extension-context
@@ -27,7 +30,7 @@ COPY packages/db /serviceboard/packages/db
 COPY packages/shared /serviceboard/packages/shared
 COPY packages/providers /serviceboard/packages/providers
 WORKDIR /extension
-RUN if [ -f package.json ]; then bun install --frozen-lockfile || bun install; else mkdir -p node_modules; fi
+RUN if [ -f package.json ]; then bun install --linker hoisted --frozen-lockfile || bun install --linker hoisted; else mkdir -p node_modules; fi
 
 # ── Web build (bundles extension UI when manifest is present) ──
 FROM base AS web-build

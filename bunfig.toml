@@ -1,0 +1,6 @@
+[install]
+# Use a flat (hoisted) node_modules. Bun 1.3 defaults workspaces to the
+# isolated linker, but the Docker build copies only the root node_modules
+# between stages and resolves workspace deps from there, which requires
+# hoisting. Keeping this here aligns local dev and CI with the container build.
+linker = "hoisted"
