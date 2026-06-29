@@ -92,7 +92,7 @@ export default defineConfig(async ({ mode }) => {
       dedupe: ["react", "react-dom", "@tanstack/react-query", "@tanstack/react-router"],
     },
     server: {
-      allowedHosts: [".ngrok-free.app"],
+      allowedHosts: [".ngrok-free.app", ".serveousercontent.com"],
       host: "127.0.0.1",
       port: 5173,
       strictPort: true,
