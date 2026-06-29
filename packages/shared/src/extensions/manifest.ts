@@ -10,6 +10,8 @@ export const extensionMigrationSchema = z.object({
 export const extensionManifestSchema = z.object({
   api: z.string(),
   web: z.string(),
+  /** Static assets merged into the web app public directory at build time. */
+  public: z.string().optional(),
   migrations: z.array(extensionMigrationSchema).default([]),
 });
 
@@ -27,6 +29,8 @@ export interface ResolvedExtensionManifest {
   root: string;
   api: string;
   web: string;
+  /** Absolute path to static assets, when declared in the manifest. */
+  public?: string;
   migrations: ResolvedExtensionMigration[];
 }
 
@@ -63,6 +67,7 @@ export function parseExtensionManifest(
     root,
     api: path.resolve(root, parsed.api),
     web: path.resolve(root, parsed.web),
+    public: parsed.public ? path.resolve(root, parsed.public) : undefined,
     migrations: parsed.migrations.map((migration) => ({
       dir: path.resolve(root, migration.dir),
       table: migration.table ?? "__drizzle_migrations_extension",

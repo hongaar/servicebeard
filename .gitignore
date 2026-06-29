@@ -17,3 +17,6 @@ test-results/
 .turbo/
 *.tsbuildinfo
 *.private-key.pem
+
+# Extension public assets copied from cloud repo at build time (see scripts/copy-extension-public.ts)
+apps/web/public/marketing/

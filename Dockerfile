@@ -45,12 +45,12 @@ RUN if [ -f deploy/compose/.env.vite ]; then \
 COPY --from=extension-context /extension /extension
 COPY --from=extension-deps /extension/node_modules /extension/node_modules
 WORKDIR /app/apps/web
-RUN if [ -d /extension/cloud/marketing/public ]; then \
-      cp -f /extension/cloud/marketing/public/*.png /app/apps/web/public/ 2>/dev/null || true; \
-    fi
 RUN SB_EXTENSION_MANIFEST=; \
     if [ -f /extension/extension.config.ts ]; then SB_EXTENSION_MANIFEST=/extension/extension.config.ts; \
     elif [ -f /extension/extension.config.js ]; then SB_EXTENSION_MANIFEST=/extension/extension.config.js; fi; \
+    if [ -n "$SB_EXTENSION_MANIFEST" ]; then \
+      (cd /app && SB_EXTENSION_MANIFEST="$SB_EXTENSION_MANIFEST" bun run scripts/copy-extension-public.ts /app/apps/web/public); \
+    fi; \
     export SB_EXTENSION_MANIFEST; \
     bunx vite build
 
