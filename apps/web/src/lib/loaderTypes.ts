@@ -6,6 +6,7 @@ export type AppUser = {
   id: string;
   email: string;
   name: string | null;
+  isAdmin: boolean;
 };
 
 export type TeamSummary = {

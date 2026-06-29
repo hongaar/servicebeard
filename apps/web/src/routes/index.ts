@@ -6,6 +6,7 @@ import {
     isProjectSection,
     type ProjectSection,
 } from "../lib/navigation";
+import { AdminStatusPage } from "../pages/AdminStatusPage";
 import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
 import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
 import { DocsIndexPage } from "../pages/docs/DocsIndexPage";
@@ -128,6 +129,18 @@ export const dashboardRoute = createRoute({
     }
     const { teams } = await api.getTeams();
     return { landing: false as const, user, teams };
+  },
+});
+
+export const adminStatusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/status",
+  component: AdminStatusPage,
+  loader: async () => {
+    const { user } = await api.getMe();
+    if (!user) throw redirect({ to: "/login" });
+    if (!user.isAdmin) throw redirect({ to: "/" });
+    return { user };
   },
 });
 

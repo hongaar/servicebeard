@@ -120,6 +120,13 @@
       "when": 1782370000000,
       "tag": "0016_drop_project_poll_intervals",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1782380000000,
+      "tag": "0017_users_is_admin",
+      "breakpoints": true
     }
   ]
 }

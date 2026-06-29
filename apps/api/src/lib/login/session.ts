@@ -65,7 +65,7 @@ export async function createSessionForIdentity(
 
   return {
     token: sessionToken,
-    user: { id: user.id, email: user.email, name: user.name },
+    user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin },
   };
 }
 
@@ -91,6 +91,7 @@ export async function getSessionUser(
     id: session.user.id,
     email: session.user.email,
     name: session.user.name,
+    isAdmin: session.user.isAdmin,
   };
 }
 

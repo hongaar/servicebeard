@@ -9,6 +9,7 @@ import {
     FileText,
     Folder,
     LayoutDashboard,
+    Server,
     Settings,
     SlidersHorizontal,
     Users,
@@ -25,7 +26,7 @@ interface LayoutProps {
   children: React.ReactNode;
   title: string;
   description?: string;
-  user: { email: string; name: string | null };
+  user: { email: string; name: string | null; isAdmin?: boolean };
   teamId?: string;
   teamName?: string;
   projectId?: string;
@@ -75,6 +76,7 @@ export function Layout({
   const extraTeamNavItems = teamId ? extensionTeamNavItems(teamId) : [];
 
   const isDashboard = pathname === "/";
+  const isAdminStatus = pathname === "/admin/status";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
   const isTeamSettings = teamId && pathname === `/teams/${teamId}/settings`;
   const isProjectsList = teamId && pathname === `/teams/${teamId}/projects`;
@@ -128,6 +130,14 @@ export function Layout({
                   </NavIcon>
                   <span className={styles.navLabel}>Dashboard</span>
                 </Link>
+                {user?.isAdmin && (
+                  <Link to="/admin/status" className={navLinkClass(isAdminStatus)}>
+                    <NavIcon>
+                      <Server {...iconMd} />
+                    </NavIcon>
+                    System status
+                  </Link>
+                )}
               </>
             )}
 

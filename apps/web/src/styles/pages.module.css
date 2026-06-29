@@ -1127,6 +1127,80 @@
   animation: spin 0.8s linear infinite;
 }
 
+.adminSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.adminCheckedAt {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.adminCheckCard {
+  margin-bottom: var(--space-4);
+}
+
+.adminCheckList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.adminCheckRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-border-subtle, var(--color-border));
+}
+
+.adminCheckRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.adminCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.adminCheckMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.adminCheckDetail {
+  color: var(--color-text-muted);
+}
+
+.adminCheckError {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.adminCheckIconOk {
+  color: var(--color-success, #15803d);
+  flex-shrink: 0;
+}
+
+.adminCheckIconError {
+  color: var(--color-danger);
+  flex-shrink: 0;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

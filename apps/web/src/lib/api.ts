@@ -91,7 +91,13 @@ async function request<T>(
 }
 
 export const api = {
-  getMe: () => request<{ user: { id: string; email: string; name: string | null } | null }>("/auth/me"),
+  getMe: () =>
+    request<{
+      user: { id: string; email: string; name: string | null; isAdmin: boolean } | null;
+    }>("/auth/me"),
+  getAdminStatus: () => request<{ status: AdminStatusResponse | null }>("/admin/status"),
+  runAdminStatusChecks: () =>
+    request<AdminStatusResponse>("/admin/status/run", { method: "POST" }),
   getAuthConfig: () => request<AuthConfigResponse>("/auth/config"),
   loginWithProvider: (
     provider: string,
@@ -545,4 +551,22 @@ export interface RuleTestResult {
   }>;
   matchedCount: number;
   total: number;
+}
+
+export type AdminCheckCategory = "service" | "mail" | "git";
+
+export interface AdminCheckResult {
+  id: string;
+  label: string;
+  category: AdminCheckCategory;
+  ok: boolean;
+  latencyMs?: number;
+  detail?: string;
+  error?: string;
+}
+
+export interface AdminStatusResponse {
+  ok: boolean;
+  checkedAt: string;
+  checks: AdminCheckResult[];
 }
