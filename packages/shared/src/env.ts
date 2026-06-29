@@ -32,7 +32,7 @@ export function resolveMonorepoPath(filePath: string): string {
   return resolve(process.cwd(), trimmed);
 }
 
-function parseEnvFile(path: string, overwrite: boolean): void {
+function parseEnvFile(path: string): void {
   const content = readFileSync(path, "utf-8");
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
@@ -51,14 +51,12 @@ function parseEnvFile(path: string, overwrite: boolean): void {
       value = value.slice(1, -1);
     }
 
-    if (overwrite || process.env[key] === undefined) {
-      process.env[key] = value;
-    }
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = value;
   }
 }
 
 export function loadMonorepoEnv(): void {
-  const overwrite = process.env.NODE_ENV !== "production";
   const root = findMonorepoRootDir();
 
   const candidates = [
@@ -69,7 +67,7 @@ export function loadMonorepoEnv(): void {
 
   for (const path of candidates) {
     if (!existsSync(path)) continue;
-    parseEnvFile(path, overwrite);
+    parseEnvFile(path);
     return;
   }
 }

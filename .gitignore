@@ -10,6 +10,10 @@ deploy/compose/.env.vite
 *.log
 .DS_Store
 coverage/
+reports/
+tests/e2e/fixtures/seed-data.json
+tests/.e2e-stack.pids
+test-results/
 .turbo/
 *.tsbuildinfo
 *.private-key.pem

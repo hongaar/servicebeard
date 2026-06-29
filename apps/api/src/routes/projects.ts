@@ -431,6 +431,11 @@ projectRoutes.delete("/:teamId/projects/:projectId/rules/:ruleId", async (c) => 
   const { userId } = await requireTeamMember(c, teamId, "admin");
   const db = getDb();
 
+  const project = await db.query.projects.findFirst({
+    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+  });
+  if (!project) return c.json({ error: "Not found" }, 404);
+
   await db
     .delete(rules)
     .where(and(eq(rules.id, ruleId), eq(rules.projectId, projectId)));
