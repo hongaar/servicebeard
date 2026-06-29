@@ -116,4 +116,5 @@ export interface SessionUser {
   email: string;
   name: string | null;
   isAdmin: boolean;
+  emailVerified: boolean;
 }

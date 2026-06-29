@@ -1,4 +1,6 @@
+import { getDb, users } from "@servicebeard/db";
 import type { LoginProviderType } from "@servicebeard/shared/login";
+import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
@@ -24,6 +26,12 @@ import {
 } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { isRedirectLoginAdapter } from "../lib/login";
+import {
+    requestPasswordReset,
+    resendEmailVerification,
+    resetPasswordWithToken,
+    verifyEmailWithToken,
+} from "../lib/transactional-mail";
 import type { AppVariables } from "../middleware/auth";
 import { requireAuth } from "../middleware/auth";
 
@@ -126,6 +134,42 @@ function mapAuthError(err: unknown) {
         status: 400 as const,
         message: "Passkey verification failed",
         code: "passkey_failed" as const,
+      };
+    case "EMAIL_NOT_VERIFIED":
+      return {
+        status: 403 as const,
+        message: "Confirm your email address before signing in",
+        code: "email_not_verified" as const,
+      };
+    case "INVALID_VERIFICATION_TOKEN":
+      return {
+        status: 400 as const,
+        message: "This verification link is invalid or has expired",
+        code: "invalid_verification_token" as const,
+      };
+    case "INVALID_RESET_TOKEN":
+      return {
+        status: 400 as const,
+        message: "This password reset link is invalid or has expired",
+        code: "invalid_reset_token" as const,
+      };
+    case "INVALID_PASSWORD":
+      return {
+        status: 400 as const,
+        message: "Password is required",
+        code: "invalid_password" as const,
+      };
+    case "EMAIL_ALREADY_VERIFIED":
+      return {
+        status: 400 as const,
+        message: "Email is already verified",
+        code: "email_already_verified" as const,
+      };
+    case "MAIL_SEND_FAILED":
+      return {
+        status: 503 as const,
+        message: "Could not send email. Try again later.",
+        code: "mail_send_failed" as const,
       };
     default:
       return { status: 400 as const, message: "Login failed", code: "login_failed" as const };
@@ -316,23 +360,36 @@ authRoutes.post("/login/:provider", async (c) => {
   }
 
   try {
-    const { token, user } = await credentialProviderLogin(provider, {
+    const result = await credentialProviderLogin(provider, {
       email,
       password,
       name,
       mode,
     });
-    setSessionCookie(c, token);
+
+    if (result.requiresVerification) {
+      await auditLog({
+        action: "signup",
+        resourceType: "user",
+        metadata: { provider, method: "password", pendingVerification: true },
+      });
+      return c.json({
+        requiresVerification: true,
+        message: "Check your email to confirm your account before signing in.",
+      });
+    }
+
+    setSessionCookie(c, result.token);
 
     await auditLog({
-      userId: user.id,
+      userId: result.user.id,
       action: mode === "signup" ? "signup" : "login",
       resourceType: "user",
-      resourceId: user.id,
+      resourceId: result.user.id,
       metadata: { provider, method: "password" },
     });
 
-    return c.json({ user });
+    return c.json({ user: result.user });
   } catch (err) {
     const mapped = mapAuthError(err);
     return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
@@ -370,22 +427,35 @@ authRoutes.post("/login/:provider/passkey/register/verify", async (c) => {
   }
 
   try {
-    const { token, user } = await passkeyRegistrationVerify(provider, {
+    const result = await passkeyRegistrationVerify(provider, {
       email,
       name,
       response,
     });
-    setSessionCookie(c, token);
+
+    if (result.requiresVerification) {
+      await auditLog({
+        action: "signup",
+        resourceType: "user",
+        metadata: { provider, method: "passkey", pendingVerification: true },
+      });
+      return c.json({
+        requiresVerification: true,
+        message: "Check your email to confirm your account before signing in.",
+      });
+    }
+
+    setSessionCookie(c, result.token);
 
     await auditLog({
-      userId: user.id,
+      userId: result.user.id,
       action: "signup",
       resourceType: "user",
-      resourceId: user.id,
+      resourceId: result.user.id,
       metadata: { provider, method: "passkey" },
     });
 
-    return c.json({ user });
+    return c.json({ user: result.user });
   } catch (err) {
     const mapped = mapAuthError(err);
     return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
@@ -454,6 +524,100 @@ authRoutes.post("/logout", async (c) => {
   }
   deleteCookie(c, getSessionCookieName());
   return c.json({ ok: true });
+});
+
+authRoutes.post("/forgot-password", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const email = typeof body.email === "string" ? body.email : "";
+
+  if (!email.trim()) {
+    return c.json({ error: "Email is required" }, 400);
+  }
+
+  try {
+    await requestPasswordReset(email);
+    return c.json({
+      ok: true,
+      message: "If an account exists for that email, a reset link has been sent.",
+    });
+  } catch (err) {
+    const mapped = mapAuthError(err);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
+  }
+});
+
+authRoutes.post("/reset-password", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const token = typeof body.token === "string" ? body.token : "";
+  const password = typeof body.password === "string" ? body.password : "";
+
+  if (!token || !password) {
+    return c.json({ error: "Token and password are required" }, 400);
+  }
+
+  try {
+    await resetPasswordWithToken(token, password);
+    return c.json({ ok: true, message: "Password updated. You can sign in now." });
+  } catch (err) {
+    const mapped = mapAuthError(err);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
+  }
+});
+
+authRoutes.post("/verify-email", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const token = typeof body.token === "string" ? body.token : "";
+
+  if (!token) {
+    return c.json({ error: "Token is required" }, 400);
+  }
+
+  try {
+    const { userId } = await verifyEmailWithToken(token);
+    await auditLog({
+      userId,
+      action: "verify_email",
+      resourceType: "user",
+      resourceId: userId,
+    });
+    return c.json({ ok: true, message: "Email confirmed. You can sign in now." });
+  } catch (err) {
+    const mapped = mapAuthError(err);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
+  }
+});
+
+authRoutes.post("/resend-verification", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+
+  if (!email) {
+    return c.json({ error: "Email is required" }, 400);
+  }
+
+  try {
+    const db = getDb();
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email),
+      columns: { id: true, emailVerifiedAt: true },
+    });
+
+    if (!user || user.emailVerifiedAt) {
+      return c.json({
+        ok: true,
+        message: "If an unverified account exists for that email, a confirmation link has been sent.",
+      });
+    }
+
+    await resendEmailVerification(user.id);
+    return c.json({
+      ok: true,
+      message: "If an unverified account exists for that email, a confirmation link has been sent.",
+    });
+  } catch (err) {
+    const mapped = mapAuthError(err);
+    return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
+  }
 });
 
 export { authRoutes };

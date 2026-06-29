@@ -1,9 +1,10 @@
-import { getDb } from "@servicebeard/db";
+import { getDb, users } from "@servicebeard/db";
 import type { LoginProviderType } from "@servicebeard/shared/login";
 import type {
     AuthenticationResponseJSON,
     RegistrationResponseJSON,
 } from "@simplewebauthn/server";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import {
     getLoginAdapter,
@@ -17,6 +18,11 @@ import {
     verifyPasskeyRegistration,
 } from "./login/passkey";
 import { createSessionForIdentity } from "./login/session";
+import {
+    ensureEmailVerifiedForLogin,
+    issueEmailVerification,
+    shouldRequireEmailVerification,
+} from "./transactional-mail";
 
 export {
     getEnabledLoginAdapters,
@@ -83,7 +89,23 @@ export async function credentialProviderLogin(
   }
 
   const identity = await adapter.login(credentials);
-  return createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+
+  if (credentials.mode === "signup" && shouldRequireEmailVerification()) {
+    const db = getDb();
+    const user = await db.query.users.findFirst({
+      where: eq(users.oidcSub, identity.externalSub),
+      columns: { id: true, email: true },
+    });
+    if (!user) {
+      throw new Error("USER_NOT_FOUND");
+    }
+    await issueEmailVerification({ userId: user.id, email: user.email });
+    return { requiresVerification: true as const };
+  }
+
+  const session = await createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  await ensureEmailVerifiedForLogin(session.user.id);
+  return { requiresVerification: false as const, ...session };
 }
 
 export async function passkeyRegistrationOptions(
@@ -112,7 +134,22 @@ export async function passkeyRegistrationVerify(
     ...input,
     signupEnabled: adapter.settings.signupEnabled,
   });
-  return createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+
+  if (shouldRequireEmailVerification()) {
+    const db = getDb();
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, identity.email),
+      columns: { id: true, email: true },
+    });
+    if (!user) {
+      throw new Error("USER_NOT_FOUND");
+    }
+    await issueEmailVerification({ userId: user.id, email: user.email });
+    return { requiresVerification: true as const };
+  }
+
+  const session = await createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  return { requiresVerification: false as const, ...session };
 }
 
 export async function passkeyAuthenticationOptions(type: string) {
@@ -132,7 +169,9 @@ export async function passkeyAuthenticationVerify(
   if (!adapter?.isEnabled()) throw new Error("LOGIN_PROVIDER_DISABLED");
 
   const identity = await verifyPasskeyAuthentication(response);
-  return createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  const session = await createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  await ensureEmailVerifiedForLogin(session.user.id);
+  return session;
 }
 
 export async function auditLog(entry: {

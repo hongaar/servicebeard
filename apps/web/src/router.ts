@@ -2,6 +2,7 @@ import { extensionPublicRoutes, extensionRoutes } from "@extensions";
 import { createRouter } from "@tanstack/react-router";
 import { RouteError } from "./components/RouteError";
 import {
+    acceptInviteRoute,
     accountRoute,
     adminStatusRoute,
     dashboardRoute,
@@ -11,19 +12,26 @@ import {
     docsIssueProvidersRoute,
     docsMailboxRoute,
     docsSelfHostRoute,
+    forgotPasswordRoute,
     githubAppInstallCompleteRoute,
     loginRoute,
     projectRedirectRoute,
     projectSectionRoute,
     projectsRoute,
+    resetPasswordRoute,
     teamMembersRoute,
     teamRedirectRoute,
     teamSettingsRoute,
+    verifyEmailRoute,
 } from "./routes/index";
 import { rootRoute } from "./routes/root.tsx";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  verifyEmailRoute,
+  acceptInviteRoute,
   ...extensionPublicRoutes,
   docsIndexRoute,
   docsMailboxRoute,

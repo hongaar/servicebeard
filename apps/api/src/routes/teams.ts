@@ -23,19 +23,48 @@ import {
     updateMemberSchema,
     updateTeamSchema,
 } from "@servicebeard/shared";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";
 import { testMailConnection, testProviderConnection } from "../lib/connection-test";
 import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { startGithubAppInstall } from "../lib/github-app-install";
+import { logger } from "../lib/logger";
 import { discoverMailAutoconfig } from "../lib/mail-discover";
+import { isMailConfigured, sendTeamInviteEmail, sendTeamMemberAddedEmail } from "../lib/transactional-mail";
 import type { AppVariables } from "../middleware/auth";
 import { requireAuth } from "../middleware/auth";
 import { requireTeamMember } from "../middleware/team";
 
 const teamRoutes = new Hono<{ Variables: AppVariables }>();
+
+async function acceptTeamInvite(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  invite: { id: string; teamId: string; role: string },
+) {
+  const existingMember = await db.query.teamMembers.findFirst({
+    where: and(eq(teamMembers.teamId, invite.teamId), eq(teamMembers.userId, userId)),
+  });
+
+  if (existingMember) {
+    await db.delete(teamInvites).where(eq(teamInvites.id, invite.id));
+    return existingMember;
+  }
+
+  const [member] = await db
+    .insert(teamMembers)
+    .values({
+      teamId: invite.teamId,
+      userId,
+      role: invite.role,
+    })
+    .returning();
+
+  await db.delete(teamInvites).where(eq(teamInvites.id, invite.id));
+  return member!;
+}
 
 teamRoutes.get("/", async (c) => {
   const user = requireAuth(c);
@@ -90,6 +119,47 @@ teamRoutes.post("/", async (c) => {
   });
 
   return c.json(team, 201);
+});
+
+teamRoutes.get("/invites/pending", async (c) => {
+  const user = requireAuth(c);
+  const db = getDb();
+
+  const invites = await db.query.teamInvites.findMany({
+    where: and(eq(teamInvites.email, user.email), gt(teamInvites.expiresAt, new Date())),
+    with: { team: true },
+  });
+
+  return c.json({
+    invites: invites.map((invite) => ({
+      id: invite.id,
+      teamId: invite.teamId,
+      teamName: invite.team.name,
+      role: invite.role,
+      expiresAt: invite.expiresAt.toISOString(),
+    })),
+  });
+});
+
+teamRoutes.post("/invites/pending/:inviteId/accept", async (c) => {
+  const inviteId = c.req.param("inviteId");
+  const user = requireAuth(c);
+  const db = getDb();
+
+  const invite = await db.query.teamInvites.findFirst({
+    where: and(
+      eq(teamInvites.id, inviteId),
+      eq(teamInvites.email, user.email),
+      gt(teamInvites.expiresAt, new Date()),
+    ),
+  });
+
+  if (!invite) {
+    return c.json({ error: "Invalid or expired invite" }, 400);
+  }
+
+  const member = await acceptTeamInvite(db, user.id, invite);
+  return c.json(member, 201);
 });
 
 teamRoutes.get("/:teamId", async (c) => {
@@ -166,9 +236,10 @@ teamRoutes.post("/:teamId/members", async (c) => {
   const { userId } = await requireTeamMember(c, teamId, "admin");
   const body = inviteMemberSchema.parse(await c.req.json());
   const db = getDb();
+  const inviteEmail = body.email.trim().toLowerCase();
 
   const existingUser = await db.query.users.findFirst({
-    where: eq(users.email, body.email),
+    where: eq(users.email, inviteEmail),
   });
 
   if (existingUser) {
@@ -179,7 +250,13 @@ teamRoutes.post("/:teamId/members", async (c) => {
       ),
     });
     if (existingMember) {
-      return c.json({ error: "User is already a member" }, 409);
+      return c.json(
+        {
+          error: "User is already a member",
+          code: "already_member",
+        },
+        409,
+      );
     }
 
     const [member] = await db
@@ -199,7 +276,36 @@ teamRoutes.post("/:teamId/members", async (c) => {
       resourceId: member!.id,
     });
 
-    return c.json(member, 201);
+    const inviter = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { name: true },
+    });
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+      columns: { name: true },
+    });
+
+    let emailSent = false;
+    if (isMailConfigured()) {
+      try {
+        await sendTeamMemberAddedEmail({
+          to: inviteEmail,
+          teamId,
+          teamName: team?.name ?? "your team",
+          inviterName: inviter?.name ?? null,
+          role: body.role,
+        });
+        emailSent = true;
+        logger.info({ to: inviteEmail, teamId }, "team member added notification sent");
+      } catch (err) {
+        logger.error({ err, to: inviteEmail, teamId }, "team member added notification failed");
+        return c.json({ error: "Could not send notification email. Try again later." }, 503);
+      }
+    } else {
+      logger.warn({ to: inviteEmail, teamId }, "system mail not configured; skipped member notification");
+    }
+
+    return c.json({ member, added: true, emailSent }, 201);
   }
 
   const inviteToken = generateToken();
@@ -207,7 +313,7 @@ teamRoutes.post("/:teamId/members", async (c) => {
     .insert(teamInvites)
     .values({
       teamId,
-      email: body.email,
+      email: inviteEmail,
       role: body.role,
       tokenHash: hashToken(inviteToken),
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -220,10 +326,39 @@ teamRoutes.post("/:teamId/members", async (c) => {
     action: "invite_member",
     resourceType: "team_invite",
     resourceId: invite!.id,
-    metadata: { email: body.email },
+    metadata: { email: inviteEmail },
   });
 
-  return c.json({ invite, token: inviteToken }, 201);
+  const inviter = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { name: true },
+  });
+  const team = await db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+    columns: { name: true },
+  });
+
+  let emailSent = false;
+  if (isMailConfigured()) {
+    try {
+      await sendTeamInviteEmail({
+        to: inviteEmail,
+        teamName: team?.name ?? "your team",
+        inviterName: inviter?.name ?? null,
+        role: body.role,
+        token: inviteToken,
+      });
+      emailSent = true;
+      logger.info({ to: inviteEmail, teamId }, "team invite email sent");
+    } catch (err) {
+      logger.error({ err, to: inviteEmail, teamId }, "team invite email failed");
+      return c.json({ error: "Could not send invite email. Try again later." }, 503);
+    }
+    return c.json({ invite, invited: true, emailSent }, 201);
+  }
+
+  logger.warn({ to: inviteEmail, teamId }, "system mail not configured; returning invite token in API response");
+  return c.json({ invite, token: inviteToken, invited: true, emailSent: false }, 201);
 });
 
 teamRoutes.patch("/:teamId/members/:memberId", async (c) => {
@@ -290,17 +425,7 @@ teamRoutes.post("/invites/:token/accept", async (c) => {
     return c.json({ error: "Invite is for a different email" }, 403);
   }
 
-  const [member] = await db
-    .insert(teamMembers)
-    .values({
-      teamId: invite.teamId,
-      userId: user.id,
-      role: invite.role,
-    })
-    .returning();
-
-  await db.delete(teamInvites).where(eq(teamInvites.id, invite.id));
-
+  const member = await acceptTeamInvite(db, user.id, invite);
   return c.json(member, 201);
 });
 

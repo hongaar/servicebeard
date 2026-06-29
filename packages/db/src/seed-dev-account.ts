@@ -50,6 +50,7 @@ export async function seedDevLocalAccount(): Promise<SeedDevAccountResult> {
       name: DEV_ACCOUNT_NAME,
       oidcSub: externalSub,
       passwordHash,
+      emailVerifiedAt: new Date(),
     });
     return "created";
   }

@@ -148,6 +148,13 @@
       "when": 1782410000000,
       "tag": "0020_user_auth_providers",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1782420000000,
+      "tag": "0021_auth_email_tokens",
+      "breakpoints": true
     }
   ]
 }

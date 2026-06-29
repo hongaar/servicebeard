@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useLoaderData } from "@tanstack/react-router";
+import { useLoaderData, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -27,6 +27,7 @@ export function TeamPage() {
     team: TeamDetail;
     role: string;
   };
+  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
@@ -38,8 +39,20 @@ export function TeamPage() {
 
   const invite = useMutation({
     mutationFn: () => api.inviteMember(team.id, { email, role: inviteRole }),
-    onSuccess: () => {
-      setMessage(`Invite sent to ${email}`);
+    onSuccess: async (result) => {
+      const target = email.trim();
+      await router.invalidate();
+      if ("added" in result && result.added) {
+        if (result.emailSent) {
+          setMessage(`${target} was added to the team. A notification was sent to their inbox.`);
+        } else {
+          setMessage(`${target} was added to the team. System mail is not configured, so no email was sent.`);
+        }
+      } else if (result.emailSent) {
+        setMessage(`Invite sent to ${target}`);
+      } else {
+        setMessage(`Invite created for ${target}. System mail is not configured — share the invite link manually.`);
+      }
       setIsError(false);
       setFieldErrors({});
       setEmail("");
@@ -52,7 +65,11 @@ export function TeamPage() {
 
   const removeMember = useMutation({
     mutationFn: (memberId: string) => api.removeMember(team.id, memberId),
-    onSuccess: () => window.location.reload(),
+    onSuccess: async () => {
+      await router.invalidate();
+      setMessage("Member removed.");
+      setIsError(false);
+    },
   });
 
   return (

@@ -17,6 +17,7 @@
   "dependencies": {
     "@sentry/bun": "^10.62.0",
     "@servicebeard/db": "workspace:*",
+    "@servicebeard/mail": "workspace:*",
     "@servicebeard/providers": "workspace:*",
     "@servicebeard/shared": "workspace:*",
     "@simplewebauthn/server": "^13.3.1",

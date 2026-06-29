@@ -1,3 +1,6 @@
+import { loadMonorepoEnv } from "@servicebeard/shared/env";
+loadMonorepoEnv();
+
 import { providerErrorDetails, setProviderLog } from "@servicebeard/providers";
 import { formatValidationError } from "@servicebeard/shared";
 import { Hono } from "hono";

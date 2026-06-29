@@ -6,6 +6,7 @@ import {
     isProjectSection,
     type ProjectSection,
 } from "../lib/navigation";
+import { AcceptInvitePage } from "../pages/AcceptInvitePage";
 import { AccountPage } from "../pages/AccountPage";
 import { AdminStatusPage } from "../pages/AdminStatusPage";
 import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
@@ -14,13 +15,16 @@ import { DocsIndexPage } from "../pages/docs/DocsIndexPage";
 import { DocsIssueProvidersPage } from "../pages/docs/DocsIssueProvidersPage";
 import { DocsMailboxPage } from "../pages/docs/DocsMailboxPage";
 import { DocsSelfHostPage } from "../pages/docs/DocsSelfHostPage";
+import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { GithubAppInstallCompletePage } from "../pages/GithubAppInstallCompletePage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { ProjectDetailPage } from "../pages/ProjectDetailPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
+import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { TeamPage } from "../pages/TeamPage";
 import { TeamSettingsPage } from "../pages/TeamSettingsPage";
+import { VerifyEmailPage } from "../pages/VerifyEmailPage";
 import { rootRoute } from "./root.tsx";
 
 async function requireUser() {
@@ -72,6 +76,40 @@ export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    error: typeof search.error === "string" ? search.error : undefined,
+  }),
+});
+
+export const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+
+export const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: ResetPasswordPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
+});
+
+export const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/verify-email",
+  component: VerifyEmailPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
+});
+
+export const acceptInviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invites/$token",
+  component: AcceptInvitePage,
 });
 
 export const docsIndexRoute = createRoute({
@@ -128,8 +166,11 @@ export const dashboardRoute = createRoute({
       }
       throw redirect({ to: "/login" });
     }
-    const { teams } = await api.getTeams();
-    return { landing: false as const, user, teams };
+    const [{ teams }, { invites: pendingInvites }] = await Promise.all([
+      api.getTeams(),
+      api.getPendingInvites(),
+    ]);
+    return { landing: false as const, user, teams, pendingInvites };
   },
 });
 

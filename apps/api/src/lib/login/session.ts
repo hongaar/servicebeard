@@ -8,6 +8,7 @@ import {
 import type { SessionUser } from "@servicebeard/shared";
 import type { LoginProviderType } from "@servicebeard/shared/login";
 import { and, eq, gt } from "drizzle-orm";
+import { toSessionEmailVerified } from "../transactional-mail";
 import {
     assertEmailAvailableForSignup,
     ensureProviderLink,
@@ -22,11 +23,28 @@ export function getSessionCookieName(): string {
   return SESSION_COOKIE;
 }
 
+function toSessionUser(user: {
+  id: string;
+  email: string;
+  name: string | null;
+  isAdmin: boolean;
+  emailVerifiedAt: Date | null;
+}): SessionUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    isAdmin: user.isAdmin,
+    emailVerified: toSessionEmailVerified(user),
+  };
+}
+
 export async function createSessionForIdentity(
   identity: LoginIdentity,
   opts: { allowSignup: boolean; provider: LoginProviderType },
 ): Promise<{ token: string; user: SessionUser }> {
   const db = getDb();
+  const oauthProvider = opts.provider !== "local";
 
   let userId = await findUserIdByProviderIdentity(opts.provider, identity.externalSub);
 
@@ -44,6 +62,7 @@ export async function createSessionForIdentity(
         name: identity.name,
         avatarUrl: identity.avatarUrl ?? null,
         oidcSub: identity.externalSub,
+        emailVerifiedAt: oauthProvider ? new Date() : null,
       })
       .returning();
     userId = created!.id;
@@ -80,7 +99,7 @@ export async function createSessionForIdentity(
 
   return {
     token: sessionToken,
-    user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin },
+    user: toSessionUser(user),
   };
 }
 
@@ -102,12 +121,7 @@ export async function getSessionUser(
 
   if (!session?.user) return null;
 
-  return {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    isAdmin: session.user.isAdmin,
-  };
+  return toSessionUser(session.user);
 }
 
 export async function destroySession(sessionToken: string): Promise<void> {

@@ -13,6 +13,10 @@ import { Dialog } from "../components/Dialog";
 import { EmptyIcon } from "../components/EmptyIcon";
 import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
+import {
+    PendingInvitesBanner,
+    type PendingTeamInvite,
+} from "../components/PendingInvitesBanner";
 import { api } from "../lib/api";
 import { iconMd } from "../lib/icons";
 import type { AppUser, TeamSummary } from "../lib/loaderTypes";
@@ -21,9 +25,10 @@ import styles from "../styles/pages.module.css";
 type DashboardPageProps = {
   user: AppUser;
   teams: TeamSummary[];
+  pendingInvites: PendingTeamInvite[];
 };
 
-export function DashboardPage({ user, teams }: DashboardPageProps) {
+export function DashboardPage({ user, teams, pendingInvites }: DashboardPageProps) {
   const ownedTeamCount = teams.filter((team) => team.role === "owner").length;
   const teamsDescription = extensionDashboardTeamsDescription();
   const createTeamHint = extensionCreateTeamDialogHint({ ownedTeamCount });
@@ -52,6 +57,8 @@ export function DashboardPage({ user, teams }: DashboardPageProps) {
       description="Your teams and projects live here. Open a team to invite members and connect mailboxes."
       user={user}
     >
+      <PendingInvitesBanner invites={pendingInvites} />
+
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderText}>

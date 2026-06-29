@@ -1,5 +1,5 @@
 import type { LoginProviderPublicConfig, LoginProviderType } from "@servicebeard/shared/login";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
     ArrowLeft,
     Fingerprint,
@@ -13,9 +13,10 @@ import {
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { ssoIconProps as baseSsoIconProps, iconMd, iconSm } from "../lib/icons";
 import { authenticateWithPasskey, isPasskeySupported, registerPasskey } from "../lib/passkey";
+import { normalizeRedirectPath } from "../lib/redirect";
 import styles from "../styles/pages.module.css";
 
 const ssoIconProps = { ...baseSsoIconProps, className: styles.ssoButtonIcon };
@@ -99,6 +100,9 @@ function CredentialAuthForm({
   onPasskeySignup,
   onBack,
   error,
+  info,
+  onResendVerification,
+  resendEmail,
 }: {
   provider: LoginProviderPublicConfig;
   loading: boolean;
@@ -112,6 +116,9 @@ function CredentialAuthForm({
   onPasskeySignup: (input: { email: string; name: string }) => void;
   onBack?: () => void;
   error: string;
+  info?: string;
+  onResendVerification?: () => void;
+  resendEmail?: string;
 }) {
   const [mode, setMode] = useState<CredentialMode>("login");
   const [signupMethod, setSignupMethod] = useState<SignupMethod>("password");
@@ -141,8 +148,27 @@ function CredentialAuthForm({
 
   return (
     <div className={styles.credentialAuth}>
-      {error && (
-        <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>
+      {(error || info || (onResendVerification && resendEmail)) && (
+        <div className={styles.credentialAuthMessages}>
+          {error && (
+            <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>
+          )}
+          {info && (
+            <div className={[styles.alert, styles.alertSuccess].join(" ")}>{info}</div>
+          )}
+          {onResendVerification && resendEmail && (
+            <p className={styles.formHint}>
+              Didn&apos;t get the email?{" "}
+              <button
+                type="button"
+                className={styles.inlineTextButton}
+                onClick={onResendVerification}
+              >
+                Resend confirmation
+              </button>
+            </p>
+          )}
+        </div>
       )}
 
       {provider.signupEnabled && (
@@ -301,6 +327,9 @@ function CredentialAuthForm({
             <LogIn {...iconMd} />
             {loading ? "Signing in…" : "Sign in"}
           </Button>
+          <p className={styles.formHint}>
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
           {passkeySupported && (
             <PasskeyLoginButton
               loading={loading}
@@ -327,12 +356,24 @@ function CredentialAuthForm({
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const search = useSearch({ from: "/login" });
   const [loading, setLoading] = useState(false);
   const [redirectingProvider, setRedirectingProvider] =
     useState<LoginProviderType | null>(null);
   const [providers, setProviders] = useState<LoginProviderPublicConfig[]>([]);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
   const [showEmailLogin, setShowEmailLogin] = useState(false);
+
+  const redirectAfterLogin = () => {
+    const path = normalizeRedirectPath(search.redirect);
+    if (path) {
+      window.location.href = path;
+      return;
+    }
+    navigate({ to: "/" });
+  };
 
   useEffect(() => {
     api.getAuthConfig().then((config) => {
@@ -342,7 +383,7 @@ export function LoginPage() {
     });
 
     const params = new URLSearchParams(window.location.search);
-    const authError = params.get("error");
+    const authError = params.get("error") ?? search.error;
     if (authError === "email_taken") {
       setError(
         "An account with this email already exists. Sign in with your existing method, then link this provider from Account settings.",
@@ -355,7 +396,21 @@ export function LoginPage() {
       setError("Sign-in failed. Please try again.");
       window.history.replaceState({}, "", "/login");
     }
-  }, []);
+  }, [search.error]);
+
+  const handleResendVerification = async () => {
+    if (!pendingVerificationEmail) return;
+    setLoading(true);
+    setError("");
+    try {
+      const result = await api.resendVerification(pendingVerificationEmail);
+      setInfo(result.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend verification email");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRedirectLogin = (type: LoginProviderType) => {
     setRedirectingProvider(type);
@@ -373,10 +428,21 @@ export function LoginPage() {
   ) => {
     setLoading(true);
     setError("");
+    setInfo("");
+    setPendingVerificationEmail("");
     try {
-      await api.loginWithProvider(type, credentials);
-      navigate({ to: "/" });
+      const result = await api.loginWithProvider(type, credentials);
+      if ("requiresVerification" in result && result.requiresVerification) {
+        setInfo(result.message);
+        setPendingVerificationEmail(credentials.email);
+        setLoading(false);
+        return;
+      }
+      redirectAfterLogin();
     } catch (err) {
+      if (err instanceof ApiError && err.code === "email_not_verified") {
+        setPendingVerificationEmail(credentials.email);
+      }
       setError(err instanceof Error ? err.message : "Login failed");
       setLoading(false);
     }
@@ -387,7 +453,7 @@ export function LoginPage() {
     setError("");
     try {
       await authenticateWithPasskey(type);
-      navigate({ to: "/" });
+      redirectAfterLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Passkey sign-in failed");
       setLoading(false);
@@ -400,9 +466,17 @@ export function LoginPage() {
   ) => {
     setLoading(true);
     setError("");
+    setInfo("");
+    setPendingVerificationEmail("");
     try {
-      await registerPasskey(type, input);
-      navigate({ to: "/" });
+      const result = await registerPasskey(type, input);
+      if ("requiresVerification" in result && result.requiresVerification) {
+        setInfo(result.message);
+        setPendingVerificationEmail(input.email);
+        setLoading(false);
+        return;
+      }
+      redirectAfterLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Passkey sign-up failed");
       setLoading(false);
@@ -478,6 +552,11 @@ export function LoginPage() {
               provider={provider}
               loading={loading}
               error={error}
+              info={info}
+              resendEmail={pendingVerificationEmail}
+              onResendVerification={
+                pendingVerificationEmail ? handleResendVerification : undefined
+              }
               onBack={
                 hasSso
                   ? () => {

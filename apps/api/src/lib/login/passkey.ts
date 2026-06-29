@@ -18,6 +18,7 @@ import {
 import { and, eq, gt, lt } from "drizzle-orm";
 import { isLocalLoginEnabled } from "../env";
 import { logger } from "../logger";
+import { shouldRequireEmailVerification } from "../transactional-mail";
 import { localAccountExternalSub } from "./dev-account";
 import type { LoginIdentity } from "./types";
 import { emailToUserHandle, getWebAuthnConfig } from "./webauthn-config";
@@ -181,7 +182,12 @@ export async function verifyPasskeyRegistration(input: {
 
   const [user] = await db
     .insert(users)
-    .values({ email, name, oidcSub: externalSub })
+    .values({
+      email,
+      name,
+      oidcSub: externalSub,
+      emailVerifiedAt: shouldRequireEmailVerification() ? null : new Date(),
+    })
     .returning();
 
   await db.insert(webauthnCredentials).values({

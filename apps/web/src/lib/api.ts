@@ -141,7 +141,13 @@ export interface GlobalSearchResponse {
 export const api = {
   getMe: () =>
     request<{
-      user: { id: string; email: string; name: string | null; isAdmin: boolean } | null;
+      user: {
+        id: string;
+        email: string;
+        name: string | null;
+        isAdmin: boolean;
+        emailVerified: boolean;
+      } | null;
     }>("/auth/me"),
   getAdminStatus: () => request<{ status: AdminStatusResponse | null }>("/admin/status"),
   runAdminStatusChecks: () =>
@@ -156,13 +162,13 @@ export const api = {
       mode: "login" | "signup";
     },
   ) =>
-    request<{ user: { id: string; email: string; name: string | null } }>(
-      `/auth/login/${provider}`,
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      },
-    ),
+    request<
+      | { user: { id: string; email: string; name: string | null } }
+      | { requiresVerification: true; message: string }
+    >(`/auth/login/${provider}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   passkeyRegisterOptions: (provider: string, data: { email: string; name: string }) =>
     request<PublicKeyCredentialCreationOptionsJSON>(
       `/auth/login/${provider}/passkey/register/options`,
@@ -172,10 +178,13 @@ export const api = {
     provider: string,
     data: { email: string; name: string; response: RegistrationResponseJSON },
   ) =>
-    request<{ user: { id: string; email: string; name: string | null } }>(
-      `/auth/login/${provider}/passkey/register/verify`,
-      { method: "POST", body: JSON.stringify(data) },
-    ),
+    request<
+      | { user: { id: string; email: string; name: string | null } }
+      | { requiresVerification: true; message: string }
+    >(`/auth/login/${provider}/passkey/register/verify`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   passkeyAuthenticateOptions: (provider: string) =>
     request<PublicKeyCredentialRequestOptionsJSON>(
       `/auth/login/${provider}/passkey/authenticate/options`,
@@ -190,6 +199,47 @@ export const api = {
       { method: "POST", body: JSON.stringify(data) },
     ),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean; message: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: boolean; message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+
+  verifyEmail: (token: string) =>
+    request<{ ok: boolean; message: string }>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  resendVerification: (email: string) =>
+    request<{ ok: boolean; message: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  acceptInvite: (token: string) =>
+    request<unknown>(`/teams/invites/${token}/accept`, { method: "POST" }),
+
+  getPendingInvites: () =>
+    request<{
+      invites: Array<{
+        id: string;
+        teamId: string;
+        teamName: string;
+        role: string;
+        expiresAt: string;
+      }>;
+    }>("/teams/invites/pending"),
+
+  acceptPendingInvite: (inviteId: string) =>
+    request<unknown>(`/teams/invites/pending/${inviteId}/accept`, { method: "POST" }),
 
   getAccount: () =>
     request<AccountResponse>("/auth/account"),
@@ -390,7 +440,14 @@ export const api = {
     ),
 
   inviteMember: (teamId: string, data: { email: string; role: string }) =>
-    request(`/teams/${teamId}/members`, { method: "POST", body: JSON.stringify(data) }),
+    request<{
+      member?: unknown;
+      added?: boolean;
+      invite?: unknown;
+      invited?: boolean;
+      emailSent?: boolean;
+      token?: string;
+    }>(`/teams/${teamId}/members`, { method: "POST", body: JSON.stringify(data) }),
 
   removeMember: (teamId: string, memberId: string) =>
     request(`/teams/${teamId}/members/${memberId}`, { method: "DELETE" }),

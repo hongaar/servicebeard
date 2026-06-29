@@ -2,6 +2,7 @@ import { getDb, users } from "@servicebeard/db";
 import { eq } from "drizzle-orm";
 import { isLocalLoginEnabled } from "../env";
 import { logger } from "../logger";
+import { shouldRequireEmailVerification } from "../transactional-mail";
 import {
     DEV_ACCOUNT_EMAIL,
     DEV_ACCOUNT_NAME,
@@ -88,11 +89,12 @@ export class LocalLoginAdapter implements CredentialLoginAdapter {
 
       const name = credentials.name?.trim() || DEV_ACCOUNT_NAME;
       const passwordHash = await hashPassword(password);
+      const emailVerifiedAt = shouldRequireEmailVerification() ? null : new Date();
 
       if (existing) {
         await db
           .update(users)
-          .set({ name, passwordHash, updatedAt: new Date() })
+          .set({ name, passwordHash, emailVerifiedAt, updatedAt: new Date() })
           .where(eq(users.id, existing.id));
 
         logger.warn({ email }, "local signup password set for existing user");
@@ -107,7 +109,7 @@ export class LocalLoginAdapter implements CredentialLoginAdapter {
 
       const [created] = await db
         .insert(users)
-        .values({ email, name, oidcSub: externalSub, passwordHash })
+        .values({ email, name, oidcSub: externalSub, passwordHash, emailVerifiedAt })
         .returning();
 
       logger.warn({ email }, "local signup");
