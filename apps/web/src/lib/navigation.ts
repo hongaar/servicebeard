@@ -5,10 +5,10 @@ import {
     Building2,
     CreditCard,
     FileText,
+    Folder,
     Home,
     LayoutDashboard,
     Mail,
-    Mailbox,
     MessagesSquare,
     Scale,
     Server,
@@ -16,6 +16,7 @@ import {
     Shield,
     SlidersHorizontal,
     Sparkles,
+    UserRound,
     Users,
 } from "lucide-react";
 
@@ -48,11 +49,12 @@ export const DEFAULT_PROJECT_SECTION: ProjectSection = "overview";
 /** Shared icon keys for sidebar nav and breadcrumbs. */
 export const NAV_ICONS = {
   home: Home,
+  account: UserRound,
   teams: Building2,
   /** Team entity (name in breadcrumb) — distinct from members page. */
   team: Building2,
-  projects: Mailbox,
-  project: Mailbox,
+  projects: Folder,
+  project: Folder,
   members: Users,
   billing: CreditCard,
   teamSettings: Settings,
@@ -77,4 +79,10 @@ export function teamPageIcon(pathname: string, teamId: string): NavIconKey | und
   if (pathname === `/teams/${teamId}/members`) return "members";
   if (pathname === `/teams/${teamId}/settings`) return "teamSettings";
   return undefined;
+}
+
+export function homePageIcon(pathname: string): NavIconKey {
+  if (pathname === "/admin/status") return "adminStatus";
+  if (pathname === "/account") return "account";
+  return "teams";
 }

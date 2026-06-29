@@ -117,17 +117,17 @@ export function BreadcrumbPicker({
   return (
     <div className={[popoverStyles.root, styles.breadcrumbPicker].join(" ")} ref={rootRef}>
       <span className={styles.breadcrumbPickerInner}>
-        {icon && (
-          <span className={[iconClassName, styles.breadcrumbPickerIcon].filter(Boolean).join(" ")}>
-            {icon}
-          </span>
-        )}
         {asLink && to ? (
           <Link
             to={to}
             params={params}
             className={[linkClassName, styles.breadcrumbPickerLabel].join(" ")}
           >
+            {icon && (
+              <span className={[iconClassName, styles.breadcrumbPickerIcon].filter(Boolean).join(" ")}>
+                {icon}
+              </span>
+            )}
             {label}
           </Link>
         ) : (
@@ -135,6 +135,11 @@ export function BreadcrumbPicker({
             className={[currentClassName, styles.breadcrumbPickerLabel].join(" ")}
             aria-current={ariaCurrent ? "page" : undefined}
           >
+            {icon && (
+              <span className={[iconClassName, styles.breadcrumbPickerIcon].filter(Boolean).join(" ")}>
+                {icon}
+              </span>
+            )}
             {label}
           </span>
         )}

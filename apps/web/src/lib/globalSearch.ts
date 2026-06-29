@@ -66,6 +66,16 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
       icon: "teams",
     },
     {
+      id: "nav-account",
+      label: "Account",
+      description: "Profile and connected sign-in providers",
+      keywords: ["profile", "user", "settings", "providers", "password", "passkey", "sso"],
+      group: "Navigation",
+      kind: "navigate",
+      to: "/account",
+      icon: "account",
+    },
+    {
       id: "help-docs",
       label: "Help & documentation",
       description: "Product guides and setup help",

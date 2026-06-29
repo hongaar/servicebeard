@@ -12,6 +12,7 @@ import { iconMd } from "../lib/icons";
 import {
     NAV_ICONS,
     PROJECT_SECTION_LABELS,
+    homePageIcon,
     teamPageIcon,
     type NavIconKey,
     type ProjectSection,
@@ -77,6 +78,7 @@ export function Layout({
   const appFooterLinks = extensionAppFooterLinks();
 
   const isDashboard = pathname === "/";
+  const isAccount = pathname === "/account";
   const isAdminStatus = pathname === "/admin/status";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
   const isTeamSettings = teamId && pathname === `/teams/${teamId}/settings`;
@@ -109,15 +111,10 @@ export function Layout({
   };
 
   const breadcrumbs: BreadcrumbItem[] = (() => {
+    const homeCrumb: BreadcrumbItem = { label: "Home", to: "/", icon: "home" };
+
     if (sidebarContext === "home") {
-      if (!isDashboard) {
-        const pageIcon: NavIconKey = isAdminStatus ? "adminStatus" : "teams";
-        return [
-          { label: "Home", to: "/", icon: "home" },
-          { label: title, icon: pageIcon },
-        ];
-      }
-      return [];
+      return [homeCrumb, { label: title, icon: homePageIcon(pathname) }];
     }
 
     if (sidebarContext === "team" && teamId) {
@@ -137,7 +134,7 @@ export function Layout({
       if (pageIcon || extensionIcon) {
         items.push({ label: title, icon: pageIcon, Icon: extensionIcon });
       }
-      return items;
+      return [homeCrumb, ...items];
     }
 
     if (sidebarContext === "project" && teamId && projectId) {
@@ -160,7 +157,7 @@ export function Layout({
         picker: "project",
       });
       items.push({ label: PROJECT_SECTION_LABELS[section], icon: section });
-      return items;
+      return [homeCrumb, ...items];
     }
 
     return [];
@@ -212,6 +209,12 @@ export function Layout({
                     <NAV_ICONS.teams {...iconMd} />
                   </NavIcon>
                   <span className={styles.navLabel}>Teams</span>
+                </Link>
+                <Link to="/account" className={navLinkClass(isAccount)} title="Account">
+                  <NavIcon>
+                    <NAV_ICONS.account {...iconMd} />
+                  </NavIcon>
+                  <span className={styles.navLabel}>Account</span>
                 </Link>
                 {user?.isAdmin && (
                   <Link to="/admin/status" className={navLinkClass(isAdminStatus)}>
@@ -328,7 +331,7 @@ export function Layout({
         </aside>
 
         <main className={styles.main}>
-          <div className={styles.pageHeader}>
+          <div className={styles.mainBody}>
             {breadcrumbs.length > 0 && (
               <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
                 <ol className={styles.breadcrumbList}>
@@ -394,30 +397,32 @@ export function Layout({
                 </ol>
               </nav>
             )}
-            <h1 className={styles.pageTitle}>{title}</h1>
-            {inboxEmail && (
-              <p className={styles.pageInbox}>
-                <span className={styles.pageInboxLabel}>New tickets arrive at</span>
-                <code className={styles.pageInboxEmail}>{inboxEmail}</code>
-                {issueLink && (
-                  <>
-                    <span className={styles.pageInboxLabel}>Issues tracked in</span>
-                    <a
-                      href={issueLink.href}
-                      className={styles.pageIssueLink}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <ProviderLogo provider={issueLink.provider} />
-                      <span>{issueLink.label}</span>
-                    </a>
-                  </>
-                )}
-              </p>
-            )}
-            {description && <p className={styles.pageDescription}>{description}</p>}
+            <div className={styles.pageHeader}>
+              <h1 className={styles.pageTitle}>{title}</h1>
+              {inboxEmail && (
+                <p className={styles.pageInbox}>
+                  <span className={styles.pageInboxLabel}>New tickets arrive at</span>
+                  <code className={styles.pageInboxEmail}>{inboxEmail}</code>
+                  {issueLink && (
+                    <>
+                      <span className={styles.pageInboxLabel}>Issues tracked in</span>
+                      <a
+                        href={issueLink.href}
+                        className={styles.pageIssueLink}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ProviderLogo provider={issueLink.provider} />
+                        <span>{issueLink.label}</span>
+                      </a>
+                    </>
+                  )}
+                </p>
+              )}
+              {description && <p className={styles.pageDescription}>{description}</p>}
+            </div>
+            {children}
           </div>
-          {children}
           {appFooterLinks.length > 0 && (
             <footer className={styles.appFooter}>
               <nav className={styles.appFooterLinks} aria-label="Legal and product">

@@ -96,6 +96,8 @@
 }
 
 .breadcrumbPicker {
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
   max-width: 100%;
 }
@@ -103,8 +105,9 @@
 .breadcrumbPickerInner {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0;
   min-width: 0;
+  min-height: 1.25rem;
 }
 
 .breadcrumbPickerIcon {
@@ -116,9 +119,6 @@
 }
 
 .breadcrumbPickerLabel {
-  display: inline-flex;
-  align-items: center;
-  line-height: 1.25rem;
   min-width: 0;
 }
 
@@ -127,10 +127,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
-  padding: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0;
   margin-left: 0.0625rem;
+  align-self: center;
   border: var(--border-width) solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -145,8 +146,8 @@
 .breadcrumbPickerChevron {
   color: inherit;
   flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
+  width: 0.875rem;
+  height: 0.875rem;
   stroke-width: 2.25;
   transition: transform var(--transition-fast);
 }

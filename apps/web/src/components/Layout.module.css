@@ -176,9 +176,15 @@
   flex-direction: column;
 }
 
+.mainBody {
+  flex: 1;
+  min-width: 0;
+}
+
 .appFooter {
-  margin-top: auto;
-  padding-top: var(--space-8);
+  flex-shrink: 0;
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
   border-top: var(--border-width) solid var(--color-border);
 }
 
@@ -207,6 +213,9 @@
 
 .breadcrumbs {
   margin-bottom: var(--space-3);
+  min-height: 1.25rem;
+  display: flex;
+  align-items: center;
 }
 
 .breadcrumbList {
@@ -224,12 +233,15 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  min-height: 1.25rem;
 }
 
 .breadcrumbLink {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  min-height: 1.25rem;
+  line-height: 1.25rem;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-muted);
@@ -250,6 +262,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  min-height: 1.25rem;
+  line-height: 1.25rem;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -273,6 +287,7 @@
   color: var(--color-text-muted);
   opacity: 0.6;
   user-select: none;
+  line-height: 1.25rem;
 }
 
 .pageTitle {
