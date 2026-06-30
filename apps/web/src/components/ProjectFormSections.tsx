@@ -1028,8 +1028,10 @@ export function ProjectProviderSection({
             value={values.providerToken}
             error={fieldErrors?.providerToken}
             onChange={(e) => setField(onChange, onClearFieldError, "providerToken")(e.target.value)}
+            placeholder={mode === "edit" ? "Leave blank to keep current token" : undefined}
             hint={
               <>
+                {mode === "edit" && "Only fill in to replace the stored token. "}
                 Personal API key with Read, Create issues, Create comments, and Admin scopes.{" "}
                 <DocsLink to={DOC_PATHS.linear}>Permission details</DocsLink>
               </>
