@@ -24,6 +24,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { ProjectDetailPage } from "../pages/ProjectDetailPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
+import { SignupPage } from "../pages/SignupPage";
 import { TeamPage } from "../pages/TeamPage";
 import { TeamSettingsPage } from "../pages/TeamSettingsPage";
 import { VerifyEmailPage } from "../pages/VerifyEmailPage";
@@ -79,6 +80,16 @@ export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    error: typeof search.error === "string" ? search.error : undefined,
+  }),
+});
+
+export const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup",
+  component: SignupPage,
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: typeof search.redirect === "string" ? search.redirect : undefined,
     error: typeof search.error === "string" ? search.error : undefined,

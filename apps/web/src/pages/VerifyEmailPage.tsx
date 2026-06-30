@@ -1,5 +1,6 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { SignInLink } from "../components/AuthForms";
 import { api } from "../lib/api";
 import styles from "../styles/pages.module.css";
 
@@ -48,11 +49,7 @@ export function VerifyEmailPage() {
           </div>
         )}
 
-        {!loading && error && (
-          <p className={styles.formHint}>
-            <Link to="/login">Back to sign in</Link>
-          </p>
-        )}
+        {!loading && error && <SignInLink />}
       </div>
     </div>
   );

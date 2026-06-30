@@ -21,6 +21,7 @@ import {
   projectSectionRoute,
   projectsRoute,
   resetPasswordRoute,
+  signupRoute,
   teamMembersRoute,
   teamRedirectRoute,
   teamSettingsRoute,
@@ -30,6 +31,7 @@ import { rootRoute } from "./routes/root.tsx";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  signupRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
   verifyEmailRoute,

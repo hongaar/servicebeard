@@ -43,6 +43,9 @@ export const ExtensionLanding: ComponentType | undefined = undefined;
 
 export const ExtensionDocsPublicHeader: ComponentType | undefined = undefined;
 
+/** Optional footer on the login page (e.g. link back to a marketing site). */
+export const ExtensionLoginFooter: ComponentType | undefined = undefined;
+
 export const LimitReachedDialog:
   ComponentType<LimitReachedDialogProps> | undefined = undefined;
 

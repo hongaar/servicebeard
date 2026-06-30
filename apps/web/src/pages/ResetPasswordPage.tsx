@@ -1,5 +1,6 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
+import { SignInLink } from "../components/AuthForms";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { api } from "../lib/api";
@@ -83,9 +84,7 @@ export function ResetPasswordPage() {
           </Button>
         </form>
 
-        <p className={styles.formHint}>
-          <Link to="/login">Back to sign in</Link>
-        </p>
+        <SignInLink />
       </div>
     </div>
   );
