@@ -2,6 +2,7 @@ import type { AnyRoute } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import type { EntitlementRequiredError } from "../lib/api";
+import type { RouteHeadResult } from "../lib/documentTitle";
 import type {
   GlobalSearchAction,
   GlobalSearchContext,
@@ -45,6 +46,11 @@ export const ExtensionDocsPublicHeader: ComponentType | undefined = undefined;
 
 /** Optional footer on the login page (e.g. link back to a marketing site). */
 export const ExtensionLoginFooter: ComponentType | undefined = undefined;
+
+/** Optional document head for the public marketing landing at `/`. */
+export function extensionLandingRouteHead(): RouteHeadResult | undefined {
+  return undefined;
+}
 
 export const LimitReachedDialog:
   ComponentType<LimitReachedDialogProps> | undefined = undefined;

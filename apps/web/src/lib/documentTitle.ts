@@ -14,3 +14,12 @@ export function routeHead(...parts: string[]) {
     meta: [{ title: documentTitle(...parts) }],
   });
 }
+
+export type RouteHeadResult = {
+  meta?: Array<
+    | { title: string }
+    | { name: string; content: string }
+    | { property: string; content: string }
+  >;
+  links?: Array<{ rel: string; href: string }>;
+};

@@ -1,4 +1,4 @@
-import { ExtensionLanding } from "@extensions";
+import { ExtensionLanding, extensionLandingRouteHead } from "@extensions";
 import { createRoute, redirect } from "@tanstack/react-router";
 import { api, ApiError } from "../lib/api";
 import { documentTitle, routeHead } from "../lib/documentTitle";
@@ -194,16 +194,23 @@ export const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: HomePage,
-  head: ({ loaderData }) => ({
-    meta: [
-      {
-        title:
-          loaderData?.landing === false
-            ? documentTitle("Teams")
-            : documentTitle(),
-      },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    if (loaderData?.landing) {
+      const extensionHead = extensionLandingRouteHead();
+      if (extensionHead) return extensionHead;
+    }
+
+    return {
+      meta: [
+        {
+          title:
+            loaderData?.landing === false
+              ? documentTitle("Teams")
+              : documentTitle(),
+        },
+      ],
+    };
+  },
   loader: async () => {
     const { user } = await api.getMe();
     if (!user) {
