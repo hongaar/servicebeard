@@ -2,6 +2,12 @@ import * as nodemailer from "nodemailer";
 import { smtpTlsOptions } from "./smtp-tls";
 import type { MailAdapter, MailMessage } from "./types";
 
+// Kept well under the reverse-proxy read timeout so an unreachable host fails
+// fast instead of hanging until nodemailer's multi-minute default kicks in.
+const CONNECTION_TIMEOUT = 8000;
+const GREETING_TIMEOUT = 8000;
+const SOCKET_TIMEOUT = 12000;
+
 export interface SmtpMailConfig {
   host: string;
   port: number;
@@ -37,6 +43,9 @@ export class SmtpMailAdapter implements MailAdapter {
         this.config.user && this.config.password
           ? { user: this.config.user, pass: this.config.password }
           : undefined,
+      connectionTimeout: CONNECTION_TIMEOUT,
+      greetingTimeout: GREETING_TIMEOUT,
+      socketTimeout: SOCKET_TIMEOUT,
       tls: smtpTlsOptions(this.config.host),
     });
 
