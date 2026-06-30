@@ -1,4 +1,4 @@
-import type { InboundMailboxContext } from "./inbound-mail";
+import type { InboundEmailEligibility, InboundMailboxContext } from "./inbound-mail";
 import { isEligibleForInboundRuleEvaluation } from "./inbound-mail";
 import type { EmailInlineImage, Rule } from "./types";
 
@@ -8,6 +8,11 @@ export interface ParsedEmail {
   references: string[];
   fromEmail: string;
   fromName: string | null;
+  replyToEmail: string | null;
+  replyToName: string | null;
+  /** Customer address for threading, rules, and outbound replies (Reply-To if set). */
+  senderEmail: string;
+  senderName: string | null;
   toAddresses: string[];
   ccAddresses: string[];
   bccAddresses: string[];
@@ -44,7 +49,7 @@ function testPattern(pattern: string | null | undefined, value: string): boolean
 
 export function evaluateRule(rule: RuleTestInput, email: ParsedEmail): boolean {
   if (rule.isEnabled === false) return false;
-  const senderMatch = testPattern(rule.matchSender ?? null, email.fromEmail);
+  const senderMatch = testPattern(rule.matchSender ?? null, email.senderEmail);
   const subjectMatch = testPattern(rule.matchSubject ?? null, email.subject);
   const bodyMatch = testPattern(rule.matchBody ?? null, email.body);
   return senderMatch && subjectMatch && bodyMatch;
@@ -75,4 +80,15 @@ export function evaluateDraftRuleForInbound(
 ): boolean {
   if (!isEligibleForInboundRuleEvaluation(email, ctx)) return false;
   return evaluateDraftRule(rule, email);
+}
+
+export function toInboundEligibility(email: ParsedEmail): InboundEmailEligibility {
+  return {
+    fromEmail: email.fromEmail,
+    senderEmail: email.senderEmail,
+    subject: email.subject,
+    inReplyTo: email.inReplyTo,
+    references: email.references,
+    date: email.date,
+  };
 }

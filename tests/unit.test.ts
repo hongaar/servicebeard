@@ -7,7 +7,8 @@ import {
     evaluateRules,
     isEligibleForInboundRuleEvaluation, isEligibleForInboundRulePreview,
     isEmailEligibleForInboundSync,
-    normalizeSubject
+    normalizeSubject,
+    resolveInboundSender,
 } from "@servicebeard/shared";
 import { beforeAll, describe, expect, test } from "bun:test";
 import {
@@ -26,10 +27,20 @@ function testEmail(
     inlineImages?: ParsedEmail["inlineImages"];
   },
 ): ParsedEmail {
+  const fromEmail = overrides.fromEmail;
+  const fromName = overrides.fromName ?? null;
+  const replyToEmail = overrides.replyToEmail ?? null;
+  const replyToName = overrides.replyToName ?? null;
+  const sender = resolveInboundSender(fromEmail, fromName, replyToEmail, replyToName);
+
   return {
     bodyMarkdown: overrides.bodyMarkdown ?? overrides.body,
     bodyHtml: overrides.bodyHtml ?? null,
     inlineImages: overrides.inlineImages ?? [],
+    replyToEmail,
+    replyToName,
+    senderEmail: overrides.senderEmail ?? sender.email,
+    senderName: overrides.senderName ?? sender.name,
     ...overrides,
   };
 }
@@ -153,8 +164,31 @@ describe("rules engine", () => {
     expect(evaluateRules([catchAll], email).rule?.name).toBe("Catch-all");
     expect(evaluateRules([specific, catchAll], email).rule?.name).toBe("Catch-all");
     expect(
-      evaluateRules([specific, catchAll], { ...email, fromEmail: "vip@example.com" }).rule?.name,
+      evaluateRules([specific, catchAll], {
+        ...email,
+        fromEmail: "vip@example.com",
+        senderEmail: "vip@example.com",
+      }).rule?.name,
     ).toBe("VIP");
+  });
+
+  test("matches Reply-To sender for relayed mail", () => {
+    const result = evaluateRules([baseRule], testEmail({
+      messageId: "m-relay",
+      inReplyTo: null,
+      references: [],
+      toAddresses: [],
+      ccAddresses: [],
+      bccAddresses: [],
+      fromEmail: "noreply@servicebeard.app",
+      fromName: "ServiceBeard",
+      replyToEmail: "support@example.com",
+      replyToName: "Support",
+      subject: "Contact",
+      body: "Help",
+      date: testEmailDate,
+    }));
+    expect(result.matched).toBe(true);
   });
 
   test("skips disabled rules", () => {
@@ -252,6 +286,27 @@ On 2026-06-23 22:02, support@mail.test wrote:
 
     expect(comment).toContain("First message with no quotes");
     expect(comment).toContain("<!-- servicebeard-sync:email:<m@mail.test>-->");
+  });
+
+  test("uses Reply-To as the customer sender", () => {
+    const comment = formatCommentBody(testEmail({
+      messageId: "<contact@mail.test>",
+      inReplyTo: null,
+      references: [],
+      toAddresses: [],
+      ccAddresses: [],
+      bccAddresses: [],
+      fromEmail: "noreply@servicebeard.app",
+      fromName: "ServiceBeard",
+      replyToEmail: "jane@example.com",
+      replyToName: "Jane",
+      subject: "Contact",
+      body: "Please help",
+      date: testEmailDate,
+    }), DEFAULT_INBOUND_COMMENT_TEMPLATE);
+
+    expect(comment).toContain("**Reply from Jane <jane@example.com>**");
+    expect(comment).not.toContain("noreply@servicebeard.app");
   });
 });
 
@@ -597,6 +652,38 @@ describe("inbound rule eligibility", () => {
       ),
     ).toBe(false);
   });
+
+  test("accepts relayed mail when Reply-To is the customer", () => {
+    expect(
+      isEligibleForInboundRuleEvaluation(
+        {
+          fromEmail: "noreply@servicebeard.app",
+          senderEmail: "customer@mail.test",
+          subject: "Contact form",
+          inReplyTo: null,
+          references: [],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  test("accepts contact form relay when system From matches support inbox", () => {
+    expect(
+      isEligibleForInboundRuleEvaluation(
+        {
+          fromEmail: "support@mail.test",
+          senderEmail: "customer@mail.test",
+          subject: "[ServiceBeard Contact] General — Jane",
+          inReplyTo: null,
+          references: [],
+          date: new Date("2026-06-02T08:00:00Z"),
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("inbound thread matching", () => {
@@ -644,6 +731,21 @@ describe("inbound thread matching", () => {
           references: [],
           subject: "Re: Help needed",
           fromEmail: "customer@mail.test",
+        },
+        index,
+      ),
+    ).toBe(true);
+  });
+
+  test("matches by normalized subject and Reply-To sender", () => {
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: null,
+          references: [],
+          subject: "Re: Help needed",
+          fromEmail: "noreply@servicebeard.app",
+          senderEmail: "customer@mail.test",
         },
         index,
       ),
@@ -774,6 +876,16 @@ describe("email threading helpers", () => {
       buildReferencesChain(["<a@x>"], "<b@x>"),
     ).toEqual(["<a@x>", "<b@x>"]);
     expect(buildReferencesChain(["<b@x>"], "<b@x>")).toEqual(["<b@x>"]);
+  });
+
+  test("resolves inbound sender from Reply-To", async () => {
+    const { resolveInboundSender } = await import("@servicebeard/shared");
+    expect(
+      resolveInboundSender("noreply@servicebeard.app", "ServiceBeard", "jane@example.com", "Jane"),
+    ).toEqual({ email: "jane@example.com", name: "Jane" });
+    expect(
+      resolveInboundSender("customer@mail.test", "Customer", null, null),
+    ).toEqual({ email: "customer@mail.test", name: "Customer" });
   });
 
   test("formats quoted reply body", async () => {

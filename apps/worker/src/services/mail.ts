@@ -1,4 +1,10 @@
-import { formatMailboxAddress, normalizeMessageId } from "@servicebeard/shared";
+import {
+    firstMailboxAddress,
+    formatMailboxAddress,
+    normalizeMessageId,
+    optionalMailboxAddress,
+    resolveInboundSender,
+} from "@servicebeard/shared";
 import { buildParsedEmailContent } from "@servicebeard/shared/email-content";
 import { ImapFlow } from "imapflow";
 import type { AddressObject } from "mailparser";
@@ -175,9 +181,14 @@ export async function parseEmail(
       : []
   ).map(normalizeMessageId);
 
-  const from = parsed.from?.value[0];
-  const fromEmail = from?.address ?? "unknown@unknown.local";
-  const fromName = from?.name?.trim() || null;
+  const from = firstMailboxAddress(parsed.from);
+  const replyTo = optionalMailboxAddress(parsed.replyTo);
+  const sender = resolveInboundSender(
+    from.email,
+    from.name,
+    replyTo?.email ?? null,
+    replyTo?.name ?? null,
+  );
 
   const subject = parsed.subject ?? "(no subject)";
   const content = buildParsedEmailContent(
@@ -195,8 +206,12 @@ export async function parseEmail(
     messageId,
     inReplyTo,
     references,
-    fromEmail,
-    fromName,
+    fromEmail: from.email,
+    fromName: from.name,
+    replyToEmail: replyTo?.email ?? null,
+    replyToName: replyTo?.name ?? null,
+    senderEmail: sender.email,
+    senderName: sender.name,
     toAddresses: addressesFromField(parsed.to),
     ccAddresses: addressesFromField(parsed.cc),
     bccAddresses: addressesFromField(parsed.bcc),

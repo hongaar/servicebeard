@@ -34,6 +34,51 @@ export function formatMailboxAddress(email: string, name?: string | null): strin
   return email;
 }
 
+export interface MailboxAddress {
+  email: string;
+  name: string | null;
+}
+
+/** First address from a mailparser address field (`from`, `replyTo`, etc.). */
+export function firstMailboxAddress(
+  field?: { value: Array<{ address?: string; name?: string }> } | null,
+): MailboxAddress {
+  const entry = field?.value[0];
+  return {
+    email: entry?.address?.trim() || "unknown@unknown.local",
+    name: entry?.name?.trim() || null,
+  };
+}
+
+/** Like firstMailboxAddress but returns null when the field is absent or empty. */
+export function optionalMailboxAddress(
+  field?: { value: Array<{ address?: string; name?: string }> } | null,
+): MailboxAddress | null {
+  const entry = field?.value[0];
+  const email = entry?.address?.trim();
+  if (!email) return null;
+  return { email, name: entry?.name?.trim() || null };
+}
+
+/**
+ * Customer-facing sender for inbound sync. Prefers Reply-To over From so
+ * relayed mail (e.g. contact forms) routes replies to the real customer.
+ */
+export function resolveInboundSender(
+  fromEmail: string,
+  fromName: string | null,
+  replyToEmail: string | null,
+  replyToName: string | null,
+): MailboxAddress {
+  if (replyToEmail) {
+    return {
+      email: replyToEmail,
+      name: replyToName,
+    };
+  }
+  return { email: fromEmail, name: fromName };
+}
+
 export function formatAddressList(addresses: string[]): string {
   return addresses.length > 0 ? addresses.join(", ") : "—";
 }

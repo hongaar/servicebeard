@@ -1,5 +1,5 @@
 import type { ParsedEmail } from "@servicebeard/shared";
-import { formatMailboxAddress } from "@servicebeard/shared";
+import { firstMailboxAddress, formatMailboxAddress, optionalMailboxAddress, resolveInboundSender } from "@servicebeard/shared";
 import { buildParsedEmailContent } from "@servicebeard/shared/email-content";
 import { ImapFlow } from "imapflow";
 import type { AddressObject } from "mailparser";
@@ -74,9 +74,14 @@ export async function parseEmail(raw: Buffer): Promise<ParsedEmail> {
       ? [parsed.references]
       : [];
 
-  const from = parsed.from?.value[0];
-  const fromEmail = from?.address ?? "unknown@unknown.local";
-  const fromName = from?.name?.trim() || null;
+  const from = firstMailboxAddress(parsed.from);
+  const replyTo = optionalMailboxAddress(parsed.replyTo);
+  const sender = resolveInboundSender(
+    from.email,
+    from.name,
+    replyTo?.email ?? null,
+    replyTo?.name ?? null,
+  );
 
   const subject = parsed.subject ?? "(no subject)";
   const content = buildParsedEmailContent(
@@ -94,8 +99,12 @@ export async function parseEmail(raw: Buffer): Promise<ParsedEmail> {
     messageId,
     inReplyTo,
     references,
-    fromEmail,
-    fromName,
+    fromEmail: from.email,
+    fromName: from.name,
+    replyToEmail: replyTo?.email ?? null,
+    replyToName: replyTo?.name ?? null,
+    senderEmail: sender.email,
+    senderName: sender.name,
     toAddresses: addressesFromField(parsed.to),
     ccAddresses: addressesFromField(parsed.cc),
     bccAddresses: addressesFromField(parsed.bcc),

@@ -21,6 +21,7 @@ import {
     testMailConnectionSchema,
     testProviderConnectionSchema,
     testRuleSchema,
+    toInboundEligibility,
     updateProjectSchema,
     updateRuleSchema,
 } from "@servicebeard/shared";
@@ -498,20 +499,17 @@ projectRoutes.get("/:teamId/projects/:projectId/mailbox-snapshot", async (c) => 
     const messages = [];
     for (const msg of rawMessages) {
       const parsed = await parseEmail(msg.raw);
-      const eligibility = {
-        fromEmail: parsed.fromEmail,
-        subject: parsed.subject,
-        inReplyTo: parsed.inReplyTo,
-        references: parsed.references,
-        date: parsed.date,
-      };
-      if (!isEligibleForInboundRulePreview(eligibility, inboundCtx, threadIndex)) {
+      if (!isEligibleForInboundRulePreview(toInboundEligibility(parsed), inboundCtx, threadIndex)) {
         continue;
       }
       messages.push({
         uid: msg.uid,
-        fromEmail: parsed.fromEmail,
-        fromName: parsed.fromName,
+        fromEmail: parsed.senderEmail,
+        fromName: parsed.senderName,
+        envelopeFromEmail: parsed.fromEmail,
+        envelopeFromName: parsed.fromName,
+        replyToEmail: parsed.replyToEmail,
+        replyToName: parsed.replyToName,
         subject: parsed.subject,
         bodyPreview: parsed.body.slice(0, 300),
         body: parsed.body,
@@ -564,13 +562,7 @@ projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
       const email = await parseEmail(msg.raw);
       if (
         !isEligibleForInboundRulePreview(
-          {
-            fromEmail: email.fromEmail,
-            subject: email.subject,
-            inReplyTo: email.inReplyTo,
-            references: email.references,
-            date: email.date,
-          },
+          toInboundEligibility(email),
           inboundCtx,
           threadIndex,
         )
@@ -579,8 +571,12 @@ projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
       }
       results.push({
         uid: msg.uid,
-        fromEmail: email.fromEmail,
-        fromName: email.fromName,
+        fromEmail: email.senderEmail,
+        fromName: email.senderName,
+        envelopeFromEmail: email.fromEmail,
+        envelopeFromName: email.fromName,
+        replyToEmail: email.replyToEmail,
+        replyToName: email.replyToName,
         subject: email.subject,
         bodyPreview: email.body.slice(0, 200),
         date: email.date,

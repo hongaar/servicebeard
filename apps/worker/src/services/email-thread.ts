@@ -30,8 +30,8 @@ export function latestThreadMessage(
 
 export function quotedEmailFromParsed(email: ParsedEmail): QuotedEmail {
   return {
-    fromName: email.fromName,
-    fromEmail: email.fromEmail,
+    fromName: email.senderName,
+    fromEmail: email.senderEmail,
     date: email.date,
     body: email.body,
   };

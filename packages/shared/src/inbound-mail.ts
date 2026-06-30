@@ -8,10 +8,16 @@ export interface InboundMailboxContext {
 
 export interface InboundEmailEligibility {
   fromEmail: string;
+  /** Customer address for threading; defaults to fromEmail when omitted. */
+  senderEmail?: string;
   subject: string;
   inReplyTo: string | null;
   references: string[];
   date: Date;
+}
+
+function effectiveSenderEmail(email: { fromEmail: string; senderEmail?: string }): string {
+  return email.senderEmail ?? email.fromEmail;
 }
 
 export interface ThreadMatchIndex {
@@ -39,6 +45,20 @@ export function isEmailFromSupportMailbox(
   return normalizeMailboxEmail(fromEmail) === normalizeMailboxEmail(supportEmail);
 }
 
+/**
+ * Envelope From is the support mailbox but the customer address is elsewhere
+ * (typically Reply-To), e.g. contact-form relay or helpdesk send-on-behalf.
+ */
+export function isRelayedInboundMail(
+  supportEmail: string,
+  email: { fromEmail: string; senderEmail?: string },
+): boolean {
+  if (!isEmailFromSupportMailbox(supportEmail, email.fromEmail)) {
+    return false;
+  }
+  return !isEmailFromSupportMailbox(supportEmail, effectiveSenderEmail(email));
+}
+
 export function buildThreadMatchIndex(
   storedMessages: Array<{ messageId: string; inReplyTo: string | null }>,
   threads: Array<{ subjectNormalized: string; originalSenderEmail: string }>,
@@ -61,7 +81,10 @@ export function buildThreadMatchIndex(
 
 /** Mirrors worker thread detection for rule preview and testing. */
 export function emailMatchesExistingThread(
-  email: Pick<InboundEmailEligibility, "inReplyTo" | "references" | "subject" | "fromEmail">,
+  email: Pick<
+    InboundEmailEligibility,
+    "inReplyTo" | "references" | "subject" | "fromEmail" | "senderEmail"
+  >,
   index: ThreadMatchIndex,
 ): boolean {
   const refIds = [
@@ -75,13 +98,14 @@ export function emailMatchesExistingThread(
     }
   }
 
-  const subjectSenderKey = `${normalizeSubject(email.subject)}\0${email.fromEmail.toLowerCase()}`;
+  const subjectSenderKey = `${normalizeSubject(email.subject)}\0${effectiveSenderEmail(email).toLowerCase()}`;
   return index.subjectSenderKeys.has(subjectSenderKey);
 }
 
 /**
  * Mail that can create a new issue via routing rules — excludes copies sent by the
- * support mailbox and pre-project messages. Cc-only delivery is allowed.
+ * support mailbox and pre-project messages. Relayed mail (support From + external
+ * Reply-To sender) is allowed. Cc-only delivery is allowed.
  */
 export function isEligibleForInboundRuleEvaluation(
   email: InboundEmailEligibility,
@@ -93,7 +117,10 @@ export function isEligibleForInboundRuleEvaluation(
   ) {
     return false;
   }
-  if (isEmailFromSupportMailbox(ctx.supportEmail, email.fromEmail)) {
+  if (
+    isEmailFromSupportMailbox(ctx.supportEmail, email.fromEmail) &&
+    !isRelayedInboundMail(ctx.supportEmail, email)
+  ) {
     return false;
   }
   return true;

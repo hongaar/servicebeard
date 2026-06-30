@@ -646,6 +646,10 @@ export interface MailboxSnapshotMessage {
   uid: number;
   fromEmail: string;
   fromName: string | null;
+  envelopeFromEmail?: string;
+  envelopeFromName?: string | null;
+  replyToEmail?: string | null;
+  replyToName?: string | null;
   subject: string;
   bodyPreview: string;
   body: string;
@@ -676,6 +680,10 @@ export interface RuleTestResult {
     uid: number;
     fromEmail: string;
     fromName: string | null;
+    envelopeFromEmail?: string;
+    envelopeFromName?: string | null;
+    replyToEmail?: string | null;
+    replyToName?: string | null;
     subject: string;
     bodyPreview: string;
     date: string | null;

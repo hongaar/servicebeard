@@ -22,9 +22,9 @@ export function formatIssueDescription(
 ): string {
   const body = bodyMarkdown ?? email.bodyMarkdown ?? email.body;
   const rendered = renderInboundIssueTemplate(template, {
-    sender: formatEmailSender(email.fromName, email.fromEmail),
-    senderName: email.fromName ?? email.fromEmail,
-    senderEmail: email.fromEmail,
+    sender: formatEmailSender(email.senderName, email.senderEmail),
+    senderName: email.senderName ?? email.senderEmail,
+    senderEmail: email.senderEmail,
     subject: email.subject,
     body,
   });
@@ -40,9 +40,9 @@ export function formatCommentBody(
 ): string {
   const body = stripQuotedReply(bodyMarkdown ?? email.bodyMarkdown ?? email.body);
   const rendered = renderInboundCommentTemplate(template, {
-    sender: formatEmailSender(email.fromName, email.fromEmail),
-    senderName: email.fromName ?? email.fromEmail,
-    senderEmail: email.fromEmail,
+    sender: formatEmailSender(email.senderName, email.senderEmail),
+    senderName: email.senderName ?? email.senderEmail,
+    senderEmail: email.senderEmail,
     body,
   });
 

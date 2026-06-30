@@ -330,8 +330,8 @@ export async function processInboundEmail(
       externalIssueId: issue.externalId,
       issueIid: issue.iid,
       issueUrl: issue.url,
-      originalSenderEmail: email.fromEmail,
-      originalSenderName: email.fromName,
+      originalSenderEmail: email.senderEmail,
+      originalSenderName: email.senderName,
       subjectNormalized: normalizeSubject(email.subject),
       matchedRuleId: rule.id,
     })
@@ -367,8 +367,8 @@ async function sendInboundAckEmail(
 ): Promise<void> {
   const db = getDb();
   const ackBody = renderInboundAckTemplate(project.inboundAckTemplate, {
-    senderName: email.fromName ?? email.fromEmail,
-    senderEmail: email.fromEmail,
+    senderName: email.senderName ?? email.senderEmail,
+    senderEmail: email.senderEmail,
     subject: email.subject,
     issueNumber: issue.iid,
     issueUrl: issue.url,
@@ -458,7 +458,7 @@ async function findThread(
     where: and(
       eq(issueThreads.projectId, projectId),
       eq(issueThreads.subjectNormalized, subjectNorm),
-      eq(issueThreads.originalSenderEmail, email.fromEmail),
+      eq(issueThreads.originalSenderEmail, email.senderEmail),
     ),
   });
 
