@@ -30,7 +30,7 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/mail/package.json ./packages/mail/
 COPY packages/providers/package.json ./packages/providers/
 COPY packages/shared/package.json ./packages/shared/
-RUN bun install --linker hoisted --production --frozen-lockfile || bun install --linker hoisted --production
+RUN bun install --linker hoisted --production --ignore-scripts --frozen-lockfile || bun install --linker hoisted --production --ignore-scripts
 
 # ── Extension sources (optional named build context: extension) ──
 FROM base AS extension-context
@@ -44,7 +44,7 @@ COPY packages/mail /serviceboard/packages/mail
 COPY packages/shared /serviceboard/packages/shared
 COPY packages/providers /serviceboard/packages/providers
 WORKDIR /extension
-RUN if [ -f package.json ]; then bun install --linker hoisted --production --frozen-lockfile || bun install --linker hoisted --production; else mkdir -p node_modules; fi
+RUN if [ -f package.json ]; then bun install --linker hoisted --production --ignore-scripts --frozen-lockfile || bun install --linker hoisted --production --ignore-scripts; else mkdir -p node_modules; fi
 
 # ── Web build (bundles extension UI when manifest is present) ──
 FROM base AS web-build
