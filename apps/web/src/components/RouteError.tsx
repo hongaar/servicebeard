@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { captureBugsinkError, isBugsinkEnabled } from "../lib/bugsink";
+import { documentTitle } from "../lib/documentTitle";
 import { iconMd } from "../lib/icons";
 import { describeRouteError, shouldReportRouteError } from "../lib/routeError";
 import styles from "../styles/error.module.css";
@@ -20,6 +21,10 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
       path: window.location.pathname,
     });
   }, [error, details.status]);
+
+  useEffect(() => {
+    document.title = documentTitle(details.title);
+  }, [details.title]);
 
   return (
     <div className={styles.page}>

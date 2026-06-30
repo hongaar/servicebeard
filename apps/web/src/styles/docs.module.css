@@ -64,12 +64,6 @@
   align-items: start;
 }
 
-@media (max-width: 720px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 .nav {
   position: sticky;
   top: var(--space-6);
@@ -77,6 +71,16 @@
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
+}
+
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .nav {
+    position: static;
+  }
 }
 
 .navTitle {
