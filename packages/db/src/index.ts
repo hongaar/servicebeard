@@ -7,13 +7,23 @@ export type Database = PostgresJsDatabase<typeof schema>;
 let client: ReturnType<typeof postgres> | null = null;
 let db: Database | null = null;
 
-export function createDb(connectionString?: string) {
+export function formatPgNotice(notice: postgres.Notice): string {
+  const severity = notice.severity ?? "NOTICE";
+  const code = notice.code ? `[${notice.code}]` : "";
+  const message = notice.message ?? "";
+  return `${severity} ${code}: ${message}`.replace(/: $/, "");
+}
+
+export function createDb(
+  connectionString?: string,
+  postgresOptions?: postgres.Options<Record<string, postgres.PostgresType>>,
+) {
   const url =
     connectionString ??
     process.env.DATABASE_URL ??
     "postgres://servicebeard:servicebeard@localhost:5432/servicebeard";
 
-  const pgClient = postgres(url, { max: 10 });
+  const pgClient = postgres(url, { max: 10, ...postgresOptions });
   const database = drizzle(pgClient, { schema });
   return { db: database, client: pgClient };
 }
@@ -35,6 +45,7 @@ export async function closeDb(): Promise<void> {
   }
 }
 
+export * from "./audit-log";
 export * from "./crypto";
 export * from "./global-search";
 export * from "./message-volume";

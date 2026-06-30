@@ -1,8 +1,12 @@
 import { loadExtensionManifest } from "@servicebeard/shared/extensions";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { createDb } from "./index";
+import { createDb, formatPgNotice } from "./index";
 
-const { db, client } = createDb();
+const { db, client } = createDb(undefined, {
+  onnotice: (notice) => {
+    console.log(formatPgNotice(notice));
+  },
+});
 
 console.log("Running OSS database migrations...");
 await migrate(db, { migrationsFolder: "./drizzle" });

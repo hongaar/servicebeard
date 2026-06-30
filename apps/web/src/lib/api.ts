@@ -152,6 +152,26 @@ export const api = {
   getAdminStatus: () => request<{ status: AdminStatusResponse | null }>("/admin/status"),
   runAdminStatusChecks: () =>
     request<AdminStatusResponse>("/admin/status/run", { method: "POST" }),
+  listAuditLog: (params?: {
+    search?: string;
+    teamId?: string;
+    action?: string;
+    resourceType?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.teamId) query.set("teamId", params.teamId);
+    if (params?.action) query.set("action", params.action);
+    if (params?.resourceType) query.set("resourceType", params.resourceType);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return request<{ entries: AdminAuditLogEntry[]; total: number }>(
+      `/admin/audit-log${qs ? `?${qs}` : ""}`,
+    );
+  },
   getAuthConfig: () => request<AuthConfigResponse>("/auth/config"),
   loginWithProvider: (
     provider: string,
@@ -709,4 +729,19 @@ export interface AdminStatusResponse {
   ok: boolean;
   checkedAt: string;
   checks: AdminCheckResult[];
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  teamId: string | null;
+  userId: string | null;
+  projectId: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  userEmail: string | null;
+  userName: string | null;
+  teamName: string | null;
 }

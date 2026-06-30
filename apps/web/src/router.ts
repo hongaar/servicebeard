@@ -4,6 +4,7 @@ import { RouteError } from "./components/RouteError";
 import {
     acceptInviteRoute,
     accountRoute,
+    adminAuditLogRoute,
     adminStatusRoute,
     dashboardRoute,
     docsGitHubRoute,
@@ -44,6 +45,7 @@ const routeTree = rootRoute.addChildren([
   githubAppInstallCompleteRoute,
   dashboardRoute,
   adminStatusRoute,
+  adminAuditLogRoute,
   accountRoute,
   teamRedirectRoute,
   teamMembersRoute,

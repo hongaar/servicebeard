@@ -1470,6 +1470,80 @@
   color: var(--color-text-muted);
 }
 
+.adminPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.adminListHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.adminFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-end;
+}
+
+.adminSearchField {
+  width: min(100%, 20rem);
+}
+
+.adminPagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.adminMuted {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.adminAuditLogJson {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-bg-subtle);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: min(70vh, 32rem);
+  overflow: auto;
+}
+
+.adminAuditLogTableWrap {
+  overflow-x: auto;
+}
+
+.adminAuditLogTable {
+  width: 100%;
+}
+
+.adminAuditLogCompactCell {
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.adminAuditLogDetailsCol {
+  white-space: nowrap;
+}
+
+.adminAuditLogDetailsCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .adminCheckCard {
   margin-bottom: var(--space-4);
 }

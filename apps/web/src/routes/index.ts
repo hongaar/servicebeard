@@ -8,6 +8,7 @@ import {
 } from "../lib/navigation";
 import { AcceptInvitePage } from "../pages/AcceptInvitePage";
 import { AccountPage } from "../pages/AccountPage";
+import { AdminAuditLogPage } from "../pages/AdminAuditLogPage";
 import { AdminStatusPage } from "../pages/AdminStatusPage";
 import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
 import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
@@ -185,6 +186,18 @@ export const adminStatusRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/status",
   component: AdminStatusPage,
+  loader: async () => {
+    const { user } = await api.getMe();
+    if (!user) throw redirect({ to: "/login" });
+    if (!user.isAdmin) throw redirect({ to: "/" });
+    return { user };
+  },
+});
+
+export const adminAuditLogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/audit-log",
+  component: AdminAuditLogPage,
   loader: async () => {
     const { user } = await api.getMe();
     if (!user) throw redirect({ to: "/login" });

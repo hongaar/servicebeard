@@ -83,6 +83,7 @@ export function Layout({
   const isDashboard = pathname === "/";
   const isAccount = pathname === "/account";
   const isAdminStatus = pathname === "/admin/status";
+  const isAdminAuditLog = pathname === "/admin/audit-log";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
   const isTeamSettings = teamId && pathname === `/teams/${teamId}/settings`;
   const isProjectsList = teamId && pathname === `/teams/${teamId}/projects`;
@@ -227,12 +228,20 @@ export function Layout({
                   <span className={styles.navLabel}>Account</span>
                 </Link>
                 {user?.isAdmin && (
-                  <Link to="/admin/status" className={navLinkClass(isAdminStatus)}>
-                    <NavIcon>
-                      <NAV_ICONS.adminStatus {...iconMd} />
-                    </NavIcon>
-                    System status
-                  </Link>
+                  <>
+                    <Link to="/admin/status" className={navLinkClass(isAdminStatus)}>
+                      <NavIcon>
+                        <NAV_ICONS.adminStatus {...iconMd} />
+                      </NavIcon>
+                      System status
+                    </Link>
+                    <Link to="/admin/audit-log" className={navLinkClass(isAdminAuditLog)}>
+                      <NavIcon>
+                        <NAV_ICONS.adminAuditLog {...iconMd} />
+                      </NavIcon>
+                      Audit log
+                    </Link>
+                  </>
                 )}
                 {adminNavItems.map((item) => (
                   <Link

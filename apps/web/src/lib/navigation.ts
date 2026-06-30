@@ -11,6 +11,7 @@ import {
     Mail,
     MessagesSquare,
     Scale,
+    ScrollText,
     Server,
     Settings,
     Shield,
@@ -59,6 +60,7 @@ export const NAV_ICONS = {
   billing: CreditCard,
   teamSettings: Settings,
   adminStatus: Server,
+  adminAuditLog: ScrollText,
   overview: LayoutDashboard,
   rules: SlidersHorizontal,
   conversations: MessagesSquare,
@@ -82,6 +84,7 @@ export function teamPageIcon(pathname: string, teamId: string): NavIconKey | und
 }
 
 export function homePageIcon(pathname: string): NavIconKey {
+  if (pathname === "/admin/audit-log") return "adminAuditLog";
   if (pathname === "/admin/status") return "adminStatus";
   if (pathname === "/account") return "account";
   return "teams";

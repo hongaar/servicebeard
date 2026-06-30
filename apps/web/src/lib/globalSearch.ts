@@ -111,16 +111,28 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
   ];
 
   if (isAdmin) {
-    actions.push({
-      id: "nav-admin-status",
-      label: "System status",
-      description: "Health checks and service connectivity",
-      keywords: ["admin", "health", "errors"],
-      group: "Navigation",
-      kind: "navigate",
-      to: "/admin/status",
-      icon: "adminStatus",
-    });
+    actions.push(
+      {
+        id: "nav-admin-status",
+        label: "System status",
+        description: "Health checks and service connectivity",
+        keywords: ["admin", "health", "errors"],
+        group: "Navigation",
+        kind: "navigate",
+        to: "/admin/status",
+        icon: "adminStatus",
+      },
+      {
+        id: "nav-admin-audit-log",
+        label: "Audit log",
+        description: "Platform activity and billing events",
+        keywords: ["admin", "audit", "log", "billing", "activity"],
+        group: "Navigation",
+        kind: "navigate",
+        to: "/admin/audit-log",
+        icon: "adminAuditLog",
+      },
+    );
   }
 
   if (teamId) {
