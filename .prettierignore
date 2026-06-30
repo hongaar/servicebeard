@@ -1,0 +1,12 @@
+node_modules/
+dist/
+landing-dist/
+.landing-build-tmp/
+coverage/
+reports/
+test-results/
+.turbo/
+*.tsbuildinfo
+packages/db/drizzle/
+bun.lock
+apps/web/public/marketing/
