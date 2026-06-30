@@ -216,7 +216,12 @@ export async function processInboundEmail(
 
   if (thread) {
     const markdownBody = await resolveEmailMarkdown(email, provider, projectId);
-    const commentBody = formatCommentBody(email, project.inboundCommentTemplate, markdownBody);
+    const commentBody = formatCommentBody(
+      email,
+      project.inboundCommentTemplate,
+      markdownBody,
+      project.provider,
+    );
     const result = await provider.addComment(thread.issueIid, commentBody, {
       internal: false,
     });

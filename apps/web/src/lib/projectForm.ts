@@ -6,6 +6,7 @@ import {
     lookupMailAutoconfig,
     parseGithubRepository,
     parseGitlabProject,
+    parseLinearTeam,
     parseMailFromAddress,
     parseMailFromName,
     slugifyName,
@@ -48,6 +49,7 @@ export interface ProjectSettingsFormValues {
 export const CLOUD_PROVIDER_URLS: Record<string, string> = {
   gitlab: "https://gitlab.com",
   github: "https://github.com",
+  linear: "https://linear.app",
 };
 
 export function inferProviderHosting(provider: string, baseUrl: string): ProviderHosting {
@@ -214,6 +216,14 @@ export function applyIssueRepositoryUrl(
   if (form.provider === "gitlab") {
     try {
       return { ...form, providerProjectId: parseGitlabProject(trimmed) };
+    } catch {
+      return { ...form, providerProjectId: trimmed };
+    }
+  }
+
+  if (form.provider === "linear") {
+    try {
+      return { ...form, providerProjectId: parseLinearTeam(trimmed) };
     } catch {
       return { ...form, providerProjectId: trimmed };
     }

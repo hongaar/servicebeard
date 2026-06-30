@@ -13,8 +13,9 @@ export function DocsGitHubPage() {
       </p>
       <p>
         In the project settings, set <strong>Repository</strong> to <code>owner/repo</code> (for
-        example <code>acme/support</code>). For GitHub Enterprise Server, also set the instance root
-        URL — not the API endpoint.
+        example <code>acme/support</code>). You can also paste a GitHub repository URL in the wizard
+        — ServiceBeard extracts <code>owner/repo</code> automatically. For GitHub Enterprise
+        Server, also set the instance root URL — not the API endpoint.
       </p>
 
       <h2>Which authentication method?</h2>

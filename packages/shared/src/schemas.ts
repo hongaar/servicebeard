@@ -2,23 +2,66 @@ import { z } from "zod";
 import { PROVIDERS, TEAM_ROLES } from "./constants";
 import { stripEmptyStrings } from "./errors";
 import { looksLikeGithubRepositoryUrl, parseGithubRepository } from "./github-repository";
+import { looksLikeLinearTeamUrl, parseLinearTeam } from "./linear-team";
 import { mailFromSchema } from "./mail";
 
 function preprocessProviderProjectId(input: unknown): unknown {
   if (!input || typeof input !== "object") return input;
   const data = { ...(input as Record<string, unknown>) };
   if (typeof data.providerProjectId === "string") {
+    const providerProjectId = data.providerProjectId;
     const shouldParseGithub =
-      data.provider === "github" || looksLikeGithubRepositoryUrl(data.providerProjectId);
+      data.provider === "github" || looksLikeGithubRepositoryUrl(providerProjectId);
     if (shouldParseGithub) {
       try {
-        data.providerProjectId = parseGithubRepository(data.providerProjectId);
+        data.providerProjectId = parseGithubRepository(providerProjectId);
       } catch {
         // Leave raw value; refineGithubProjectId reports the error.
       }
     }
+
+    const shouldParseLinear =
+      data.provider === "linear" || looksLikeLinearTeamUrl(providerProjectId);
+    if (shouldParseLinear) {
+      try {
+        data.providerProjectId = parseLinearTeam(providerProjectId);
+      } catch {
+        // Leave raw value; refineLinearTeamId reports the error.
+      }
+    }
   }
   return data;
+}
+
+function refineLinearTeamId(
+  data: { provider?: string; providerProjectId?: string },
+  ctx: z.RefinementCtx,
+) {
+  const projectId = data.providerProjectId;
+  if (!projectId) return;
+
+  const isLinear =
+    data.provider === "linear" || looksLikeLinearTeamUrl(projectId);
+  if (!isLinear) return;
+
+  if (projectId.startsWith("project:") && !projectId.slice("project:".length).trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Linear project reference is required",
+      path: ["providerProjectId"],
+    });
+    return;
+  }
+
+  try {
+    parseLinearTeam(projectId);
+  } catch (err) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: err instanceof Error ? err.message : "Invalid Linear team",
+      path: ["providerProjectId"],
+    });
+  }
 }
 
 function refineGithubProjectId(
@@ -120,6 +163,7 @@ export const providerConfigSchema = z.preprocess(
   preprocessProviderProjectId,
   providerConfigFields
     .superRefine(refineGithubProjectId)
+    .superRefine(refineLinearTeamId)
     .superRefine(refineProviderCredentials),
 );
 
@@ -138,6 +182,7 @@ export const createProjectSchema = z.preprocess(
     .merge(providerConfigFields)
     .merge(mailConfigSchema)
     .superRefine(refineGithubProjectId)
+    .superRefine(refineLinearTeamId)
     .superRefine(refineProviderCredentials),
 );
 
@@ -158,7 +203,8 @@ export const updateProjectSchema = z.preprocess(
       inboundCommentTemplate: z.string().min(1).max(10000).optional(),
       imapMarkIngestedAsSeen: z.boolean().optional(),
     })
-    .superRefine(refineGithubProjectId),
+    .superRefine(refineGithubProjectId)
+    .superRefine(refineLinearTeamId),
 );
 
 export const createRuleSchema = z.object({

@@ -47,12 +47,22 @@ export function buildIssueSupportDetailsFooter(
       ? `Team comments that should not email the customer: include \`${INTERNAL_MARKER}\` at the start or end of the comment, or post as an Internal note in GitLab.`
       : `Team comments that should not email the customer: include \`${INTERNAL_MARKER}\` at the start or end of the comment.`;
 
+  const body = `Created automatically by [ServiceBeard](${webUrl}). [Open project](${projectUrl}).
+
+${internalHint}`;
+
+  if (options.provider === "linear") {
+    return `---
+
+### Support details
+
+${body}`;
+  }
+
   return `<details>
 <summary>Support details</summary>
 
-Created automatically by [ServiceBeard](${webUrl}). [Open project](${projectUrl}).
-
-${internalHint}
+${body}
 
 </details>`;
 }

@@ -1,4 +1,4 @@
-import type { ParsedEmail } from "@servicebeard/shared";
+import type { ParsedEmail, ProviderType } from "@servicebeard/shared";
 import {
     buildIssueSupportDetailsFooter,
     buildSyncMarker,
@@ -30,13 +30,14 @@ export function formatIssueDescription(
   });
   const supportFooter = support ? buildIssueSupportDetailsFooter(support) : "";
 
-  return `${rendered}${supportFooter ? `\n${supportFooter}\n` : "\n"}${buildSyncMarker(threadId)}`;
+  return `${rendered}${supportFooter ? `\n${supportFooter}\n` : "\n"}${buildSyncMarker(threadId, support?.provider)}`;
 }
 
 export function formatCommentBody(
   email: ParsedEmail,
   template: string,
   bodyMarkdown?: string,
+  provider?: ProviderType | string,
 ): string {
   const body = stripQuotedReply(bodyMarkdown ?? email.bodyMarkdown ?? email.body);
   const rendered = renderInboundCommentTemplate(template, {
@@ -46,5 +47,5 @@ export function formatCommentBody(
     body,
   });
 
-  return `${rendered}\n\n${buildSyncMarker(`email:${email.messageId}`)}`;
+  return `${rendered}\n\n${buildSyncMarker(`email:${email.messageId}`, provider)}`;
 }

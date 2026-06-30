@@ -95,7 +95,7 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
     {
       id: "help-providers",
       label: "Issue provider setup",
-      keywords: ["gitlab", "github", "issues"],
+      keywords: ["gitlab", "github", "linear", "issues"],
       group: "Help",
       kind: "navigate",
       to: DOC_PATHS.issueProviders,

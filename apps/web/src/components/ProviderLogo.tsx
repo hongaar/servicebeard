@@ -25,5 +25,18 @@ export function ProviderLogo({ provider }: ProviderLogoProps) {
     );
   }
 
+  if (normalized === "linear") {
+    return (
+      <span className={styles.wrap}>
+        <img src="/linear-icon.svg" alt="" className={`${styles.linearIcon} ${styles.linearIconLight}`} />
+        <img
+          src="/linear-icon-white.svg"
+          alt=""
+          className={`${styles.linearIcon} ${styles.linearIconDark}`}
+        />
+      </span>
+    );
+  }
+
   return <span className={styles.fallback}>{provider}</span>;
 }

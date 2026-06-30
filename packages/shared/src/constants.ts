@@ -22,6 +22,7 @@ export function classifySyncError(
   if (
     service === "gitlab" ||
     service === "github" ||
+    service === "linear" ||
     service === "inbound" ||
     service === "outbound-email" ||
     operation === "test-provider" ||
@@ -41,7 +42,7 @@ export function classifySyncError(
 export const TEAM_ROLES = ["owner", "admin", "member"] as const;
 export type TeamRole = (typeof TEAM_ROLES)[number];
 
-export const PROVIDERS = ["gitlab", "github"] as const;
+export const PROVIDERS = ["gitlab", "github", "linear"] as const;
 export type ProviderType = (typeof PROVIDERS)[number];
 
 export const RULE_MATCH_FIELDS = ["sender", "subject", "body"] as const;
@@ -61,13 +62,18 @@ export type JobType = (typeof JOB_TYPES)[number];
 
 export const SYNC_MARKER_PREFIX = "<!-- servicebeard-sync:";
 export const SYNC_MARKER_SUFFIX = "-->";
+const LINEAR_SYNC_MARKER_PREFIX = "servicebeard-sync:";
 
-export function buildSyncMarker(threadId: string): string {
+export function buildSyncMarker(threadId: string, provider?: string): string {
+  if (provider === "linear") {
+    return `\n\n[//]: # (${LINEAR_SYNC_MARKER_PREFIX}${threadId})`;
+  }
   return `${SYNC_MARKER_PREFIX}${threadId}${SYNC_MARKER_SUFFIX}`;
 }
 
 export function isServicebeardSyncedContent(body: string): boolean {
-  return body.includes(SYNC_MARKER_PREFIX);
+  if (body.includes(SYNC_MARKER_PREFIX)) return true;
+  return /\[\/\/\]:\s*#\s*\(\s*servicebeard-sync:/i.test(body);
 }
 
 export function normalizeSubject(subject: string): string {

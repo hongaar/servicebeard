@@ -15,6 +15,7 @@ const NAV = [
     children: [
       { path: DOC_PATHS.github, label: "GitHub" },
       { path: DOC_PATHS.gitlab, label: "GitLab" },
+      { path: DOC_PATHS.linear, label: "Linear" },
     ],
   },
 ] as const;

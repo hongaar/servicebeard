@@ -66,5 +66,6 @@ async function handleProviderWebhook(c: Context, expectedProvider: string) {
 
 webhookRoutes.post("/gitlab/:projectId", (c) => handleProviderWebhook(c, "gitlab"));
 webhookRoutes.post("/github/:projectId", (c) => handleProviderWebhook(c, "github"));
+webhookRoutes.post("/linear/:projectId", (c) => handleProviderWebhook(c, "linear"));
 
 export { webhookRoutes };

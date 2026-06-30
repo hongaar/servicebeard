@@ -7,6 +7,7 @@ export * from "./github-repository";
 export * from "./inbound-mail";
 export * from "./issue-content";
 export * from "./issue-repository";
+export * from "./linear-team";
 export * from "./login";
 export * from "./mail";
 export * from "./mail-autoconfig";

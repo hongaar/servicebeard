@@ -53,7 +53,9 @@ function canAdvance(
       );
     case "provider":
       return (
-        (providerValues.provider === "gitlab" || providerValues.provider === "github") &&
+        (providerValues.provider === "gitlab" ||
+          providerValues.provider === "github" ||
+          providerValues.provider === "linear") &&
         providerValues.providerBaseUrl.trim().length > 0 &&
         providerValues.providerProjectId.trim().length > 0 &&
         githubProviderCredentialsReady(providerValues, githubAppEnabled)

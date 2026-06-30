@@ -13,6 +13,26 @@
   color: var(--color-text);
 }
 
+.linearIcon {
+  display: block;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.linearIconDark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .linearIconLight {
+    display: none;
+  }
+
+  .linearIconDark {
+    display: block;
+  }
+}
+
 .fallback {
   font-size: var(--text-sm);
   font-weight: 600;

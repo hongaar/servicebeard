@@ -1,6 +1,7 @@
 import { parseGithubRepository } from "./github-repository";
+import { isLinearProjectId, LINEAR_PROJECT_PREFIX, parseLinearTeam } from "./linear-team";
 
-export type IssueProviderType = "github" | "gitlab";
+export type IssueProviderType = "github" | "gitlab" | "linear";
 
 export interface DetectedIssueRepository {
   provider: IssueProviderType;
@@ -93,7 +94,35 @@ export function providerIssuesWebUrl(
     return `${origin}/${projectId}/-/issues`;
   }
 
+  if (normalized === "linear") {
+    if (isLinearProjectId(projectId)) {
+      const ref = projectId.slice(LINEAR_PROJECT_PREFIX.length);
+      if (ref.includes("/")) {
+        const [workspace, slug] = ref.split("/", 2);
+        return `https://linear.app/${workspace}/project/${slug}/issues`;
+      }
+      return `https://linear.app/project/${ref}/issues`;
+    }
+    return `https://linear.app/team/${encodeURIComponent(projectId)}/active`;
+  }
+
   return `${origin}/${projectId}/issues`;
+}
+
+function detectFromLinear(input: string, baseUrl: string): DetectedIssueRepository | null {
+  try {
+    return {
+      provider: "linear",
+      providerBaseUrl: baseUrl.replace(/\/$/, ""),
+      providerProjectId: parseLinearTeam(input),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function hostLooksLikeLinear(host: string): boolean {
+  return host === "linear.app" || host === "www.linear.app";
 }
 
 function detectFromGithub(input: string, baseUrl: string): DetectedIssueRepository | null {
@@ -163,6 +192,10 @@ export function detectIssueProviderFromUrl(input: string): DetectedIssueReposito
 
   const host = parsed.hostname.toLowerCase();
   const baseUrl = originFromUrl(parsed);
+
+  if (hostLooksLikeLinear(host)) {
+    return detectFromLinear(trimmed, baseUrl);
+  }
 
   if (hostLooksLikeGithub(host) && !hostLooksLikeGitlab(host)) {
     return detectFromGithub(trimmed, baseUrl);

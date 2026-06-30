@@ -318,6 +318,10 @@ describe("loop prevention markers", () => {
     const marker = buildSyncMarker("email:<m@mail.test>");
     expect(isServicebeardSyncedContent(`Reply text\n\n${marker}`)).toBe(true);
     expect(isServicebeardSyncedContent("Regular agent reply")).toBe(false);
+
+    const linearMarker = buildSyncMarker("thread-1", "linear");
+    expect(linearMarker).toContain("[//]: # (servicebeard-sync:thread-1)");
+    expect(isServicebeardSyncedContent(`Reply text\n\n${linearMarker}`)).toBe(true);
   });
 });
 
@@ -367,6 +371,22 @@ describe("issue support details footer", () => {
     expect(footer).toContain("`[internal]`");
   });
 
+  test("uses markdown footer for Linear projects", async () => {
+    const { buildIssueSupportDetailsFooter } = await import("@servicebeard/shared");
+
+    const footer = buildIssueSupportDetailsFooter({
+      webUrl: "https://app.example.com",
+      teamId: "team-1",
+      projectId: "project-1",
+      provider: "linear",
+    });
+
+    expect(footer).not.toContain("<details>");
+    expect(footer).toContain("### Support details");
+    expect(footer).toContain("[ServiceBeard](https://app.example.com)");
+    expect(footer).toContain("`[internal]`");
+  });
+
   test("includes support footer in new issue descriptions", () => {
     const desc = formatIssueDescription(
       testEmail({
@@ -394,6 +414,38 @@ describe("issue support details footer", () => {
 
     expect(desc).toContain("<summary>Support details</summary>");
     expect(desc).toContain("<!-- servicebeard-sync:thread-123-->");
+  });
+
+  test("uses markdown footer and sync marker for Linear issues", () => {
+    const desc = formatIssueDescription(
+      testEmail({
+        messageId: "<abc@mail.com>",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "user@example.com",
+        fromName: "User",
+        subject: "Bug report",
+        body: "Something broke",
+        date: testEmailDate,
+      }),
+      "thread-123",
+      DEFAULT_INBOUND_ISSUE_TEMPLATE,
+      undefined,
+      {
+        webUrl: "https://app.example.com",
+        teamId: "team-1",
+        projectId: "project-1",
+        provider: "linear",
+      },
+    );
+
+    expect(desc).not.toContain("<details>");
+    expect(desc).toContain("### Support details");
+    expect(desc).toContain("[//]: # (servicebeard-sync:thread-123)");
+    expect(desc).not.toContain("<!-- servicebeard-sync:");
   });
 });
 
@@ -1295,12 +1347,130 @@ describe("GitHub webhook parsing", () => {
   });
 });
 
+describe("linear provider", () => {
+  test("parses comment webhook payloads", async () => {
+    const { LinearProvider } = await import("@servicebeard/providers");
+    const provider = new LinearProvider({
+      baseUrl: "https://linear.app",
+      projectId: "72b2a2dc-6f4f-4423-9d34-24b5bd10634a",
+      token: "lin_api_test",
+    });
+
+    const event = provider.parseWebhook({
+      action: "create",
+      type: "Comment",
+      url: "https://linear.app/acme/issue/ENG-42/some-title#comment-abc",
+      actor: { id: "user-1", type: "user", name: "Alex" },
+      data: {
+        id: "comment-1",
+        body: "Thanks for the update",
+        issueId: "issue-uuid",
+        userId: "user-1",
+        createdAt: "2026-01-23T12:53:18.084Z",
+      },
+    });
+
+    expect(event).not.toBeNull();
+    expect(event!.issueExternalId).toBe("issue-uuid");
+    expect(event!.issueIid).toBe(42);
+    expect(event!.noteId).toBe("comment-1");
+    expect(event!.internal).toBe(false);
+  });
+
+  test("marks internal marker comments", async () => {
+    const { LinearProvider } = await import("@servicebeard/providers");
+    const provider = new LinearProvider({
+      baseUrl: "https://linear.app",
+      projectId: "ENG",
+      token: "lin_api_test",
+    });
+
+    const event = provider.parseWebhook({
+      action: "create",
+      type: "Comment",
+      url: "https://linear.app/acme/issue/ENG-7/title",
+      actor: { id: "user-1", type: "user", name: "Alex" },
+      data: {
+        id: "comment-2",
+        body: "[internal] Checking with billing",
+        issueId: "issue-uuid",
+        userId: "user-1",
+      },
+    });
+
+    expect(event?.internal).toBe(true);
+  });
+
+  test("skips non-user actors", async () => {
+    const { LinearProvider } = await import("@servicebeard/providers");
+    const provider = new LinearProvider({
+      baseUrl: "https://linear.app",
+      projectId: "ENG",
+      token: "lin_api_test",
+    });
+
+    const event = provider.parseWebhook({
+      action: "create",
+      type: "Comment",
+      actor: { id: "integration-1", type: "integration", name: "Bot" },
+      data: { id: "comment-3", issueId: "issue-uuid", body: "Hello" },
+    });
+
+    expect(event).toBeNull();
+  });
+
+  test("verifies webhook signature and timestamp", async () => {
+    const { createHmac } = await import("node:crypto");
+    const { LinearProvider } = await import("@servicebeard/providers");
+    const provider = new LinearProvider({
+      baseUrl: "https://linear.app",
+      projectId: "ENG",
+      token: "lin_api_test",
+    });
+
+    const body = JSON.stringify({ webhookTimestamp: Date.now() });
+    const secret = "test-secret";
+    const signature = createHmac("sha256", secret).update(body).digest("hex");
+
+    expect(provider.verifyWebhook({ "linear-signature": signature }, body, secret)).toBe(true);
+    expect(provider.verifyWebhook({ "linear-signature": "bad" }, body, secret)).toBe(false);
+  });
+});
+
+describe("linear team parsing", () => {
+  test("detects linear team and project URLs", async () => {
+    const { detectIssueProviderFromUrl, parseLinearTeam } = await import("@servicebeard/shared");
+
+    expect(detectIssueProviderFromUrl("https://linear.app/acme/team/ENG/active")).toEqual({
+      provider: "linear",
+      providerBaseUrl: "https://linear.app",
+      providerProjectId: "ENG",
+    });
+
+    expect(
+      detectIssueProviderFromUrl(
+        "https://linear.app/hongaar/project/servicebeard-support-f0a3393752bf/overview",
+      ),
+    ).toEqual({
+      provider: "linear",
+      providerBaseUrl: "https://linear.app",
+      providerProjectId: "project:hongaar/servicebeard-support-f0a3393752bf",
+    });
+
+    expect(parseLinearTeam("72b2a2dc-6f4f-4423-9d34-24b5bd10634a")).toBe(
+      "72b2a2dc-6f4f-4423-9d34-24b5bd10634a",
+    );
+    expect(parseLinearTeam("https://linear.app/acme/issue/ENG-12/some-title")).toBe("ENG");
+  });
+});
+
 describe("sync error classification", () => {
   test("classifies mail and provider operations", async () => {
     const { classifySyncError } = await import("@servicebeard/shared");
     expect(classifySyncError("imap", "fetch-unseen")).toBe("mail");
     expect(classifySyncError("smtp", "send-mail")).toBe("mail");
     expect(classifySyncError("github", "list-comments")).toBe("provider");
+    expect(classifySyncError("linear", "list-comments")).toBe("provider");
     expect(classifySyncError("inbound", "process-message")).toBe("provider");
     expect(classifySyncError("api", "unknown")).toBeNull();
   });
@@ -1600,6 +1770,16 @@ describe("provider project URLs", () => {
     expect(providerIssuesWebUrl("gitlab", "https://gitlab.com", "12345")).toBe(
       "https://gitlab.com/projects/12345/issues",
     );
+    expect(providerIssuesWebUrl("linear", "https://linear.app", "ENG")).toBe(
+      "https://linear.app/team/ENG/active",
+    );
+    expect(
+      providerIssuesWebUrl(
+        "linear",
+        "https://linear.app",
+        "project:hongaar/servicebeard-support-f0a3393752bf",
+      ),
+    ).toBe("https://linear.app/hongaar/project/servicebeard-support-f0a3393752bf/issues");
   });
 });
 

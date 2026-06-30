@@ -13,6 +13,7 @@ import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
 import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
 import { DocsIndexPage } from "../pages/docs/DocsIndexPage";
 import { DocsIssueProvidersPage } from "../pages/docs/DocsIssueProvidersPage";
+import { DocsLinearPage } from "../pages/docs/DocsLinearPage";
 import { DocsMailboxPage } from "../pages/docs/DocsMailboxPage";
 import { DocsSelfHostPage } from "../pages/docs/DocsSelfHostPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
@@ -140,6 +141,12 @@ export const docsGitLabRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/docs/issue-providers/gitlab",
   component: DocsGitLabPage,
+});
+
+export const docsLinearRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/docs/issue-providers/linear",
+  component: DocsLinearPage,
 });
 
 export const docsSelfHostRoute = createRoute({

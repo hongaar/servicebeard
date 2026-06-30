@@ -1,4 +1,4 @@
-import { detectIssueProviderFromUrl, lookupMailAutoconfig, parseGithubRepository, usesLocalPartMailAuth } from "@servicebeard/shared";
+import { detectIssueProviderFromUrl, lookupMailAutoconfig, parseGithubRepository, parseLinearTeam, usesLocalPartMailAuth } from "@servicebeard/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -504,7 +504,8 @@ export function ProjectProviderSection({
   const githubAppConfigured = githubApp?.configured ?? false;
   const isGitlab = values.provider === "gitlab";
   const isGithub = values.provider === "github";
-  const providerSelected = isGitlab || isGithub;
+  const isLinear = values.provider === "linear";
+  const providerSelected = isGitlab || isGithub || isLinear;
   const githubAppInstalled = values.providerGithubInstallationId.trim().length > 0;
   const githubRepositorySlug = useMemo(() => {
     if (!isGithub || !values.providerProjectId.trim()) return null;
@@ -692,13 +693,19 @@ export function ProjectProviderSection({
 
     if (detected) {
       const host = new URL(detected.providerBaseUrl).host;
+      const providerName =
+        detected.provider === "github"
+          ? "GitHub"
+          : detected.provider === "linear"
+            ? "Linear"
+            : "GitLab";
       setDetectionNotice(
-        `Detected ${detected.provider === "github" ? "GitHub" : "GitLab"} · ${detected.providerProjectId} on ${host}`,
+        `Detected ${providerName} · ${detected.providerProjectId} on ${host}`,
       );
     } else if (next.provider) {
       setDetectionNotice("");
     } else if (raw.includes("://") || /^[^/]+\.[^/]+\//.test(raw)) {
-      setDetectionNotice("Could not detect provider — choose GitHub or GitLab below.");
+      setDetectionNotice("Could not detect provider — choose GitHub, GitLab, or Linear below.");
     } else {
       setDetectionNotice("");
     }
@@ -709,7 +716,7 @@ export function ProjectProviderSection({
       <h3 className={styles.sectionTitle}>{isCreate ? "Issue repository" : "Issue provider"}</h3>
       <p className={styles.formHint}>
         {isCreate
-          ? "Paste your GitHub or GitLab project URL — we'll detect the provider and project path."
+          ? "Paste a GitHub repository, GitLab project, or Linear team/project URL — we'll detect the provider and target automatically."
           : "Where new issues and comment sync should go when mail arrives."}{" "}
         <DocsLink to={DOC_PATHS.issueProviders}>Provider setup guides</DocsLink>
       </p>
@@ -717,7 +724,7 @@ export function ProjectProviderSection({
       {isCreate && (
         <>
           <Input
-            label="Repository or project URL"
+            label="Repository, project, or team URL"
             value={repositoryInputValue}
             error={fieldErrors?.providerProjectId}
             autoFocus={isCreate}
@@ -727,7 +734,7 @@ export function ProjectProviderSection({
               if (detectionNotice) setDetectionNotice("");
             }}
             onBlur={handleRepositoryInputBlur}
-            hint="e.g. https://github.com/acme/support or https://gitlab.com/acme/website"
+            hint="GitHub: repository URL · GitLab: project URL · Linear: team or project URL"
           />
           {detectionNotice && <p className={styles.formHint}>{detectionNotice}</p>}
         </>
@@ -735,7 +742,7 @@ export function ProjectProviderSection({
 
       {isCreate && !providerSelected && (
         <p className={styles.formHint}>
-          Paste a project URL above to auto-detect, or choose GitHub or GitLab below.
+          Paste a repository, project, or team URL above to auto-detect, or choose a provider below.
         </p>
       )}
 
@@ -756,6 +763,12 @@ export function ProjectProviderSection({
             label: "GitLab",
             description: "Create issues and sync comments from GitLab.",
             icon: <ProviderLogo provider="gitlab" />,
+          },
+          {
+            value: "linear",
+            label: "Linear",
+            description: "Create issues and sync comments from Linear.",
+            icon: <ProviderLogo provider="linear" />,
           },
         ]}
       />
@@ -804,7 +817,7 @@ export function ProjectProviderSection({
                 // Keep raw input; validation runs on submit.
               }
             }}
-            hint="e.g. owner/repo or a GitHub repository URL"
+            hint="Paste a GitHub repository URL or enter owner/repo (e.g. acme/support)."
           />
           ) : null}
 
@@ -939,7 +952,7 @@ export function ProjectProviderSection({
               const next = applyIssueRepositoryUrl(values, raw);
               patchForm({ providerProjectId: next.providerProjectId });
             }}
-            hint="Numeric project ID or path like group/project."
+            hint="Paste a GitLab project URL or enter a numeric ID or group/project path."
           />
           ) : null}
 
@@ -983,6 +996,45 @@ export function ProjectProviderSection({
               />
             </>
           )}
+        </>
+      )}
+
+      {providerSelected && isLinear && (
+        <>
+          {!isCreate || !values.providerProjectId.trim() ? (
+          <Input
+            label="Team or project"
+            value={values.providerProjectId}
+            error={fieldErrors?.providerProjectId}
+            onChange={(e) =>
+              setField(onChange, onClearFieldError, "providerProjectId")(e.target.value)
+            }
+            onBlur={(e) => {
+              const raw = e.target.value.trim();
+              if (!raw) return;
+              try {
+                patchForm({ providerProjectId: parseLinearTeam(raw) });
+              } catch {
+                // Keep raw value for validation feedback.
+              }
+            }}
+            hint="Paste a Linear team or project URL, or enter a team UUID/key (e.g. ENG)."
+          />
+          ) : null}
+
+          <Input
+            label="API key"
+            type="password"
+            value={values.providerToken}
+            error={fieldErrors?.providerToken}
+            onChange={(e) => setField(onChange, onClearFieldError, "providerToken")(e.target.value)}
+            hint={
+              <>
+                Personal API key with Read, Create issues, Create comments, and Admin scopes.{" "}
+                <DocsLink to={DOC_PATHS.linear}>Permission details</DocsLink>
+              </>
+            }
+          />
         </>
       )}
 
