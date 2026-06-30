@@ -9,7 +9,9 @@ useSecurityContext();
 describe("Authentication and session security", () => {
   test("Unauthenticated request to protected endpoint returns 401", async () => {
     const { seed } = await getSecurityContext();
-    const response = await createApiClient().get(`/api/teams/${seed.teams.teamA.id}`);
+    const response = await createApiClient().get(
+      `/api/teams/${seed.teams.teamA.id}`,
+    );
     expect(response.status).toBe(401);
   });
 
@@ -24,7 +26,9 @@ describe("Authentication and session security", () => {
   test("Expired session token is rejected with 401", async () => {
     const { seed } = await getSecurityContext();
     const expired = await mintExpiredSession(seed.users.memberA.id);
-    const response = await createApiClient(expired).get(`/api/teams/${seed.teams.teamA.id}`);
+    const response = await createApiClient(expired).get(
+      `/api/teams/${seed.teams.teamA.id}`,
+    );
     expect(response.status).toBe(401);
   });
 

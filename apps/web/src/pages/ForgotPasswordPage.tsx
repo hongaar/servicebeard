@@ -31,11 +31,20 @@ export function ForgotPasswordPage() {
       <div className={styles.card}>
         <h1 className={styles.title}>Reset password</h1>
         <p className={styles.subtitle}>
-          Enter your email and we&apos;ll send you a link to choose a new password.
+          Enter your email and we&apos;ll send you a link to choose a new
+          password.
         </p>
 
-        {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
-        {message && <div className={[styles.alert, styles.alertSuccess].join(" ")}>{message}</div>}
+        {error && (
+          <div className={[styles.alert, styles.alertError].join(" ")}>
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className={[styles.alert, styles.alertSuccess].join(" ")}>
+            {message}
+          </div>
+        )}
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <Input

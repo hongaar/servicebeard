@@ -1,12 +1,12 @@
 import type { IssueProvider, ProviderConfig } from "@servicebeard/providers";
 import {
-    collectOutboundImageRefs,
-    markdownToHtml,
-    markdownToPlainText,
-    prepareGitLabNoteForOutboundEmail,
-    replaceHtmlImageUrlsWithCid,
-    replaceMarkdownImagesWithCid,
-    resolveProviderImageUrl,
+  collectOutboundImageRefs,
+  markdownToHtml,
+  markdownToPlainText,
+  prepareGitLabNoteForOutboundEmail,
+  replaceHtmlImageUrlsWithCid,
+  replaceMarkdownImagesWithCid,
+  resolveProviderImageUrl,
 } from "@servicebeard/shared/email-content";
 import { randomBytes } from "node:crypto";
 import { logExternalError } from "../lib/external-error";

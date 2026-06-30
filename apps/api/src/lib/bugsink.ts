@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/bun";
 import {
-    bugsinkUserPayload,
-    normalizeBugsinkCaptureContext,
-    type BugsinkCaptureContext,
+  bugsinkUserPayload,
+  normalizeBugsinkCaptureContext,
+  type BugsinkCaptureContext,
 } from "@servicebeard/shared";
 
 const SERVICE = "api";

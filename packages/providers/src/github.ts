@@ -5,16 +5,16 @@ import { getGithubAppBotUser, resolveGithubAccessToken } from "./github-app";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {
-    AddCommentResult,
-    CreateIssueInput,
-    CreateIssueResult,
-    DownloadedFile,
-    IssueProvider,
-    NormalizedWebhookEvent,
-    ProviderConfig,
-    ProviderNote,
-    ProviderOptions,
-    UploadFileResult,
+  AddCommentResult,
+  CreateIssueInput,
+  CreateIssueResult,
+  DownloadedFile,
+  IssueProvider,
+  NormalizedWebhookEvent,
+  ProviderConfig,
+  ProviderNote,
+  ProviderOptions,
+  UploadFileResult,
 } from "./types";
 
 interface GitHubUser {
@@ -139,7 +139,9 @@ export class GitHubProvider implements IssueProvider {
     return `/repos/${owner}/${repo}`;
   }
 
-  private async authHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  private async authHeaders(
+    extra?: Record<string, string>,
+  ): Promise<Record<string, string>> {
     const token = await resolveGithubAccessToken(this.config);
     return {
       Accept: "application/vnd.github+json",
@@ -169,14 +171,22 @@ export class GitHubProvider implements IssueProvider {
       const text = await response.text();
       const status = response.status;
       if (!(options?.quiet404 && status === 404)) {
-        logProvider(status === 404 ? "debug" : "error", "GitHub API request failed", {
-          method,
-          path,
-          status,
-          bodyPreview: text.slice(0, 500),
-        });
+        logProvider(
+          status === 404 ? "debug" : "error",
+          "GitHub API request failed",
+          {
+            method,
+            path,
+            status,
+            bodyPreview: text.slice(0, 500),
+          },
+        );
       }
-      throw new GitHubApiError(status, `GitHub API error ${status}: ${text}`, text);
+      throw new GitHubApiError(
+        status,
+        `GitHub API error ${status}: ${text}`,
+        text,
+      );
     }
 
     if (response.status === 204) {
@@ -188,7 +198,10 @@ export class GitHubProvider implements IssueProvider {
 
   async getCurrentUser(): Promise<{ id: string; username: string }> {
     if (this.config.githubInstallationId) {
-      return getGithubAppBotUser(this.config.baseUrl, this.config.githubInstallationId);
+      return getGithubAppBotUser(
+        this.config.baseUrl,
+        this.config.githubInstallationId,
+      );
     }
     const user = await this.request<GitHubUser>("GET", "/user");
     return { id: String(user.id), username: user.login };
@@ -223,7 +236,9 @@ export class GitHubProvider implements IssueProvider {
     };
   }
 
-  private async resolveAssigneeLogin(assigneeId: string): Promise<string | null> {
+  private async resolveAssigneeLogin(
+    assigneeId: string,
+  ): Promise<string | null> {
     const collaborators = await this.request<GitHubUser[]>(
       "GET",
       `${this.repoPath()}/collaborators?affiliation=direct&per_page=100`,
@@ -234,7 +249,10 @@ export class GitHubProvider implements IssueProvider {
 
   async listProjectOptions(): Promise<ProviderOptions> {
     const [labels, members] = await Promise.all([
-      this.request<GitHubLabel[]>("GET", `${this.repoPath()}/labels?per_page=100`),
+      this.request<GitHubLabel[]>(
+        "GET",
+        `${this.repoPath()}/labels?per_page=100`,
+      ),
       this.request<GitHubUser[]>(
         "GET",
         `${this.repoPath()}/collaborators?affiliation=direct&per_page=100`,
@@ -330,8 +348,11 @@ export class GitHubProvider implements IssueProvider {
     }
 
     const headerType =
-      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ??
-      "application/octet-stream";
+      response.headers
+        .get("content-type")
+        ?.split(";")[0]
+        ?.trim()
+        .toLowerCase() ?? "application/octet-stream";
     const content = Buffer.from(await response.arrayBuffer());
 
     if (headerType.includes("text/html") || content.length === 0) {
@@ -399,7 +420,10 @@ export class GitHubProvider implements IssueProvider {
       );
 
       return comments
-        .filter((comment) => new Date(comment.created_at).getTime() >= since.getTime())
+        .filter(
+          (comment) =>
+            new Date(comment.created_at).getTime() >= since.getTime(),
+        )
         .map((comment) => ({
           id: String(comment.id),
           body: comment.body,
@@ -472,7 +496,9 @@ export class GitHubProvider implements IssueProvider {
       Array<{ id: number; config: { url?: string } }>
     >("GET", `${this.repoPath()}/hooks`);
 
-    const match = existing.find((hook) => hook.config.url === config.webhookUrl);
+    const match = existing.find(
+      (hook) => hook.config.url === config.webhookUrl,
+    );
     if (match) {
       await this.request("PATCH", `${this.repoPath()}/hooks/${match.id}`, {
         active: true,

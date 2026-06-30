@@ -1,8 +1,8 @@
 import {
-    DEFAULT_INBOUND_ACK_TEMPLATE,
-    DEFAULT_INBOUND_COMMENT_TEMPLATE,
-    DEFAULT_INBOUND_ISSUE_TEMPLATE,
-    DEFAULT_OUTBOUND_COMMENT_TEMPLATE,
+  DEFAULT_INBOUND_ACK_TEMPLATE,
+  DEFAULT_INBOUND_COMMENT_TEMPLATE,
+  DEFAULT_INBOUND_ISSUE_TEMPLATE,
+  DEFAULT_OUTBOUND_COMMENT_TEMPLATE,
 } from "@servicebeard/shared";
 import type { Project, UpdateProjectInput } from "./api";
 
@@ -38,7 +38,9 @@ export const defaultProjectTemplatesForm: ProjectTemplatesFormValues = {
   outboundCommentCcMailbox: false,
 };
 
-export function projectToTemplatesForm(project: Project): ProjectTemplatesFormValues {
+export function projectToTemplatesForm(
+  project: Project,
+): ProjectTemplatesFormValues {
   return {
     inboundAckEnabled: project.inboundAckEnabled,
     inboundAckCcMailbox: project.inboundAckCcMailbox ?? false,
@@ -46,7 +48,8 @@ export function projectToTemplatesForm(project: Project): ProjectTemplatesFormVa
     outboundCommentTemplate:
       project.outboundCommentTemplate ?? DEFAULT_OUTBOUND_COMMENT_TEMPLATE,
     outboundCommentCcMailbox: project.outboundCommentCcMailbox ?? false,
-    inboundIssueTemplate: project.inboundIssueTemplate ?? DEFAULT_INBOUND_ISSUE_TEMPLATE,
+    inboundIssueTemplate:
+      project.inboundIssueTemplate ?? DEFAULT_INBOUND_ISSUE_TEMPLATE,
     inboundCommentTemplate:
       project.inboundCommentTemplate ?? DEFAULT_INBOUND_COMMENT_TEMPLATE,
   };

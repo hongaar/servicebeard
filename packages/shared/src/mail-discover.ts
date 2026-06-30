@@ -1,9 +1,7 @@
 import type { MailAutoconfig, MailServerSettings } from "./mail-autoconfig";
 
 export type MailDiscoverSource =
-  | "mozilla-autoconfig"
-  | "microsoft-autodiscover"
-  | "dns-srv";
+  "mozilla-autoconfig" | "microsoft-autodiscover" | "dns-srv";
 
 export interface MailDiscoverResult {
   found: boolean;
@@ -11,7 +9,9 @@ export interface MailDiscoverResult {
 }
 
 function extractXmlTag(block: string, tag: string): string | null {
-  const match = block.match(new RegExp(`<${tag}\\b[^>]*>([^<]*)</${tag}>`, "i"));
+  const match = block.match(
+    new RegExp(`<${tag}\\b[^>]*>([^<]*)</${tag}>`, "i"),
+  );
   return match?.[1]?.trim() ?? null;
 }
 
@@ -49,7 +49,10 @@ function parseServerBlock(
   return { host, port, secure };
 }
 
-function providerLabelFromMozillaXml(xml: string, fallbackDomain: string): string {
+function providerLabelFromMozillaXml(
+  xml: string,
+  fallbackDomain: string,
+): string {
   const displayName = extractXmlTag(xml, "displayName");
   if (displayName) return displayName;
   const providerId = xml.match(/<emailProvider\b[^>]*\bid="([^"]+)"/i)?.[1];
@@ -91,7 +94,8 @@ export function parseMicrosoftAutodiscoverXml(
   xml: string,
   domain: string,
 ): MailAutoconfig | null {
-  const protocolBlocks = xml.match(/<Protocol\b[^>]*>[\s\S]*?<\/Protocol>/gi) ?? [];
+  const protocolBlocks =
+    xml.match(/<Protocol\b[^>]*>[\s\S]*?<\/Protocol>/gi) ?? [];
 
   const imapBlock = protocolBlocks.find((block) =>
     /<Type\b[^>]*>\s*IMAP\s*<\/Type>/i.test(block),

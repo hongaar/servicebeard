@@ -101,9 +101,16 @@ export interface IssueProvider {
   ): Promise<UploadFileResult>;
   downloadFile(url: string): Promise<DownloadedFile | null>;
   addReaction(issueIid: number, noteId: string, emoji: string): Promise<void>;
-  listCommentsSince(issueIid: number, since: Date): Promise<ProviderNote[] | null>;
+  listCommentsSince(
+    issueIid: number,
+    since: Date,
+  ): Promise<ProviderNote[] | null>;
   listProjectOptions(): Promise<ProviderOptions>;
-  verifyWebhook(headers: Record<string, string>, body: string, secret: string): boolean;
+  verifyWebhook(
+    headers: Record<string, string>,
+    body: string,
+    secret: string,
+  ): boolean;
   parseWebhook(payload: unknown): NormalizedWebhookEvent | null;
   ensureWebhook(config: ProviderConfig): Promise<void>;
   getCurrentUser(): Promise<{ id: string; username: string }>;

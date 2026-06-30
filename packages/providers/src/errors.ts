@@ -15,9 +15,12 @@ export class ProviderApiError extends Error {
   }
 }
 
-export function providerErrorDetails(
-  err: unknown,
-): { status: number; message: string; name: string; responseBody?: string } | null {
+export function providerErrorDetails(err: unknown): {
+  status: number;
+  message: string;
+  name: string;
+  responseBody?: string;
+} | null {
   if (!(err instanceof ProviderApiError)) return null;
   return {
     status: err.status,

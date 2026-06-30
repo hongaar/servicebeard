@@ -37,8 +37,16 @@ export function VerifyEmailPage() {
         <h1 className={styles.title}>Confirm your email</h1>
 
         {loading && <p className={styles.formHint}>Verifying your email…</p>}
-        {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
-        {message && <div className={[styles.alert, styles.alertSuccess].join(" ")}>{message}</div>}
+        {error && (
+          <div className={[styles.alert, styles.alertError].join(" ")}>
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className={[styles.alert, styles.alertSuccess].join(" ")}>
+            {message}
+          </div>
+        )}
 
         {!loading && error && (
           <p className={styles.formHint}>

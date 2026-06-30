@@ -38,7 +38,11 @@ export function ProjectStatusEventDialog({
       {event && (
         <>
           <div className={styles.statusEventDialogHeader}>
-            <span className={[styles.badge, severityClass(event.severity)].join(" ")}>
+            <span
+              className={[styles.badge, severityClass(event.severity)].join(
+                " ",
+              )}
+            >
               {event.severity}
             </span>
             <span className={[styles.badge, styles.badgeInactive].join(" ")}>

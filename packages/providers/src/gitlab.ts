@@ -3,16 +3,16 @@ import { ProviderApiError } from "./errors";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {
-    AddCommentResult,
-    CreateIssueInput,
-    CreateIssueResult,
-    DownloadedFile,
-    IssueProvider,
-    NormalizedWebhookEvent,
-    ProviderConfig,
-    ProviderNote,
-    ProviderOptions,
-    UploadFileResult,
+  AddCommentResult,
+  CreateIssueInput,
+  CreateIssueResult,
+  DownloadedFile,
+  IssueProvider,
+  NormalizedWebhookEvent,
+  ProviderConfig,
+  ProviderNote,
+  ProviderOptions,
+  UploadFileResult,
 } from "./types";
 
 interface GitLabUser {
@@ -134,14 +134,22 @@ export class GitLabProvider implements IssueProvider {
       const text = await response.text();
       const status = response.status;
       if (!(options?.quiet404 && status === 404)) {
-        logProvider(status === 404 ? "debug" : "error", "GitLab API request failed", {
-          method,
-          path,
-          status,
-          bodyPreview: text.slice(0, 500),
-        });
+        logProvider(
+          status === 404 ? "debug" : "error",
+          "GitLab API request failed",
+          {
+            method,
+            path,
+            status,
+            bodyPreview: text.slice(0, 500),
+          },
+        );
       }
-      throw new GitLabApiError(status, `GitLab API error ${status}: ${text}`, text);
+      throw new GitLabApiError(
+        status,
+        `GitLab API error ${status}: ${text}`,
+        text,
+      );
     }
 
     if (response.status === 204) {
@@ -183,7 +191,10 @@ export class GitLabProvider implements IssueProvider {
     };
   }
 
-  private async applyIssueStatus(issueIid: number, status: string): Promise<void> {
+  private async applyIssueStatus(
+    issueIid: number,
+    status: string,
+  ): Promise<void> {
     if (status === "opened") return;
 
     if (status === "closed") {
@@ -259,7 +270,10 @@ export class GitLabProvider implements IssueProvider {
   }
 
   private async getProjectMeta(): Promise<GitLabProject> {
-    return this.request<GitLabProject>("GET", `/projects/${this.encodeProjectId()}`);
+    return this.request<GitLabProject>(
+      "GET",
+      `/projects/${this.encodeProjectId()}`,
+    );
   }
 
   private namespacePaths(project: GitLabProject): string[] {
@@ -286,7 +300,9 @@ export class GitLabProvider implements IssueProvider {
     return statuses;
   }
 
-  private async fetchNamespaceStatuses(fullPath: string): Promise<ProviderOptions["statuses"]> {
+  private async fetchNamespaceStatuses(
+    fullPath: string,
+  ): Promise<ProviderOptions["statuses"]> {
     const data = await this.graphql<{
       namespace: { statuses: { nodes: GitLabIssueStatus[] } | null } | null;
     }>(
@@ -327,7 +343,9 @@ export class GitLabProvider implements IssueProvider {
     return this.mapStatuses(nodes);
   }
 
-  private async listIssueStatuses(project: GitLabProject): Promise<ProviderOptions["statuses"]> {
+  private async listIssueStatuses(
+    project: GitLabProject,
+  ): Promise<ProviderOptions["statuses"]> {
     const defaults = [
       { id: "opened", name: "Opened" },
       { id: "closed", name: "Closed" },
@@ -344,7 +362,10 @@ export class GitLabProvider implements IssueProvider {
     return defaults;
   }
 
-  private async updateWorkItemStatus(issueIid: number, statusId: string): Promise<void> {
+  private async updateWorkItemStatus(
+    issueIid: number,
+    statusId: string,
+  ): Promise<void> {
     const project = await this.getProjectMeta();
     const fullPath = project.path_with_namespace;
 
@@ -406,11 +427,7 @@ export class GitLabProvider implements IssueProvider {
     mimeType: string,
   ): Promise<UploadFileResult> {
     const form = new FormData();
-    form.append(
-      "file",
-      new Blob([content], { type: mimeType }),
-      filename,
-    );
+    form.append("file", new Blob([content], { type: mimeType }), filename);
 
     const url = `${this.apiBase}/projects/${this.encodeProjectId()}/uploads`;
     const response = await providerFetch(this.config, url, {
@@ -453,7 +470,10 @@ export class GitLabProvider implements IssueProvider {
   async downloadFile(url: string): Promise<DownloadedFile | null> {
     const upload = parseGitLabUploadPath(url);
     if (upload) {
-      const viaApi = await this.downloadProjectUpload(upload.secret, upload.filename);
+      const viaApi = await this.downloadProjectUpload(
+        upload.secret,
+        upload.filename,
+      );
       if (viaApi) return viaApi;
     }
 
@@ -483,7 +503,9 @@ export class GitLabProvider implements IssueProvider {
     return this.readDownloadedFile(response, filename);
   }
 
-  private async downloadFileFromWeb(url: string): Promise<DownloadedFile | null> {
+  private async downloadFileFromWeb(
+    url: string,
+  ): Promise<DownloadedFile | null> {
     const absoluteUrl = url.startsWith("http")
       ? url
       : `${this.config.baseUrl.replace(/\/$/, "")}${url}`;
@@ -510,8 +532,11 @@ export class GitLabProvider implements IssueProvider {
     nameForTypeInference: string,
   ): Promise<DownloadedFile | null> {
     const headerType =
-      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ??
-      "application/octet-stream";
+      response.headers
+        .get("content-type")
+        ?.split(";")[0]
+        ?.trim()
+        .toLowerCase() ?? "application/octet-stream";
     const content = Buffer.from(await response.arrayBuffer());
 
     if (headerType.includes("text/html") || content.length === 0) {
@@ -523,10 +548,9 @@ export class GitLabProvider implements IssueProvider {
       return null;
     }
 
-    const contentType =
-      headerType.startsWith("image/")
-        ? headerType
-        : inferImageContentTypeFromUrl(nameForTypeInference);
+    const contentType = headerType.startsWith("image/")
+      ? headerType
+      : inferImageContentTypeFromUrl(nameForTypeInference);
 
     if (!contentType) {
       logProvider("debug", "GitLab file download skipped, unknown image type", {
@@ -641,9 +665,10 @@ export class GitLabProvider implements IssueProvider {
     }
 
     const projectId = encodeURIComponent(config.projectId);
-    const existing = await this.request<
-      Array<{ id: number; url: string }>
-    >("GET", `/projects/${projectId}/hooks`);
+    const existing = await this.request<Array<{ id: number; url: string }>>(
+      "GET",
+      `/projects/${projectId}/hooks`,
+    );
 
     const match = existing.find((h) => h.url === config.webhookUrl);
     if (match) {

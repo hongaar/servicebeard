@@ -17,7 +17,9 @@ interface TeamDetail {
 }
 
 export function TeamSettingsPage() {
-  const { user, team, role } = useLoaderData({ from: "/teams/$teamId/settings" }) as {
+  const { user, team, role } = useLoaderData({
+    from: "/teams/$teamId/settings",
+  }) as {
     user: { email: string; name: string | null };
     team: TeamDetail;
     role: string;
@@ -28,7 +30,9 @@ export function TeamSettingsPage() {
   const [teamName, setTeamName] = useState(team.name);
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsIsError, setSettingsIsError] = useState(false);
-  const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
+  const [settingsFieldErrors, setSettingsFieldErrors] = useState<
+    Record<string, string>
+  >({});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
@@ -114,7 +118,9 @@ export function TeamSettingsPage() {
               <Button
                 type="submit"
                 disabled={
-                  !teamName.trim() || teamName.trim() === team.name || saveTeamName.isPending
+                  !teamName.trim() ||
+                  teamName.trim() === team.name ||
+                  saveTeamName.isPending
                 }
               >
                 {saveTeamName.isPending ? "Saving…" : "Save name"}
@@ -125,8 +131,8 @@ export function TeamSettingsPage() {
       ) : (
         <Card title="General" subtitle="Team configuration">
           <p className={styles.dangerZoneText}>
-            Only team admins can change settings. Contact an admin if you need the team name
-            updated.
+            Only team admins can change settings. Contact an admin if you need
+            the team name updated.
           </p>
         </Card>
       )}
@@ -139,16 +145,26 @@ export function TeamSettingsPage() {
         >
           <div className={styles.dangerZoneBody}>
             <p className={styles.dangerZoneText}>
-              Permanently delete this team and everything inside it — all projects, mail sync
-              data, rules, conversation threads, and member access. This cannot be undone.
+              Permanently delete this team and everything inside it — all
+              projects, mail sync data, rules, conversation threads, and member
+              access. This cannot be undone.
             </p>
             {deleteError && (
-              <div className={[styles.alert, styles.alertError, styles.dangerZoneAlert].join(" ")}>
+              <div
+                className={[
+                  styles.alert,
+                  styles.alertError,
+                  styles.dangerZoneAlert,
+                ].join(" ")}
+              >
                 {deleteError}
               </div>
             )}
             <div className={styles.dangerZoneActions}>
-              <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteDialog(true)}
+              >
                 Delete team
               </Button>
             </div>

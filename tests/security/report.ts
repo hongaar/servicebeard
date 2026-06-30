@@ -13,7 +13,10 @@ interface TestCase {
   failureMessage?: string;
 }
 
-function parseJUnit(xml: string): { cases: TestCase[]; totals: Record<string, number> } {
+function parseJUnit(xml: string): {
+  cases: TestCase[];
+  totals: Record<string, number>;
+} {
   const cases: TestCase[] = [];
 
   const testcaseRegex =
@@ -23,8 +26,10 @@ function parseJUnit(xml: string): { cases: TestCase[]; totals: Record<string, nu
   while ((match = testcaseRegex.exec(xml)) !== null) {
     const attrs = match[1] ?? match[2] ?? "";
     const inner = match[3] ?? "";
-    const name = attrs.match(/name="([^"]*)"/)?.[1]?.replace(/&apos;/g, "'") ?? "";
-    const classname = attrs.match(/classname="([^"]*)"/)?.[1]?.replace(/&apos;/g, "'") ?? "";
+    const name =
+      attrs.match(/name="([^"]*)"/)?.[1]?.replace(/&apos;/g, "'") ?? "";
+    const classname =
+      attrs.match(/classname="([^"]*)"/)?.[1]?.replace(/&apos;/g, "'") ?? "";
     const time = Number(attrs.match(/time="([^"]*)"/)?.[1] ?? 0);
 
     let status: TestCase["status"] = "passed";
@@ -67,7 +72,10 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function buildMarkdown(cases: TestCase[], totals: Record<string, number>): string {
+function buildMarkdown(
+  cases: TestCase[],
+  totals: Record<string, number>,
+): string {
   const lines = [
     "# Security / Pentest Test Report",
     "",
@@ -93,7 +101,9 @@ function buildMarkdown(cases: TestCase[], totals: Record<string, number>): strin
       `| ${testCase.suite} | ${testCase.name.replace(/\|/g, "\\|")} | ${testCase.status.toUpperCase()} | ${testCase.time.toFixed(3)} |`,
     );
     if (testCase.failureMessage) {
-      lines.push(`| | Failure: ${testCase.failureMessage.replace(/\|/g, "\\|")} | | |`);
+      lines.push(
+        `| | Failure: ${testCase.failureMessage.replace(/\|/g, "\\|")} | | |`,
+      );
     }
   }
 
@@ -170,15 +180,25 @@ function buildHtml(cases: TestCase[], totals: Record<string, number>): string {
 function main(): void {
   mkdirSync(REPORT_DIR, { recursive: true });
   if (!existsSync(JUNIT_PATH)) {
-    console.warn(`Skipping security report: ${JUNIT_PATH} not found (tests did not run)`);
+    console.warn(
+      `Skipping security report: ${JUNIT_PATH} not found (tests did not run)`,
+    );
     return;
   }
 
   const xml = readFileSync(JUNIT_PATH, "utf8");
   const { cases, totals } = parseJUnit(xml);
 
-  writeFileSync(join(REPORT_DIR, "security-report.md"), buildMarkdown(cases, totals), "utf8");
-  writeFileSync(join(REPORT_DIR, "security-report.html"), buildHtml(cases, totals), "utf8");
+  writeFileSync(
+    join(REPORT_DIR, "security-report.md"),
+    buildMarkdown(cases, totals),
+    "utf8",
+  );
+  writeFileSync(
+    join(REPORT_DIR, "security-report.html"),
+    buildHtml(cases, totals),
+    "utf8",
+  );
 
   console.log(`Wrote security reports to ${REPORT_DIR}`);
   console.log(

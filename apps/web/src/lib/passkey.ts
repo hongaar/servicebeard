@@ -1,6 +1,6 @@
 import {
-    startAuthentication,
-    startRegistration,
+  startAuthentication,
+  startRegistration,
 } from "@simplewebauthn/browser";
 import { api } from "./api";
 

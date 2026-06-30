@@ -78,7 +78,10 @@ export interface InboundCommentTemplateVars {
   body: string;
 }
 
-export function formatEmailSender(fromName: string | null, fromEmail: string): string {
+export function formatEmailSender(
+  fromName: string | null,
+  fromEmail: string,
+): string {
   return fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 }
 

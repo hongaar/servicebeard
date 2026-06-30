@@ -29,7 +29,11 @@ export function TableRowAction({ label, onActivate }: TableRowActionProps) {
   );
 }
 
-export function TableRowActionLink({ label, onActivate, link }: TableRowActionLinkProps) {
+export function TableRowActionLink({
+  label,
+  onActivate,
+  link,
+}: TableRowActionLinkProps) {
   return (
     <Link {...link} className={styles.tableRowLink} onClick={onActivate}>
       <TableRowActionInner label={label} />

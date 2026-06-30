@@ -1,19 +1,19 @@
 import {
-    getDb,
-    users,
-    webauthnChallenges,
-    webauthnCredentials,
+  getDb,
+  users,
+  webauthnChallenges,
+  webauthnCredentials,
 } from "@servicebeard/db";
 import type {
-    AuthenticationResponseJSON,
-    AuthenticatorTransportFuture,
-    RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
+  RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import {
-    generateAuthenticationOptions,
-    generateRegistrationOptions,
-    verifyAuthenticationResponse,
-    verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { isLocalLoginEnabled } from "../env";
@@ -40,7 +40,9 @@ async function storeChallenge(input: {
   const db = getDb();
   const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
 
-  await db.delete(webauthnChallenges).where(lt(webauthnChallenges.expiresAt, new Date()));
+  await db
+    .delete(webauthnChallenges)
+    .where(lt(webauthnChallenges.expiresAt, new Date()));
 
   await db.insert(webauthnChallenges).values({
     challenge: input.challenge,
@@ -145,7 +147,9 @@ export async function verifyPasskeyRegistration(input: {
 
   const email = input.email.trim().toLowerCase();
   const name = input.name.trim();
-  const challenge = parseClientDataChallenge(input.response.response.clientDataJSON);
+  const challenge = parseClientDataChallenge(
+    input.response.response.clientDataJSON,
+  );
   const challengeRecord = await consumeChallenge(challenge, "register");
 
   if (challengeRecord.email !== email) {
@@ -255,7 +259,8 @@ export async function verifyPasskeyAuthentication(
       id: credential.credentialId,
       publicKey: Buffer.from(credential.publicKey, "base64url"),
       counter: credential.counter,
-      transports: credential.transports as AuthenticatorTransportFuture[] | undefined,
+      transports: credential.transports as
+        AuthenticatorTransportFuture[] | undefined,
     },
   });
 
@@ -269,7 +274,10 @@ export async function verifyPasskeyAuthentication(
     .set({ counter: newCounter, updatedAt: new Date() })
     .where(eq(webauthnCredentials.id, credential.id));
 
-  logger.info({ email: credential.user.email, userId: credential.user.id }, "passkey login");
+  logger.info(
+    { email: credential.user.email, userId: credential.user.id },
+    "passkey login",
+  );
 
   return {
     externalSub: credential.user.oidcSub,

@@ -44,14 +44,22 @@ export function ContextPicker({
         aria-haspopup="listbox"
       >
         <span className={styles.prefix}>{prefix}</span>
-        <span className={[styles.value, isPlaceholder ? styles.valuePlaceholder : ""].join(" ")}>
+        <span
+          className={[
+            styles.value,
+            isPlaceholder ? styles.valuePlaceholder : "",
+          ].join(" ")}
+        >
           {options.length === 0 ? "None yet" : display}
         </span>
         <PopoverChevron open={open} className={popoverStyles.chevron} />
       </button>
 
       {open && (
-        <div className={[popoverStyles.menu, popoverStyles.menuLeft].join(" ")} role="listbox">
+        <div
+          className={[popoverStyles.menu, popoverStyles.menuLeft].join(" ")}
+          role="listbox"
+        >
           {options.length === 0 ? (
             <p className={popoverStyles.menuEmpty}>Nothing to pick yet</p>
           ) : (
@@ -115,7 +123,10 @@ export function BreadcrumbPicker({
   const hasOptions = options.length > 0;
 
   return (
-    <div className={[popoverStyles.root, styles.breadcrumbPicker].join(" ")} ref={rootRef}>
+    <div
+      className={[popoverStyles.root, styles.breadcrumbPicker].join(" ")}
+      ref={rootRef}
+    >
       <span className={styles.breadcrumbPickerInner}>
         {asLink && to ? (
           <Link
@@ -124,7 +135,11 @@ export function BreadcrumbPicker({
             className={[linkClassName, styles.breadcrumbPickerLabel].join(" ")}
           >
             {icon && (
-              <span className={[iconClassName, styles.breadcrumbPickerIcon].filter(Boolean).join(" ")}>
+              <span
+                className={[iconClassName, styles.breadcrumbPickerIcon]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 {icon}
               </span>
             )}
@@ -132,11 +147,17 @@ export function BreadcrumbPicker({
           </Link>
         ) : (
           <span
-            className={[currentClassName, styles.breadcrumbPickerLabel].join(" ")}
+            className={[currentClassName, styles.breadcrumbPickerLabel].join(
+              " ",
+            )}
             aria-current={ariaCurrent ? "page" : undefined}
           >
             {icon && (
-              <span className={[iconClassName, styles.breadcrumbPickerIcon].filter(Boolean).join(" ")}>
+              <span
+                className={[iconClassName, styles.breadcrumbPickerIcon]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 {icon}
               </span>
             )}
@@ -152,12 +173,18 @@ export function BreadcrumbPicker({
           aria-haspopup="listbox"
           aria-label={menuLabel}
         >
-          <PopoverChevron open={open} className={styles.breadcrumbPickerChevron} />
+          <PopoverChevron
+            open={open}
+            className={styles.breadcrumbPickerChevron}
+          />
         </button>
       </span>
 
       {open && hasOptions && (
-        <div className={[popoverStyles.menu, popoverStyles.menuLeft].join(" ")} role="listbox">
+        <div
+          className={[popoverStyles.menu, popoverStyles.menuLeft].join(" ")}
+          role="listbox"
+        >
           {options.map((opt) => (
             <button
               key={opt.id}

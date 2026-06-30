@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
-import { DEFAULT_API_URL, DEFAULT_WEB_URL } from "./tests/e2e/fixtures/constants";
+import {
+  DEFAULT_API_URL,
+  DEFAULT_WEB_URL,
+} from "./tests/e2e/fixtures/constants";
 
 const apiUrl = process.env.API_URL ?? DEFAULT_API_URL;
 const webUrl = process.env.WEB_URL ?? DEFAULT_WEB_URL;

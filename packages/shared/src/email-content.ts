@@ -93,13 +93,18 @@ export function replaceGitLabImagesWithCid(
   urlToCid: Map<string, string>,
   baseUrl?: string,
 ): string {
-  return markdown.replace(GITLAB_MARKDOWN_IMAGE, (full, alt: string, url: string) => {
-    const cid =
-      urlToCid.get(url) ??
-      (baseUrl ? urlToCid.get(normalizeUploadImagePath(url, baseUrl) ?? "") : undefined);
-    if (!cid) return full;
-    return `![${alt}](cid:${cid})`;
-  });
+  return markdown.replace(
+    GITLAB_MARKDOWN_IMAGE,
+    (full, alt: string, url: string) => {
+      const cid =
+        urlToCid.get(url) ??
+        (baseUrl
+          ? urlToCid.get(normalizeUploadImagePath(url, baseUrl) ?? "")
+          : undefined);
+      if (!cid) return full;
+      return `![${alt}](cid:${cid})`;
+    },
+  );
 }
 
 export function replaceMarkdownImagesWithCid(
@@ -108,13 +113,18 @@ export function replaceMarkdownImagesWithCid(
   baseUrl?: string,
 ): string {
   const withGitLab = replaceGitLabImagesWithCid(markdown, urlToCid, baseUrl);
-  return withGitLab.replace(MARKDOWN_IMAGE, (full, alt: string, url: string) => {
-    const cid =
-      urlToCid.get(url) ??
-      (baseUrl ? urlToCid.get(normalizeUploadImagePath(url, baseUrl) ?? "") : undefined);
-    if (!cid) return full;
-    return `![${alt}](cid:${cid})`;
-  });
+  return withGitLab.replace(
+    MARKDOWN_IMAGE,
+    (full, alt: string, url: string) => {
+      const cid =
+        urlToCid.get(url) ??
+        (baseUrl
+          ? urlToCid.get(normalizeUploadImagePath(url, baseUrl) ?? "")
+          : undefined);
+      if (!cid) return full;
+      return `![${alt}](cid:${cid})`;
+    },
+  );
 }
 
 export function replaceHtmlImageUrlsWithCid(
@@ -128,7 +138,9 @@ export function replaceHtmlImageUrlsWithCid(
     (full, before: string, src: string, after: string) => {
       const cid =
         urlToCid.get(src) ??
-        (baseUrl ? urlToCid.get(normalizeUploadImagePath(src, baseUrl) ?? "") : undefined);
+        (baseUrl
+          ? urlToCid.get(normalizeUploadImagePath(src, baseUrl) ?? "")
+          : undefined);
       if (!cid) return full;
       return `<img${before}src="cid:${cid}"${after}>`;
     },
@@ -163,7 +175,10 @@ export function parseGitLabUploadPath(url: string): GitLabUploadRef | null {
   };
 }
 
-export function normalizeUploadImagePath(url: string, baseUrl: string): string | null {
+export function normalizeUploadImagePath(
+  url: string,
+  baseUrl: string,
+): string | null {
   const trimmed = url.trim();
   if (trimmed.startsWith("/uploads/")) {
     return `${baseUrl.replace(/\/$/, "")}${trimmed}`;
@@ -175,7 +190,9 @@ export function normalizeUploadImagePath(url: string, baseUrl: string): string |
       const base = new URL(baseUrl);
       if (parsed.origin !== base.origin) return trimmed;
       if (parsed.pathname.startsWith("/uploads/")) return trimmed;
-      const uploadPath = parsed.pathname.match(/(\/uploads\/[^/]+\/[^/]+)$/)?.[1];
+      const uploadPath = parsed.pathname.match(
+        /(\/uploads\/[^/]+\/[^/]+)$/,
+      )?.[1];
       if (uploadPath) return `${base.origin}${uploadPath}`;
       return trimmed;
     } catch {
@@ -208,7 +225,9 @@ function dedupeImageRefs(images: MarkdownImageRef[]): MarkdownImageRef[] {
   return result;
 }
 
-export function extractGitLabMarkdownImages(markdown: string): MarkdownImageRef[] {
+export function extractGitLabMarkdownImages(
+  markdown: string,
+): MarkdownImageRef[] {
   const images: MarkdownImageRef[] = [];
   const pattern = new RegExp(GITLAB_MARKDOWN_IMAGE.source, "gi");
   let match: RegExpExecArray | null;
@@ -261,7 +280,9 @@ function imageExtension(subtype: string): string {
 }
 
 function htmlAttribute(attrs: string, name: string): string | null {
-  const quoted = attrs.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i"));
+  const quoted = attrs.match(
+    new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i"),
+  );
   if (quoted?.[1]) return quoted[1];
   const bare = attrs.match(new RegExp(`${name}\\s*=\\s*([^\\s>]+)`, "i"));
   return bare?.[1] ?? null;

@@ -40,7 +40,9 @@ export function PopoverChevron({ open, className }: PopoverChevronProps) {
   return (
     <ChevronDown
       {...iconSm}
-      className={[className, open ? "popoverChevronOpen" : ""].filter(Boolean).join(" ")}
+      className={[className, open ? "popoverChevronOpen" : ""]
+        .filter(Boolean)
+        .join(" ")}
     />
   );
 }

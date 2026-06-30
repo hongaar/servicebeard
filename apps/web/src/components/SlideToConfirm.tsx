@@ -50,7 +50,10 @@ export function SlideToConfirm({
       if (!track || disabled || isPending || unlocked) return;
       const rect = track.getBoundingClientRect();
       const max = maxOffset();
-      const offset = Math.max(0, Math.min(clientX - rect.left - THUMB_SIZE / 2, max));
+      const offset = Math.max(
+        0,
+        Math.min(clientX - rect.left - THUMB_SIZE / 2, max),
+      );
       const p = max > 0 ? offset / max : 0;
       progressRef.current = p;
       setProgress(p);
@@ -92,7 +95,11 @@ export function SlideToConfirm({
 
   return (
     <div className={styles.wrapper}>
-      <p className={[styles.hint, unlocked ? styles.hintUnlocked : ""].filter(Boolean).join(" ")}>
+      <p
+        className={[styles.hint, unlocked ? styles.hintUnlocked : ""]
+          .filter(Boolean)
+          .join(" ")}
+      >
         {hint}
       </p>
 
@@ -109,19 +116,25 @@ export function SlideToConfirm({
         aria-label={label}
       >
         <div
-          className={[styles.fill, unlocked ? styles.fillReady : ""].filter(Boolean).join(" ")}
+          className={[styles.fill, unlocked ? styles.fillReady : ""]
+            .filter(Boolean)
+            .join(" ")}
           style={{ width: `${THUMB_SIZE / 2 + offsetPx}px` }}
           aria-hidden
         />
         <span
-          className={[styles.trackCue, cueOnFill ? styles.trackCueOnFill : ""].filter(Boolean).join(" ")}
+          className={[styles.trackCue, cueOnFill ? styles.trackCueOnFill : ""]
+            .filter(Boolean)
+            .join(" ")}
           aria-hidden
         >
           ›››
         </span>
         <button
           type="button"
-          className={[styles.thumb, unlocked ? styles.thumbReady : ""].filter(Boolean).join(" ")}
+          className={[styles.thumb, unlocked ? styles.thumbReady : ""]
+            .filter(Boolean)
+            .join(" ")}
           style={{ transform: `translateX(${offsetPx}px)` }}
           disabled={inactive || unlocked}
           aria-label={label}

@@ -10,3 +10,4 @@ test-results/
 packages/db/drizzle/
 bun.lock
 apps/web/public/marketing/
+deploy/helm/templates/

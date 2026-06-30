@@ -20,13 +20,13 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| API | Bun + Hono |
-| Worker | Bun + pg-boss |
+| Layer    | Technology                           |
+| -------- | ------------------------------------ |
+| API      | Bun + Hono                           |
+| Worker   | Bun + pg-boss                        |
 | Frontend | Vite + React + Base UI + CSS Modules |
-| Database | PostgreSQL + Drizzle ORM |
-| Deploy | Docker Compose or Helm + Docker |
+| Database | PostgreSQL + Drizzle ORM             |
+| Deploy   | Docker Compose or Helm + Docker      |
 
 ## Quickstart
 
@@ -81,13 +81,13 @@ bun run dev:worker
 bun run dev:web
 ```
 
-| Service | URL |
-|---------|-----|
-| Web UI | http://localhost:5173 |
-| API | http://localhost:3000 |
-| Dev mail UI (Roundcube) | http://localhost:8888 |
+| Service                     | URL                   |
+| --------------------------- | --------------------- |
+| Web UI                      | http://localhost:5173 |
+| API                         | http://localhost:3000 |
+| Dev mail UI (Roundcube)     | http://localhost:8888 |
 | GreenMail API / raw browser | http://localhost:8080 |
-| Database UI (Adminer) | http://localhost:8081 |
+| Database UI (Adminer)       | http://localhost:8081 |
 
 Dev login (when `LOCAL_LOGIN=true`): `dev@localhost` / `dev`
 
@@ -121,14 +121,14 @@ bun run dev                   # API + worker + web
 
 ### Configuration
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | Postgres connection string |
-| `ENCRYPTION_KEY` | 64-char hex key for AES-256-GCM secret encryption |
-| `SESSION_SECRET` | Session signing secret |
-| `WEBHOOK_BASE_URL` | Public URL for issue-tracker webhooks (GitLab/GitHub must reach this) |
-| `TLS_CA_BUNDLE` | Optional path to a PEM CA bundle used for all provider API calls (merged with per-project CA) |
-| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`; default: `info`) |
+| Variable           | Description                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`     | Postgres connection string                                                                    |
+| `ENCRYPTION_KEY`   | 64-char hex key for AES-256-GCM secret encryption                                             |
+| `SESSION_SECRET`   | Session signing secret                                                                        |
+| `WEBHOOK_BASE_URL` | Public URL for issue-tracker webhooks (GitLab/GitHub must reach this)                         |
+| `TLS_CA_BUNDLE`    | Optional path to a PEM CA bundle used for all provider API calls (merged with per-project CA) |
+| `LOG_LEVEL`        | Log verbosity (`debug`, `info`, `warn`, `error`; default: `info`)                             |
 
 In development (`NODE_ENV=development`), the API and worker also append structured JSON logs to `.logs/api.log` and `.logs/worker.log` at the repo root. Use these when `bun run dev` truncates terminal output — e.g. `tail -f .logs/worker.log` for provider API errors including `responseBody`.
 
@@ -140,23 +140,23 @@ Servicebeard supports multiple login providers. Enable one or more by setting `*
 
 Enabled with `LOCAL_LOGIN=true`. Supports credential sign-in and passkeys without an external IdP. In development, the API also seeds `dev@localhost` / `dev` on startup for quick testing.
 
-| Variable | Description |
-|----------|-------------|
-| `LOCAL_LOGIN` | `true` to enable, `false` or unset to disable |
+| Variable             | Description                                                                       |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `LOCAL_LOGIN`        | `true` to enable, `false` or unset to disable                                     |
 | `LOCAL_LOGIN_SIGNUP` | Allow sign-up via local credentials (default: `true` when local login is enabled) |
 
 #### OIDC (generic IdP)
 
 Works with any OpenID Connect provider (Keycloak, Auth0, etc.).
 
-| Variable | Description |
-|----------|-------------|
-| `OIDC_LOGIN` | `true` to enable (requires OIDC_* config), `false` or unset to disable |
-| `OIDC_SIGNUP` | Allow new users on first sign-in (default: `true`) |
+| Variable             | Description                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `OIDC_LOGIN`         | `true` to enable (requires OIDC_* config), `false` or unset to disable                                      |
+| `OIDC_SIGNUP`        | Allow new users on first sign-in (default: `true`)                                                          |
 | `OIDC_PROVIDER_NAME` | Display name on the login button (e.g. `Keycloak` → "Continue with Keycloak"; omit for "Continue with SSO") |
-| `OIDC_ISSUER` | Issuer URL (e.g. `https://auth.example.com/realms/myrealm`) |
-| `OIDC_CLIENT_ID` | Client ID |
-| `OIDC_CLIENT_SECRET` | Client secret |
+| `OIDC_ISSUER`        | Issuer URL (e.g. `https://auth.example.com/realms/myrealm`)                                                 |
+| `OIDC_CLIENT_ID`     | Client ID                                                                                                   |
+| `OIDC_CLIENT_SECRET` | Client secret                                                                                               |
 
 Register `{WEB_URL}/api/auth/callback` as the redirect URI in your IdP.
 
@@ -166,12 +166,12 @@ Register `{WEB_URL}/api/auth/callback` as the redirect URI in your IdP.
 2. Set **Authorization callback URL** to `{WEB_URL}/api/auth/callback` (local dev: `http://localhost:5173/api/auth/callback`)
 3. Copy the Client ID and generate a Client Secret into `.env`:
 
-| Variable | Description |
-|----------|-------------|
-| `GITHUB_LOGIN` | `true` to enable (requires GITHUB_* config), `false` or unset to disable |
-| `GITHUB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
-| `GITHUB_CLIENT_ID` | OAuth App client ID |
-| `GITHUB_CLIENT_SECRET` | OAuth App client secret |
+| Variable               | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `GITHUB_LOGIN`         | `true` to enable (requires GITHUB_* config), `false` or unset to disable |
+| `GITHUB_SIGNUP`        | Allow new users on first sign-in (default: `true`)                       |
+| `GITHUB_CLIENT_ID`     | OAuth App client ID                                                      |
+| `GITHUB_CLIENT_SECRET` | OAuth App client secret                                                  |
 
 #### GitHub App (issue sync)
 
@@ -182,10 +182,10 @@ Optional alternative to per-project personal access tokens. When configured, pro
 3. Generate a private key and note the **App ID**.
 4. Add server-wide credentials to `.env` for the API and worker:
 
-| Variable | Description |
-|----------|-------------|
-| `GITHUB_APP_ID` | Numeric App ID from the app settings page |
-| `GITHUB_APP_PRIVATE_KEY` | PEM private key (use `\n` for line breaks in `.env`), **or** |
+| Variable                      | Description                                                  |
+| ----------------------------- | ------------------------------------------------------------ |
+| `GITHUB_APP_ID`               | Numeric App ID from the app settings page                    |
+| `GITHUB_APP_PRIVATE_KEY`      | PEM private key (use `\n` for line breaks in `.env`), **or** |
 | `GITHUB_APP_PRIVATE_KEY_PATH` | Path to the `.pem` file (relative to repo root, or absolute) |
 
 5. In the project wizard, choose GitHub and click **Install GitHub App** — no manual installation ID is needed. When `GITHUB_APP_ID` is not set, projects use a personal access token instead.
@@ -201,13 +201,13 @@ Works with GitLab.com or self-hosted GitLab.
 3. Enable the `read_user` scope
 4. Copy Application ID and Secret into `.env`:
 
-| Variable | Description |
-|----------|-------------|
-| `GITLAB_LOGIN` | `true` to enable (requires GITLAB_* config), `false` or unset to disable |
-| `GITLAB_SIGNUP` | Allow new users on first sign-in (default: `true`) |
-| `GITLAB_BASE_URL` | GitLab instance URL (default: `https://gitlab.com`) |
-| `GITLAB_CLIENT_ID` | Application ID |
-| `GITLAB_CLIENT_SECRET` | Application secret |
+| Variable               | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `GITLAB_LOGIN`         | `true` to enable (requires GITLAB_* config), `false` or unset to disable |
+| `GITLAB_SIGNUP`        | Allow new users on first sign-in (default: `true`)                       |
+| `GITLAB_BASE_URL`      | GitLab instance URL (default: `https://gitlab.com`)                      |
+| `GITLAB_CLIENT_ID`     | Application ID                                                           |
+| `GITLAB_CLIENT_SECRET` | Application secret                                                       |
 
 For production, register `{WEB_URL}/api/auth/callback` in each OAuth app (same host users sign in from).
 
@@ -215,13 +215,13 @@ For production, register `{WEB_URL}/api/auth/callback` in each OAuth app (same h
 
 [Adminer](https://www.adminer.org/) is available at http://localhost:8081:
 
-| Field | Value |
-|-------|-------|
-| System | PostgreSQL |
-| Server | `postgres` (from Adminer container) or `localhost` (from host tools) |
-| Username | `servicebeard` |
-| Password | `servicebeard` |
-| Database | `servicebeard` |
+| Field    | Value                                                                |
+| -------- | -------------------------------------------------------------------- |
+| System   | PostgreSQL                                                           |
+| Server   | `postgres` (from Adminer container) or `localhost` (from host tools) |
+| Username | `servicebeard`                                                       |
+| Password | `servicebeard`                                                       |
+| Database | `servicebeard`                                                       |
 
 For a schema-aware view without an extra container, use Drizzle Studio:
 
@@ -259,10 +259,10 @@ bun test
 
 [GreenMail](https://greenmail-mail-test.github.io/greenmail/) provides **IMAP** (3143) and **SMTP** (3025). Two mailboxes are preconfigured:
 
-| Mailbox | IMAP/SMTP login | Password |
-|---------|-----------------|----------|
-| `support@mail.test` (project inbox) | `support` | `support` |
-| `customer@mail.test` (simulate a reporter) | `customer` | `customer` |
+| Mailbox                                    | IMAP/SMTP login | Password   |
+| ------------------------------------------ | --------------- | ---------- |
+| `support@mail.test` (project inbox)        | `support`       | `support`  |
+| `customer@mail.test` (simulate a reporter) | `customer`      | `customer` |
 
 **Webmail:** [Roundcube](http://localhost:8888) connects to GreenMail over IMAP. Standard folders (Sent, Drafts, Spam, Trash, Archive) are scaffolded at startup for both mailboxes. Log in with `support` / `support` or `customer` / `customer` (local-part username). When composing mail, use `@mail.test` addresses — Roundcube rejects single-label domains like `@localhost`. Log out and sign in as the other user to switch mailboxes.
 
@@ -270,19 +270,19 @@ GreenMail’s raw API/message browser is at http://localhost:8080.
 
 Configure your project mail settings to use the **support** inbox for both IMAP and SMTP:
 
-| Field | Value |
-|-------|-------|
-| IMAP host | `localhost` |
-| IMAP port | `3143` |
-| IMAP TLS | off |
-| IMAP user | `support` |
-| IMAP password | `support` |
-| SMTP host | `localhost` |
-| SMTP port | `3025` |
-| SMTP TLS | off |
-| SMTP user | `support` |
-| SMTP password | `support` |
-| From | `support@mail.test` (or `Support <support@mail.test>`) |
+| Field         | Value                                                  |
+| ------------- | ------------------------------------------------------ |
+| IMAP host     | `localhost`                                            |
+| IMAP port     | `3143`                                                 |
+| IMAP TLS      | off                                                    |
+| IMAP user     | `support`                                              |
+| IMAP password | `support`                                              |
+| SMTP host     | `localhost`                                            |
+| SMTP port     | `3025`                                                 |
+| SMTP TLS      | off                                                    |
+| SMTP user     | `support`                                              |
+| SMTP password | `support`                                              |
+| From          | `support@mail.test` (or `Support <support@mail.test>`) |
 
 **1. Inbound (email → issue)** — send mail into the project inbox ([swaks](https://www.jetmore.org/john/code/swaks/) optional):
 

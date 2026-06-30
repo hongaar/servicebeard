@@ -1,38 +1,45 @@
 import {
-    generateToken,
-    getDb,
-    hashToken,
-    teamInvites,
-    teamMembers,
-    teams,
-    users,
+  generateToken,
+  getDb,
+  hashToken,
+  teamInvites,
+  teamMembers,
+  teams,
+  users,
 } from "@servicebeard/db";
 import {
-    buildGithubAppInstallationSettingsUrl,
-    getRepositoryInstallation,
-    isGithubAppConfigured,
+  buildGithubAppInstallationSettingsUrl,
+  getRepositoryInstallation,
+  isGithubAppConfigured,
 } from "@servicebeard/providers";
 import {
-    createTeamSchema,
-    discoverMailSchema,
-    inviteMemberSchema,
-    parseGithubRepository,
-    slugifyName,
-    testMailConnectionSchema,
-    testProviderConnectionSchema,
-    updateMemberSchema,
-    updateTeamSchema,
+  createTeamSchema,
+  discoverMailSchema,
+  inviteMemberSchema,
+  parseGithubRepository,
+  slugifyName,
+  testMailConnectionSchema,
+  testProviderConnectionSchema,
+  updateMemberSchema,
+  updateTeamSchema,
 } from "@servicebeard/shared";
 import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";
-import { testMailConnection, testProviderConnection } from "../lib/connection-test";
+import {
+  testMailConnection,
+  testProviderConnection,
+} from "../lib/connection-test";
 import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { startGithubAppInstall } from "../lib/github-app-install";
 import { logger } from "../lib/logger";
 import { discoverMailAutoconfig } from "../lib/mail-discover";
-import { isMailConfigured, sendTeamInviteEmail, sendTeamMemberAddedEmail } from "../lib/transactional-mail";
+import {
+  isMailConfigured,
+  sendTeamInviteEmail,
+  sendTeamMemberAddedEmail,
+} from "../lib/transactional-mail";
 import type { AppVariables } from "../middleware/auth";
 import { requireAuth } from "../middleware/auth";
 import { requireTeamMember } from "../middleware/team";
@@ -45,7 +52,10 @@ async function acceptTeamInvite(
   invite: { id: string; teamId: string; role: string },
 ) {
   const existingMember = await db.query.teamMembers.findFirst({
-    where: and(eq(teamMembers.teamId, invite.teamId), eq(teamMembers.userId, userId)),
+    where: and(
+      eq(teamMembers.teamId, invite.teamId),
+      eq(teamMembers.userId, userId),
+    ),
   });
 
   if (existingMember) {
@@ -126,7 +136,10 @@ teamRoutes.get("/invites/pending", async (c) => {
   const db = getDb();
 
   const invites = await db.query.teamInvites.findMany({
-    where: and(eq(teamInvites.email, user.email), gt(teamInvites.expiresAt, new Date())),
+    where: and(
+      eq(teamInvites.email, user.email),
+      gt(teamInvites.expiresAt, new Date()),
+    ),
     with: { team: true },
   });
 
@@ -296,13 +309,25 @@ teamRoutes.post("/:teamId/members", async (c) => {
           role: body.role,
         });
         emailSent = true;
-        logger.info({ to: inviteEmail, teamId }, "team member added notification sent");
+        logger.info(
+          { to: inviteEmail, teamId },
+          "team member added notification sent",
+        );
       } catch (err) {
-        logger.error({ err, to: inviteEmail, teamId }, "team member added notification failed");
-        return c.json({ error: "Could not send notification email. Try again later." }, 503);
+        logger.error(
+          { err, to: inviteEmail, teamId },
+          "team member added notification failed",
+        );
+        return c.json(
+          { error: "Could not send notification email. Try again later." },
+          503,
+        );
       }
     } else {
-      logger.warn({ to: inviteEmail, teamId }, "system mail not configured; skipped member notification");
+      logger.warn(
+        { to: inviteEmail, teamId },
+        "system mail not configured; skipped member notification",
+      );
     }
 
     return c.json({ member, added: true, emailSent }, 201);
@@ -351,14 +376,26 @@ teamRoutes.post("/:teamId/members", async (c) => {
       emailSent = true;
       logger.info({ to: inviteEmail, teamId }, "team invite email sent");
     } catch (err) {
-      logger.error({ err, to: inviteEmail, teamId }, "team invite email failed");
-      return c.json({ error: "Could not send invite email. Try again later." }, 503);
+      logger.error(
+        { err, to: inviteEmail, teamId },
+        "team invite email failed",
+      );
+      return c.json(
+        { error: "Could not send invite email. Try again later." },
+        503,
+      );
     }
     return c.json({ invite, invited: true, emailSent }, 201);
   }
 
-  logger.warn({ to: inviteEmail, teamId }, "system mail not configured; returning invite token in API response");
-  return c.json({ invite, token: inviteToken, invited: true, emailSent: false }, 201);
+  logger.warn(
+    { to: inviteEmail, teamId },
+    "system mail not configured; returning invite token in API response",
+  );
+  return c.json(
+    { invite, token: inviteToken, invited: true, emailSent: false },
+    201,
+  );
 });
 
 teamRoutes.patch("/:teamId/members/:memberId", async (c) => {
@@ -492,7 +529,10 @@ teamRoutes.get("/:teamId/github-app/repository-installation", async (c) => {
       repository,
       installationId: installation.installationId,
       accountLogin: installation.accountLogin,
-      settingsUrl: buildGithubAppInstallationSettingsUrl(baseUrl, installation.installationId),
+      settingsUrl: buildGithubAppInstallationSettingsUrl(
+        baseUrl,
+        installation.installationId,
+      ),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Lookup failed";

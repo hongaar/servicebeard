@@ -48,7 +48,10 @@ async function resolveExtensionsAlias(): Promise<string> {
   }
 
   const absoluteManifestPath = resolveManifestPath(manifestPath);
-  const mod = (await import(absoluteManifestPath)) as { default?: { web?: string }; web?: string };
+  const mod = (await import(absoluteManifestPath)) as {
+    default?: { web?: string };
+    web?: string;
+  };
   const raw = mod.default ?? mod;
   const webEntry = raw.web;
   if (!webEntry || typeof webEntry !== "string") {
@@ -89,7 +92,12 @@ export default defineConfig(async ({ mode }) => {
         "@tanstack/react-query": sharedDep("@tanstack/react-query"),
         "@tanstack/react-router": sharedDep("@tanstack/react-router"),
       },
-      dedupe: ["react", "react-dom", "@tanstack/react-query", "@tanstack/react-router"],
+      dedupe: [
+        "react",
+        "react-dom",
+        "@tanstack/react-query",
+        "@tanstack/react-router",
+      ],
     },
     server: {
       allowedHosts: [".ngrok-free.app", ".serveousercontent.com"],

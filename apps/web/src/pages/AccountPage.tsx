@@ -15,7 +15,8 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   email_taken:
     "An account with this email already exists. Sign in with your existing method, then link this provider here.",
   provider_already_linked: "This provider is already linked to an account.",
-  link_session_expired: "Your session expired during linking. Sign in and try again.",
+  link_session_expired:
+    "Your session expired during linking. Sign in and try again.",
   last_auth_method: "Cannot remove your only sign-in method.",
   provider_not_linked: "This provider is not linked to your account.",
   login_failed: "Sign-in failed. Please try again.",
@@ -55,7 +56,8 @@ export function AccountPage() {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
-  const [unlinkingProvider, setUnlinkingProvider] = useState<LoginProviderType | null>(null);
+  const [unlinkingProvider, setUnlinkingProvider] =
+    useState<LoginProviderType | null>(null);
 
   const { data: account, isLoading } = useQuery({
     queryKey: ["account"],
@@ -68,7 +70,9 @@ export function AccountPage() {
     const error = params.get("error");
 
     if (linked) {
-      setMessage(`${providerLabel(linked as LoginProviderType)} linked successfully.`);
+      setMessage(
+        `${providerLabel(linked as LoginProviderType)} linked successfully.`,
+      );
       setIsError(false);
       void queryClient.invalidateQueries({ queryKey: ["account"] });
       window.history.replaceState({}, "", "/account");
@@ -110,7 +114,10 @@ export function AccountPage() {
     >
       {message && (
         <div
-          className={[styles.alert, isError ? styles.alertError : styles.alertSuccess].join(" ")}
+          className={[
+            styles.alert,
+            isError ? styles.alertError : styles.alertSuccess,
+          ].join(" ")}
         >
           {message}
         </div>
@@ -144,7 +151,9 @@ export function AccountPage() {
                   <div className={styles.accountProviderInfo}>
                     <ProviderIcon type={provider.type} />
                     <div>
-                      <p className={styles.accountProviderName}>{provider.label}</p>
+                      <p className={styles.accountProviderName}>
+                        {provider.label}
+                      </p>
                       <p className={styles.accountProviderMeta}>
                         {linked
                           ? `Linked ${new Date(linked.linkedAt).toLocaleDateString()}`
@@ -184,7 +193,8 @@ export function AccountPage() {
         )}
         {account?.hasLocalSignIn && (
           <p className={styles.accountHint}>
-            Local sign-in (email, password, or passkey) is always available for this account.
+            Local sign-in (email, password, or passkey) is always available for
+            this account.
           </p>
         )}
       </Card>

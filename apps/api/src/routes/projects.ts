@@ -1,34 +1,37 @@
 import {
-    dismissAllProjectStatusEvents,
-    dismissProjectStatusEvent,
-    encrypt,
-    generateWebhookSecret,
-    getDb,
-    getProjectMessageVolume,
-    issueThreads,
-    listProjectStatusEvents,
-    projects,
-    rules,
+  dismissAllProjectStatusEvents,
+  dismissProjectStatusEvent,
+  encrypt,
+  generateWebhookSecret,
+  getDb,
+  getProjectMessageVolume,
+  issueThreads,
+  listProjectStatusEvents,
+  projects,
+  rules,
 } from "@servicebeard/db";
 import { createProvider, toProviderConfig } from "@servicebeard/providers";
 import {
-    createProjectSchema,
-    createRuleSchema,
-    DEFAULT_CATCH_ALL_RULE,
-    evaluateDraftRule,
-    isEligibleForInboundRulePreview,
-    normalizeProviderProjectId,
-    testMailConnectionSchema,
-    testProviderConnectionSchema,
-    testRuleSchema,
-    toInboundEligibility,
-    updateProjectSchema,
-    updateRuleSchema,
+  createProjectSchema,
+  createRuleSchema,
+  DEFAULT_CATCH_ALL_RULE,
+  evaluateDraftRule,
+  isEligibleForInboundRulePreview,
+  normalizeProviderProjectId,
+  testMailConnectionSchema,
+  testProviderConnectionSchema,
+  testRuleSchema,
+  toInboundEligibility,
+  updateProjectSchema,
+  updateRuleSchema,
 } from "@servicebeard/shared";
 import { and, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { auditLog } from "../lib/auth";
-import { testMailConnection, testProviderConnection } from "../lib/connection-test";
+import {
+  testMailConnection,
+  testProviderConnection,
+} from "../lib/connection-test";
 import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { fetchRecentMessages, parseEmail } from "../lib/mail";
@@ -41,7 +44,10 @@ import { requireTeamMember } from "../middleware/team";
 const projectRoutes = new Hono<{ Variables: AppVariables }>();
 
 function projectWebhookUrl(project: { id: string; provider: string }): string {
-  const base = process.env.WEBHOOK_BASE_URL ?? process.env.API_URL ?? "http://localhost:3000";
+  const base =
+    process.env.WEBHOOK_BASE_URL ??
+    process.env.API_URL ??
+    "http://localhost:3000";
   return `${base.replace(/\/$/, "")}/webhooks/${project.provider}/${project.id}`;
 }
 
@@ -67,7 +73,8 @@ projectRoutes.get("/:teamId/projects", async (c) => {
     where: eq(projects.teamId, teamId),
   });
 
-  const entitlements = await getEntitlements().getTeamEntitlementUsage?.(teamId);
+  const entitlements =
+    await getEntitlements().getTeamEntitlementUsage?.(teamId);
 
   return c.json({
     projects: list.map(sanitizeProject),
@@ -99,7 +106,8 @@ projectRoutes.post("/:teamId/projects", async (c) => {
       providerBaseUrl: body.providerBaseUrl,
       providerProjectId: body.providerProjectId,
       providerTokenEncrypted: encrypt(body.providerToken ?? ""),
-      providerGithubInstallationId: body.providerGithubInstallationId?.trim() || null,
+      providerGithubInstallationId:
+        body.providerGithubInstallationId?.trim() || null,
       providerTlsInsecure: body.providerTlsInsecure ?? false,
       providerCaCertEncrypted: body.providerCaCert?.trim()
         ? encrypt(body.providerCaCert.trim())
@@ -181,7 +189,8 @@ projectRoutes.get("/:teamId/projects/:projectId", async (c) => {
   return c.json({
     ...sanitizeProject(project),
     rules: project.rules,
-    entitlements: (await getEntitlements().getTeamEntitlementUsage?.(teamId)) ?? null,
+    entitlements:
+      (await getEntitlements().getTeamEntitlementUsage?.(teamId)) ?? null,
   });
 });
 
@@ -208,9 +217,11 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
       body.providerProjectId,
     );
   }
-  if (body.providerToken) updates.providerTokenEncrypted = encrypt(body.providerToken);
+  if (body.providerToken)
+    updates.providerTokenEncrypted = encrypt(body.providerToken);
   if (body.providerGithubInstallationId !== undefined) {
-    updates.providerGithubInstallationId = body.providerGithubInstallationId.trim() || null;
+    updates.providerGithubInstallationId =
+      body.providerGithubInstallationId.trim() || null;
   }
   if (body.providerGithubAuthType === "pat") {
     updates.providerGithubInstallationId = null;
@@ -227,24 +238,30 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
   if (body.imapPort) updates.imapPort = body.imapPort;
   if (body.imapSecure !== undefined) updates.imapSecure = body.imapSecure;
   if (body.imapUser) updates.imapUser = body.imapUser;
-  if (body.imapPassword) updates.imapPasswordEncrypted = encrypt(body.imapPassword);
+  if (body.imapPassword)
+    updates.imapPasswordEncrypted = encrypt(body.imapPassword);
   if (body.smtpHost) updates.smtpHost = body.smtpHost;
   if (body.smtpPort) updates.smtpPort = body.smtpPort;
   if (body.smtpSecure !== undefined) updates.smtpSecure = body.smtpSecure;
   if (body.smtpUser) updates.smtpUser = body.smtpUser;
-  if (body.smtpPassword) updates.smtpPasswordEncrypted = encrypt(body.smtpPassword);
+  if (body.smtpPassword)
+    updates.smtpPasswordEncrypted = encrypt(body.smtpPassword);
   if (body.smtpFrom) updates.smtpFrom = body.smtpFrom;
   if (body.isActive !== undefined) updates.isActive = body.isActive;
-  if (body.inboundAckEnabled !== undefined) updates.inboundAckEnabled = body.inboundAckEnabled;
-  if (body.inboundAckCcMailbox !== undefined) updates.inboundAckCcMailbox = body.inboundAckCcMailbox;
-  if (body.inboundAckTemplate !== undefined) updates.inboundAckTemplate = body.inboundAckTemplate;
+  if (body.inboundAckEnabled !== undefined)
+    updates.inboundAckEnabled = body.inboundAckEnabled;
+  if (body.inboundAckCcMailbox !== undefined)
+    updates.inboundAckCcMailbox = body.inboundAckCcMailbox;
+  if (body.inboundAckTemplate !== undefined)
+    updates.inboundAckTemplate = body.inboundAckTemplate;
   if (body.outboundCommentTemplate !== undefined) {
     updates.outboundCommentTemplate = body.outboundCommentTemplate;
   }
   if (body.outboundCommentCcMailbox !== undefined) {
     updates.outboundCommentCcMailbox = body.outboundCommentCcMailbox;
   }
-  if (body.inboundIssueTemplate !== undefined) updates.inboundIssueTemplate = body.inboundIssueTemplate;
+  if (body.inboundIssueTemplate !== undefined)
+    updates.inboundIssueTemplate = body.inboundIssueTemplate;
   if (body.inboundCommentTemplate !== undefined) {
     updates.inboundCommentTemplate = body.inboundCommentTemplate;
   }
@@ -308,7 +325,10 @@ projectRoutes.post("/:teamId/projects/:projectId/test-mail", async (c) => {
   try {
     return c.json(await testMailConnection(body));
   } catch (err) {
-    return c.json(providerFailureResponse("test-mail", err, { projectId }), 400);
+    return c.json(
+      providerFailureResponse("test-mail", err, { projectId }),
+      400,
+    );
   }
 });
 
@@ -321,7 +341,10 @@ projectRoutes.post("/:teamId/projects/:projectId/test-provider", async (c) => {
   try {
     return c.json(await testProviderConnection(body));
   } catch (err) {
-    return c.json(providerFailureResponse("test-provider", err, { projectId }), 400);
+    return c.json(
+      providerFailureResponse("test-provider", err, { projectId }),
+      400,
+    );
   }
 });
 
@@ -425,116 +448,144 @@ projectRoutes.patch("/:teamId/projects/:projectId/rules/:ruleId", async (c) => {
   return c.json(updated);
 });
 
-projectRoutes.delete("/:teamId/projects/:projectId/rules/:ruleId", async (c) => {
-  const teamId = c.req.param("teamId");
-  const projectId = c.req.param("projectId");
-  const ruleId = c.req.param("ruleId");
-  const { userId } = await requireTeamMember(c, teamId, "admin");
-  const db = getDb();
+projectRoutes.delete(
+  "/:teamId/projects/:projectId/rules/:ruleId",
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const projectId = c.req.param("projectId");
+    const ruleId = c.req.param("ruleId");
+    const { userId } = await requireTeamMember(c, teamId, "admin");
+    const db = getDb();
 
-  const project = await db.query.projects.findFirst({
-    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
-  });
-  if (!project) return c.json({ error: "Not found" }, 404);
-
-  await db
-    .delete(rules)
-    .where(and(eq(rules.id, ruleId), eq(rules.projectId, projectId)));
-
-  await auditLog({
-    teamId,
-    userId,
-    projectId,
-    action: "delete",
-    resourceType: "rule",
-    resourceId: ruleId,
-  });
-
-  return c.json({ ok: true });
-});
-
-projectRoutes.get("/:teamId/projects/:projectId/provider-options", async (c) => {
-  const teamId = c.req.param("teamId");
-  const projectId = c.req.param("projectId");
-  await requireTeamMember(c, teamId);
-  const db = getDb();
-
-  const project = await db.query.projects.findFirst({
-    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
-  });
-  if (!project) return c.json({ error: "Not found" }, 404);
-
-  try {
-    const provider = createProjectProvider(project);
-    const options = await provider.listProjectOptions();
-    return c.json(options);
-  } catch (err) {
-    return c.json(
-      { error: err instanceof Error ? err.message : "Failed to fetch provider options" },
-      400,
-    );
-  }
-});
-
-projectRoutes.get("/:teamId/projects/:projectId/mailbox-snapshot", async (c) => {
-  const teamId = c.req.param("teamId");
-  const projectId = c.req.param("projectId");
-  await requireTeamMember(c, teamId);
-  const db = getDb();
-
-  const project = await db.query.projects.findFirst({
-    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
-  });
-  if (!project) return c.json({ error: "Not found" }, 404);
-
-  const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
-
-  try {
-    const rawMessages = await fetchRecentMessages(projectMailCredentials(project), limit);
-    const threadIndex = await loadProjectThreadMatchIndex(projectId);
-    const inboundCtx = {
-      supportEmail: project.smtpFrom,
-      projectCreatedAt: project.createdAt,
-    };
-    const messages = [];
-    for (const msg of rawMessages) {
-      const parsed = await parseEmail(msg.raw);
-      if (!isEligibleForInboundRulePreview(toInboundEligibility(parsed), inboundCtx, threadIndex)) {
-        continue;
-      }
-      messages.push({
-        uid: msg.uid,
-        fromEmail: parsed.senderEmail,
-        fromName: parsed.senderName,
-        envelopeFromEmail: parsed.fromEmail,
-        envelopeFromName: parsed.fromName,
-        replyToEmail: parsed.replyToEmail,
-        replyToName: parsed.replyToName,
-        subject: parsed.subject,
-        bodyPreview: parsed.body.slice(0, 300),
-        body: parsed.body,
-        messageId: parsed.messageId,
-        inReplyTo: parsed.inReplyTo,
-        references: parsed.references,
-        toAddresses: parsed.toAddresses,
-        ccAddresses: parsed.ccAddresses,
-        bccAddresses: parsed.bccAddresses,
-        date: parsed.date,
-      });
-    }
-
-    return c.json({
-      supportEmail: project.smtpFrom,
-      projectCreatedAt: project.createdAt,
-      messages,
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
     });
-  } catch (err) {
-    return c.json(
-      { error: err instanceof Error ? err.message : "Failed to fetch mailbox snapshot" },
-      400,
-    );
-  }
-});
+    if (!project) return c.json({ error: "Not found" }, 404);
+
+    await db
+      .delete(rules)
+      .where(and(eq(rules.id, ruleId), eq(rules.projectId, projectId)));
+
+    await auditLog({
+      teamId,
+      userId,
+      projectId,
+      action: "delete",
+      resourceType: "rule",
+      resourceId: ruleId,
+    });
+
+    return c.json({ ok: true });
+  },
+);
+
+projectRoutes.get(
+  "/:teamId/projects/:projectId/provider-options",
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const projectId = c.req.param("projectId");
+    await requireTeamMember(c, teamId);
+    const db = getDb();
+
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+    });
+    if (!project) return c.json({ error: "Not found" }, 404);
+
+    try {
+      const provider = createProjectProvider(project);
+      const options = await provider.listProjectOptions();
+      return c.json(options);
+    } catch (err) {
+      return c.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to fetch provider options",
+        },
+        400,
+      );
+    }
+  },
+);
+
+projectRoutes.get(
+  "/:teamId/projects/:projectId/mailbox-snapshot",
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const projectId = c.req.param("projectId");
+    await requireTeamMember(c, teamId);
+    const db = getDb();
+
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+    });
+    if (!project) return c.json({ error: "Not found" }, 404);
+
+    const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
+
+    try {
+      const rawMessages = await fetchRecentMessages(
+        projectMailCredentials(project),
+        limit,
+      );
+      const threadIndex = await loadProjectThreadMatchIndex(projectId);
+      const inboundCtx = {
+        supportEmail: project.smtpFrom,
+        projectCreatedAt: project.createdAt,
+      };
+      const messages = [];
+      for (const msg of rawMessages) {
+        const parsed = await parseEmail(msg.raw);
+        if (
+          !isEligibleForInboundRulePreview(
+            toInboundEligibility(parsed),
+            inboundCtx,
+            threadIndex,
+          )
+        ) {
+          continue;
+        }
+        messages.push({
+          uid: msg.uid,
+          fromEmail: parsed.senderEmail,
+          fromName: parsed.senderName,
+          envelopeFromEmail: parsed.fromEmail,
+          envelopeFromName: parsed.fromName,
+          replyToEmail: parsed.replyToEmail,
+          replyToName: parsed.replyToName,
+          subject: parsed.subject,
+          bodyPreview: parsed.body.slice(0, 300),
+          body: parsed.body,
+          messageId: parsed.messageId,
+          inReplyTo: parsed.inReplyTo,
+          references: parsed.references,
+          toAddresses: parsed.toAddresses,
+          ccAddresses: parsed.ccAddresses,
+          bccAddresses: parsed.bccAddresses,
+          date: parsed.date,
+        });
+      }
+
+      return c.json({
+        supportEmail: project.smtpFrom,
+        projectCreatedAt: project.createdAt,
+        messages,
+      });
+    } catch (err) {
+      return c.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to fetch mailbox snapshot",
+        },
+        400,
+      );
+    }
+  },
+);
 
 projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
   const teamId = c.req.param("teamId");
@@ -551,7 +602,10 @@ projectRoutes.post("/:teamId/projects/:projectId/rules/test", async (c) => {
   const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
 
   try {
-    const rawMessages = await fetchRecentMessages(projectMailCredentials(project), limit);
+    const rawMessages = await fetchRecentMessages(
+      projectMailCredentials(project),
+      limit,
+    );
     const threadIndex = await loadProjectThreadMatchIndex(projectId);
     const inboundCtx = {
       supportEmail: project.smtpFrom,
@@ -613,20 +667,23 @@ projectRoutes.get("/:teamId/projects/:projectId/status-events", async (c) => {
   return c.json({ events });
 });
 
-projectRoutes.post("/:teamId/projects/:projectId/status-events/dismiss-all", async (c) => {
-  const teamId = c.req.param("teamId");
-  const projectId = c.req.param("projectId");
-  await requireTeamMember(c, teamId, "admin");
-  const db = getDb();
+projectRoutes.post(
+  "/:teamId/projects/:projectId/status-events/dismiss-all",
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const projectId = c.req.param("projectId");
+    await requireTeamMember(c, teamId, "admin");
+    const db = getDb();
 
-  const project = await db.query.projects.findFirst({
-    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
-  });
-  if (!project) return c.json({ error: "Not found" }, 404);
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+    });
+    if (!project) return c.json({ error: "Not found" }, 404);
 
-  const dismissed = await dismissAllProjectStatusEvents(projectId);
-  return c.json({ ok: true, dismissed });
-});
+    const dismissed = await dismissAllProjectStatusEvents(projectId);
+    return c.json({ ok: true, dismissed });
+  },
+);
 
 projectRoutes.post(
   "/:teamId/projects/:projectId/status-events/:eventId/dismiss",
@@ -661,7 +718,8 @@ projectRoutes.get("/:teamId/projects/:projectId/message-volume", async (c) => {
   if (!project) return c.json({ error: "Not found" }, 404);
 
   const rawDays = Number(c.req.query("days") ?? "30");
-  const days = rawDays === 7 || rawDays === 30 || rawDays === 365 ? rawDays : 30;
+  const days =
+    rawDays === 7 || rawDays === 30 || rawDays === 365 ? rawDays : 30;
   const since = new Date();
   since.setUTCHours(0, 0, 0, 0);
   since.setUTCDate(since.getUTCDate() - (days - 1));
@@ -702,30 +760,37 @@ projectRoutes.get("/:teamId/projects/:projectId/threads", async (c) => {
   });
 });
 
-projectRoutes.get("/:teamId/projects/:projectId/threads/:threadId", async (c) => {
-  const teamId = c.req.param("teamId");
-  const projectId = c.req.param("projectId");
-  const threadId = c.req.param("threadId");
-  await requireTeamMember(c, teamId);
-  const db = getDb();
+projectRoutes.get(
+  "/:teamId/projects/:projectId/threads/:threadId",
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const projectId = c.req.param("projectId");
+    const threadId = c.req.param("threadId");
+    await requireTeamMember(c, teamId);
+    const db = getDb();
 
-  const project = await db.query.projects.findFirst({
-    where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
-  });
-  if (!project) return c.json({ error: "Not found" }, 404);
+    const project = await db.query.projects.findFirst({
+      where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
+    });
+    if (!project) return c.json({ error: "Not found" }, 404);
 
-  const thread = await db.query.issueThreads.findFirst({
-    where: and(eq(issueThreads.id, threadId), eq(issueThreads.projectId, projectId)),
-    with: { messages: true },
-  });
+    const thread = await db.query.issueThreads.findFirst({
+      where: and(
+        eq(issueThreads.id, threadId),
+        eq(issueThreads.projectId, projectId),
+      ),
+      with: { messages: true },
+    });
 
-  if (!thread) return c.json({ error: "Not found" }, 404);
+    if (!thread) return c.json({ error: "Not found" }, 404);
 
-  thread.messages.sort(
-    (a, b) => new Date(a.processedAt).getTime() - new Date(b.processedAt).getTime(),
-  );
+    thread.messages.sort(
+      (a, b) =>
+        new Date(a.processedAt).getTime() - new Date(b.processedAt).getTime(),
+    );
 
-  return c.json({ thread });
-});
+    return c.json({ thread });
+  },
+);
 
 export { projectRoutes };

@@ -1,22 +1,22 @@
 import {
-    emailVerificationTokens,
-    generateToken,
-    getDb,
-    hashToken,
-    passwordResetTokens,
-    users,
+  emailVerificationTokens,
+  generateToken,
+  getDb,
+  hashToken,
+  passwordResetTokens,
+  users,
 } from "@servicebeard/db";
 import {
-    buildEmailVerificationUrl,
-    buildInviteUrl,
-    buildPasswordResetUrl,
-    buildTeamMembersUrl,
-    createMailAdapter,
-    emailVerificationEmail,
-    isMailConfigured,
-    passwordResetEmail,
-    teamInviteEmail,
-    teamMemberAddedEmail,
+  buildEmailVerificationUrl,
+  buildInviteUrl,
+  buildPasswordResetUrl,
+  buildTeamMembersUrl,
+  createMailAdapter,
+  emailVerificationEmail,
+  isMailConfigured,
+  passwordResetEmail,
+  teamInviteEmail,
+  teamMemberAddedEmail,
 } from "@servicebeard/mail";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { logger } from "./logger";
@@ -31,7 +31,9 @@ export function shouldRequireEmailVerification(): boolean {
   return isMailConfigured();
 }
 
-function toSessionEmailVerified(user: { emailVerifiedAt: Date | null }): boolean {
+function toSessionEmailVerified(user: {
+  emailVerifiedAt: Date | null;
+}): boolean {
   return user.emailVerifiedAt !== null;
 }
 
@@ -41,10 +43,14 @@ export async function markEmailVerified(userId: string): Promise<void> {
     .update(users)
     .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
     .where(eq(users.id, userId));
-  await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
+  await db
+    .delete(emailVerificationTokens)
+    .where(eq(emailVerificationTokens.userId, userId));
 }
 
-export async function ensureEmailVerifiedForLogin(userId: string): Promise<void> {
+export async function ensureEmailVerifiedForLogin(
+  userId: string,
+): Promise<void> {
   if (!shouldRequireEmailVerification()) return;
 
   const db = getDb();
@@ -57,10 +63,16 @@ export async function ensureEmailVerifiedForLogin(userId: string): Promise<void>
   }
 }
 
-async function sendMail(to: string, content: { subject: string; text: string; html: string }) {
+async function sendMail(
+  to: string,
+  content: { subject: string; text: string; html: string },
+) {
   const adapter = createMailAdapter();
   if (!adapter.isConfigured()) {
-    logger.warn({ to, subject: content.subject }, "mail not configured; skipping send");
+    logger.warn(
+      { to, subject: content.subject },
+      "mail not configured; skipping send",
+    );
     return;
   }
 
@@ -122,7 +134,9 @@ export async function issueEmailVerification(input: {
   const db = getDb();
   const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
 
-  await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, input.userId));
+  await db
+    .delete(emailVerificationTokens)
+    .where(eq(emailVerificationTokens.userId, input.userId));
   await db.insert(emailVerificationTokens).values({
     userId: input.userId,
     tokenHash: hashToken(token),
@@ -136,7 +150,9 @@ export async function issueEmailVerification(input: {
   return token;
 }
 
-export async function verifyEmailWithToken(token: string): Promise<{ userId: string }> {
+export async function verifyEmailWithToken(
+  token: string,
+): Promise<{ userId: string }> {
   const db = getDb();
   const row = await db.query.emailVerificationTokens.findFirst({
     where: and(
@@ -185,14 +201,19 @@ export async function requestPasswordReset(email: string): Promise<void> {
   }
 
   if (!isMailConfigured()) {
-    logger.warn({ email: normalizedEmail }, "password reset requested but mail is not configured");
+    logger.warn(
+      { email: normalizedEmail },
+      "password reset requested but mail is not configured",
+    );
     return;
   }
 
   const token = generateToken();
   const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
 
-  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+  await db
+    .delete(passwordResetTokens)
+    .where(eq(passwordResetTokens.userId, user.id));
   await db.insert(passwordResetTokens).values({
     userId: user.id,
     tokenHash: hashToken(token),
@@ -205,7 +226,10 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await sendMail(user.email, content);
 }
 
-export async function resetPasswordWithToken(token: string, password: string): Promise<void> {
+export async function resetPasswordWithToken(
+  token: string,
+  password: string,
+): Promise<void> {
   if (!password) {
     throw new Error("INVALID_PASSWORD");
   }
@@ -227,14 +251,20 @@ export async function resetPasswordWithToken(token: string, password: string): P
     .update(users)
     .set({ passwordHash, updatedAt: new Date() })
     .where(eq(users.id, row.userId));
-  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, row.userId));
+  await db
+    .delete(passwordResetTokens)
+    .where(eq(passwordResetTokens.userId, row.userId));
 }
 
 export async function purgeExpiredAuthTokens(): Promise<void> {
   const db = getDb();
   const now = new Date();
-  await db.delete(passwordResetTokens).where(lt(passwordResetTokens.expiresAt, now));
-  await db.delete(emailVerificationTokens).where(lt(emailVerificationTokens.expiresAt, now));
+  await db
+    .delete(passwordResetTokens)
+    .where(lt(passwordResetTokens.expiresAt, now));
+  await db
+    .delete(emailVerificationTokens)
+    .where(lt(emailVerificationTokens.expiresAt, now));
 }
 
 export { toSessionEmailVerified };

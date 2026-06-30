@@ -26,5 +26,8 @@ export function createProjectProvider(
   project: ProjectRow,
   extras?: { webhookUrl?: string; webhookSecret?: string },
 ) {
-  return createProvider(project.provider, projectProviderConfig(project, extras));
+  return createProvider(
+    project.provider,
+    projectProviderConfig(project, extras),
+  );
 }

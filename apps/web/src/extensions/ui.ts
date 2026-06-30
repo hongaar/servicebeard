@@ -18,7 +18,9 @@ export function extensionDashboardTeamsDescription(): string | undefined {
 }
 
 /** Extra hint in the create-team dialog, appended after the default intro. */
-export function extensionCreateTeamDialogHint(_ctx: ExtensionCreateTeamContext): string | null {
+export function extensionCreateTeamDialogHint(
+  _ctx: ExtensionCreateTeamContext,
+): string | null {
   return null;
 }
 
@@ -35,11 +37,15 @@ export function extensionProjectsSectionDescription(
 }
 
 /** Overrides the empty-state hint on the projects page when non-null. */
-export function extensionProjectsEmptyHint(_ctx: ExtensionProjectsPageContext): string | null {
+export function extensionProjectsEmptyHint(
+  _ctx: ExtensionProjectsPageContext,
+): string | null {
   return null;
 }
 
 /** Overrides the empty-state primary action; null keeps the default create button. */
-export function extensionProjectsEmptyAction(_ctx: ExtensionProjectsPageContext): ReactNode {
+export function extensionProjectsEmptyAction(
+  _ctx: ExtensionProjectsPageContext,
+): ReactNode {
   return null;
 }

@@ -34,9 +34,12 @@ describe("RBAC — role-based access control must enforce team roles", () => {
 
   test("Team member cannot update team settings (admin-only)", async () => {
     const { seed, client } = await getSecurityContext();
-    const response = await client.memberA.patch(`/api/teams/${seed.teams.teamA.id}`, {
-      name: "Renamed by member",
-    });
+    const response = await client.memberA.patch(
+      `/api/teams/${seed.teams.teamA.id}`,
+      {
+        name: "Renamed by member",
+      },
+    );
     expect(response.status).toBe(403);
   });
 
@@ -51,7 +54,9 @@ describe("RBAC — role-based access control must enforce team roles", () => {
 
   test("Team admin cannot delete the team (owner-only)", async () => {
     const { seed, client } = await getSecurityContext();
-    const response = await client.adminA.delete(`/api/teams/${seed.teams.teamA.id}`);
+    const response = await client.adminA.delete(
+      `/api/teams/${seed.teams.teamA.id}`,
+    );
     expect(response.status).toBe(403);
   });
 

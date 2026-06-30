@@ -28,7 +28,10 @@ export function formatMailFrom(email: string, name?: string | null): string {
   return formatMailboxAddress(email.trim(), name?.trim() || null);
 }
 
-export function formatMailboxAddress(email: string, name?: string | null): string {
+export function formatMailboxAddress(
+  email: string,
+  name?: string | null,
+): string {
   const trimmedName = name?.trim();
   if (trimmedName) return `${trimmedName} <${email}>`;
   return email;
@@ -107,7 +110,9 @@ export function supportMailboxCc(
   customerEmail: string,
 ): string | undefined {
   const support = parseMailFromAddress(smtpFrom);
-  return support.toLowerCase() !== customerEmail.toLowerCase() ? support : undefined;
+  return support.toLowerCase() !== customerEmail.toLowerCase()
+    ? support
+    : undefined;
 }
 
 export interface QuotedEmail {
@@ -117,7 +122,10 @@ export interface QuotedEmail {
   body: string;
 }
 
-export function formatQuotedReply(replyText: string, quoted: QuotedEmail): string {
+export function formatQuotedReply(
+  replyText: string,
+  quoted: QuotedEmail,
+): string {
   const sender = quoted.fromName
     ? `${quoted.fromName} <${quoted.fromEmail}>`
     : quoted.fromEmail;
@@ -165,9 +173,6 @@ export function stripQuotedReply(body: string): string {
   return normalized.slice(0, cutAt).trimEnd();
 }
 
-export const mailFromSchema = z
-  .string()
-  .min(3)
-  .refine(isValidMailFrom, {
-    message: "Invalid From address (use user@host or Name <user@host>)",
-  });
+export const mailFromSchema = z.string().min(3).refine(isValidMailFrom, {
+  message: "Invalid From address (use user@host or Name <user@host>)",
+});

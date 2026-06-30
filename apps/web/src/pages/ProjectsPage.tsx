@@ -1,12 +1,18 @@
 import {
-    LimitReachedDialog,
-    extensionProjectsEmptyAction,
-    extensionProjectsEmptyHint,
-    extensionProjectsSectionDescription,
+  LimitReachedDialog,
+  extensionProjectsEmptyAction,
+  extensionProjectsEmptyHint,
+  extensionProjectsSectionDescription,
 } from "@extensions";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLoaderData, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
+import {
+  useLoaderData,
+  useNavigate,
+  useParams,
+  useRouter,
+  useSearch,
+} from "@tanstack/react-router";
 import { FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
@@ -17,13 +23,16 @@ import { Layout } from "../components/Layout";
 import { ProviderLogo } from "../components/ProviderLogo";
 import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
-import { entitlementLimitMessage, isResourceCreateBlocked } from "../lib/entitlements";
+import {
+  entitlementLimitMessage,
+  isResourceCreateBlocked,
+} from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import type { ProjectsLoaderData } from "../lib/loaderTypes";
 import {
-    defaultProjectSettingsForm,
-    formToCreateInput,
-    type ProjectSettingsFormValues,
+  defaultProjectSettingsForm,
+  formToCreateInput,
+  type ProjectSettingsFormValues,
 } from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 
@@ -48,7 +57,9 @@ export function ProjectsPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [wizardStepIndex, setWizardStepIndex] = useState(0);
-  const [form, setForm] = useState<ProjectSettingsFormValues>(defaultProjectSettingsForm);
+  const [form, setForm] = useState<ProjectSettingsFormValues>(
+    defaultProjectSettingsForm,
+  );
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
@@ -81,7 +92,10 @@ export function ProjectsPage() {
       if (LimitReachedDialog && entitlements) {
         setLimitDialogOpen(true);
       } else {
-        setError(entitlementLimitMessage("project", entitlements) ?? "Project limit reached");
+        setError(
+          entitlementLimitMessage("project", entitlements) ??
+            "Project limit reached",
+        );
       }
       setShowCreate(false);
       return;
@@ -126,7 +140,9 @@ export function ProjectsPage() {
         invalid_callback: "GitHub App installation callback was invalid.",
         state_mismatch: "GitHub App installation state did not match.",
       };
-      setError(messages[search.githubAppError] ?? "GitHub App installation failed.");
+      setError(
+        messages[search.githubAppError] ?? "GitHub App installation failed.",
+      );
     }
 
     window.history.replaceState({}, "", window.location.pathname);
@@ -143,7 +159,10 @@ export function ProjectsPage() {
 
   const create = useMutation({
     mutationFn: () =>
-      api.createProject(teamId, formToCreateInput(form, { githubAppEnabled: githubApp?.enabled })),
+      api.createProject(
+        teamId,
+        formToCreateInput(form, { githubAppEnabled: githubApp?.enabled }),
+      ),
     onSuccess: async (project) => {
       await router.invalidate();
       navigate({
@@ -154,7 +173,10 @@ export function ProjectsPage() {
     onError: (err) => handleMutationError(err, setError, setFieldErrors),
   });
 
-  const update = (field: keyof ProjectSettingsFormValues, value: string | number | boolean) => {
+  const update = (
+    field: keyof ProjectSettingsFormValues,
+    value: string | number | boolean,
+  ) => {
     setForm((f) => ({ ...f, [field]: value }));
     setFieldErrors((prev) => clearFieldError(prev, field));
     setError("");
@@ -193,10 +215,18 @@ export function ProjectsPage() {
         </Button>
       </div>
 
-      {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
+      {error && (
+        <div className={[styles.alert, styles.alertError].join(" ")}>
+          {error}
+        </div>
+      )}
 
       {showCreate && (
-        <Card title="New project" subtitle="Set up your mailbox and issue provider" className={styles.section}>
+        <Card
+          title="New project"
+          subtitle="Set up your mailbox and issue provider"
+          className={styles.section}
+        >
           <CreateProjectWizard
             teamId={teamId}
             values={form}
@@ -220,7 +250,9 @@ export function ProjectsPage() {
           <EmptyIcon icon={FolderPlus} />
           <p className={styles.emptyTitle}>No projects yet</p>
           <p className={styles.emptyHint}>{emptyHint}</p>
-          {emptyAction ?? <Button onClick={tryOpenCreate}>Create your first project</Button>}
+          {emptyAction ?? (
+            <Button onClick={tryOpenCreate}>Create your first project</Button>
+          )}
         </div>
       ) : projects.length > 0 ? (
         <div className={styles.tableWrap}>
@@ -261,7 +293,9 @@ export function ProjectsPage() {
                   <td>
                     <span className={styles.issuesCell}>
                       <ProviderLogo provider={p.provider} />
-                      <span className={styles.issuesRepo}>{p.providerProjectId}</span>
+                      <span className={styles.issuesRepo}>
+                        {p.providerProjectId}
+                      </span>
                     </span>
                   </td>
                   <td>
@@ -280,7 +314,11 @@ export function ProjectsPage() {
                       onActivate={(e) => e.stopPropagation()}
                       link={{
                         to: "/teams/$teamId/projects/$projectId/$section",
-                        params: { teamId, projectId: p.id, section: "overview" },
+                        params: {
+                          teamId,
+                          projectId: p.id,
+                          section: "overview",
+                        },
                       }}
                     />
                   </td>

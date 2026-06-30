@@ -1,7 +1,7 @@
 import { createProvider, toProviderConfig } from "@servicebeard/providers";
 import type {
-    testMailConnectionSchema,
-    testProviderConnectionSchema,
+  testMailConnectionSchema,
+  testProviderConnectionSchema,
 } from "@servicebeard/shared";
 import { ImapFlow } from "imapflow";
 import nodemailer from "nodemailer";

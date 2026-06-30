@@ -70,7 +70,10 @@ function base64UrlEncode(value: string | Buffer): string {
     .replace(/=+$/g, "");
 }
 
-export function createGithubAppJwt(appId: string, privateKeyPem: string): string {
+export function createGithubAppJwt(
+  appId: string,
+  privateKeyPem: string,
+): string {
   const header = base64UrlEncode(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const now = Math.floor(Date.now() / 1000);
   const payload = base64UrlEncode(
@@ -81,7 +84,9 @@ export function createGithubAppJwt(appId: string, privateKeyPem: string): string
     }),
   );
   const data = `${header}.${payload}`;
-  const signature = createSign("RSA-SHA256").update(data).sign(privateKeyPem, "base64url");
+  const signature = createSign("RSA-SHA256")
+    .update(data)
+    .sign(privateKeyPem, "base64url");
   return `${data}.${signature}`;
 }
 
@@ -256,7 +261,10 @@ export async function getGithubAppBotUser(
   const app = await githubAppRequest<GithubAppResponse>(baseUrl, "/app", jwt);
   const botLogin = `${app.slug}[bot]`;
 
-  const installationToken = await getGithubInstallationAccessToken(baseUrl, installationId);
+  const installationToken = await getGithubInstallationAccessToken(
+    baseUrl,
+    installationId,
+  );
   const url = `${apiBaseForApp(baseUrl)}/users/${encodeURIComponent(botLogin)}`;
   const response = await providerFetch(
     { baseUrl, projectId: "", token: installationToken },
@@ -289,7 +297,10 @@ export async function resolveGithubAccessToken(
   config: ProviderConfig,
 ): Promise<string> {
   if (config.githubInstallationId) {
-    return getGithubInstallationAccessToken(config.baseUrl, config.githubInstallationId);
+    return getGithubInstallationAccessToken(
+      config.baseUrl,
+      config.githubInstallationId,
+    );
   }
   return config.token;
 }

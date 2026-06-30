@@ -1,10 +1,10 @@
 import {
-    extensionAdminBreadcrumbs,
-    extensionAdminNavItems,
-    extensionAppFooterLinks,
-    extensionTeamNavItems,
-    extensionTeamPageIcon,
-    isExtensionTeamNavActive,
+  extensionAdminBreadcrumbs,
+  extensionAdminNavItems,
+  extensionAppFooterLinks,
+  extensionTeamNavItems,
+  extensionTeamPageIcon,
+  isExtensionTeamNavActive,
 } from "@extensions";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -12,14 +12,18 @@ import type { LucideIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { iconMd } from "../lib/icons";
 import {
-    NAV_ICONS,
-    PROJECT_SECTION_LABELS,
-    homePageIcon,
-    teamPageIcon,
-    type NavIconKey,
-    type ProjectSection,
+  NAV_ICONS,
+  PROJECT_SECTION_LABELS,
+  homePageIcon,
+  teamPageIcon,
+  type NavIconKey,
+  type ProjectSection,
 } from "../lib/navigation";
-import { BackLink, BreadcrumbProjectPicker, BreadcrumbTeamPicker } from "./ContextPicker";
+import {
+  BackLink,
+  BreadcrumbProjectPicker,
+  BreadcrumbTeamPicker,
+} from "./ContextPicker";
 import { GlobalSearch } from "./GlobalSearch";
 import styles from "./Layout.module.css";
 import { ProviderLogo } from "./ProviderLogo";
@@ -90,7 +94,9 @@ export function Layout({
   const isProjectContext = !!(teamId && projectId);
 
   const navLinkClass = (active: boolean) =>
-    [styles.navLink, active ? styles.navLinkActive : ""].filter(Boolean).join(" ");
+    [styles.navLink, active ? styles.navLinkActive : ""]
+      .filter(Boolean)
+      .join(" ");
 
   const sidebarContext = isProjectContext
     ? "project"
@@ -130,7 +136,9 @@ export function Layout({
 
     if (sidebarContext === "team" && teamId) {
       const pageIcon = teamPageIcon(pathname, teamId);
-      const extensionIcon = pageIcon ? undefined : extensionTeamPageIcon(pathname, teamId);
+      const extensionIcon = pageIcon
+        ? undefined
+        : extensionTeamPageIcon(pathname, teamId);
       const items: BreadcrumbItem[] = [
         {
           label: teamName ?? "Team",
@@ -189,7 +197,13 @@ export function Layout({
       <header className={styles.navbar}>
         <div className={styles.navbarLeft}>
           <Link to="/" className={styles.brand}>
-            <img src="/favicon.png" alt="" className={styles.brandLogo} width={36} height={36} />
+            <img
+              src="/favicon.png"
+              alt=""
+              className={styles.brandLogo}
+              width={36}
+              height={36}
+            />
             <span className={styles.brandName}>
               Service<span className={styles.brandAccent}>Beard</span>
             </span>
@@ -215,13 +229,21 @@ export function Layout({
             {sidebarContext === "home" && (
               <>
                 <p className={styles.navSection}>{sidebarSectionLabel}</p>
-                <Link to="/" className={navLinkClass(isDashboard)} title="Teams">
+                <Link
+                  to="/"
+                  className={navLinkClass(isDashboard)}
+                  title="Teams"
+                >
                   <NavIcon>
                     <NAV_ICONS.teams {...iconMd} />
                   </NavIcon>
                   <span className={styles.navLabel}>Teams</span>
                 </Link>
-                <Link to="/account" className={navLinkClass(isAccount)} title="Account">
+                <Link
+                  to="/account"
+                  className={navLinkClass(isAccount)}
+                  title="Account"
+                >
                   <NavIcon>
                     <NAV_ICONS.account {...iconMd} />
                   </NavIcon>
@@ -229,13 +251,19 @@ export function Layout({
                 </Link>
                 {user?.isAdmin && (
                   <>
-                    <Link to="/admin/status" className={navLinkClass(isAdminStatus)}>
+                    <Link
+                      to="/admin/status"
+                      className={navLinkClass(isAdminStatus)}
+                    >
                       <NavIcon>
                         <NAV_ICONS.adminStatus {...iconMd} />
                       </NavIcon>
                       System status
                     </Link>
-                    <Link to="/admin/audit-log" className={navLinkClass(isAdminAuditLog)}>
+                    <Link
+                      to="/admin/audit-log"
+                      className={navLinkClass(isAdminAuditLog)}
+                    >
                       <NavIcon>
                         <NAV_ICONS.adminAuditLog {...iconMd} />
                       </NavIcon>
@@ -247,7 +275,10 @@ export function Layout({
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={navLinkClass(pathname === item.to || pathname.startsWith(`${item.to}/`))}
+                    className={navLinkClass(
+                      pathname === item.to ||
+                        pathname.startsWith(`${item.to}/`),
+                    )}
                   >
                     <NavIcon>
                       <item.icon {...iconMd} />
@@ -286,7 +317,11 @@ export function Layout({
                 {extraTeamNavItems.map((item) => {
                   if (item.visible === false) return null;
                   const Icon = item.icon;
-                  const active = isExtensionTeamNavActive(pathname, teamId, item);
+                  const active = isExtensionTeamNavActive(
+                    pathname,
+                    teamId,
+                    item,
+                  );
                   return (
                     <Link
                       key={item.to}
@@ -369,10 +404,14 @@ export function Layout({
                   {breadcrumbs.map((item, index) => {
                     const isLast = index === breadcrumbs.length - 1;
                     const asLink = !!(item.to && !isLast);
-                    const icon = (item.icon || item.Icon) ? breadcrumbIcon(item) : undefined;
+                    const icon =
+                      item.icon || item.Icon ? breadcrumbIcon(item) : undefined;
 
                     return (
-                      <li key={`${item.label}-${index}`} className={styles.breadcrumbItem}>
+                      <li
+                        key={`${item.label}-${index}`}
+                        className={styles.breadcrumbItem}
+                      >
                         {item.picker === "team" ? (
                           <BreadcrumbTeamPicker
                             label={item.label}
@@ -404,8 +443,16 @@ export function Layout({
                             iconClassName={styles.breadcrumbIcon}
                           />
                         ) : item.to && !isLast ? (
-                          <Link to={item.to} params={item.params} className={styles.breadcrumbLink}>
-                            {icon && <span className={styles.breadcrumbIcon}>{icon}</span>}
+                          <Link
+                            to={item.to}
+                            params={item.params}
+                            className={styles.breadcrumbLink}
+                          >
+                            {icon && (
+                              <span className={styles.breadcrumbIcon}>
+                                {icon}
+                              </span>
+                            )}
                             {item.label}
                           </Link>
                         ) : (
@@ -413,12 +460,19 @@ export function Layout({
                             className={styles.breadcrumbCurrent}
                             aria-current={isLast ? "page" : undefined}
                           >
-                            {icon && <span className={styles.breadcrumbIcon}>{icon}</span>}
+                            {icon && (
+                              <span className={styles.breadcrumbIcon}>
+                                {icon}
+                              </span>
+                            )}
                             {item.label}
                           </span>
                         )}
                         {!isLast && (
-                          <span className={styles.breadcrumbSeparator} aria-hidden>
+                          <span
+                            className={styles.breadcrumbSeparator}
+                            aria-hidden
+                          >
                             /
                           </span>
                         )}
@@ -432,11 +486,15 @@ export function Layout({
               <h1 className={styles.pageTitle}>{title}</h1>
               {inboxEmail && (
                 <p className={styles.pageInbox}>
-                  <span className={styles.pageInboxLabel}>New tickets arrive at</span>
+                  <span className={styles.pageInboxLabel}>
+                    New tickets arrive at
+                  </span>
                   <code className={styles.pageInboxEmail}>{inboxEmail}</code>
                   {issueLink && (
                     <>
-                      <span className={styles.pageInboxLabel}>Issues tracked in</span>
+                      <span className={styles.pageInboxLabel}>
+                        Issues tracked in
+                      </span>
                       <a
                         href={issueLink.href}
                         className={styles.pageIssueLink}
@@ -450,15 +508,24 @@ export function Layout({
                   )}
                 </p>
               )}
-              {description && <p className={styles.pageDescription}>{description}</p>}
+              {description && (
+                <p className={styles.pageDescription}>{description}</p>
+              )}
             </div>
             {children}
           </div>
           {appFooterLinks.length > 0 && (
             <footer className={styles.appFooter}>
-              <nav className={styles.appFooterLinks} aria-label="Legal and product">
+              <nav
+                className={styles.appFooterLinks}
+                aria-label="Legal and product"
+              >
                 {appFooterLinks.map((link) => (
-                  <Link key={link.to} to={link.to} className={styles.appFooterLink}>
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={styles.appFooterLink}
+                  >
                     {link.label}
                   </Link>
                 ))}

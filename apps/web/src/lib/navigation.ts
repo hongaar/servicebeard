@@ -1,24 +1,24 @@
 import type { LucideIcon } from "lucide-react";
 import {
-    Activity,
-    BookOpen,
-    Building2,
-    CreditCard,
-    FileText,
-    Folder,
-    Home,
-    LayoutDashboard,
-    Mail,
-    MessagesSquare,
-    Scale,
-    ScrollText,
-    Server,
-    Settings,
-    Shield,
-    SlidersHorizontal,
-    Sparkles,
-    UserRound,
-    Users,
+  Activity,
+  BookOpen,
+  Building2,
+  CreditCard,
+  FileText,
+  Folder,
+  Home,
+  LayoutDashboard,
+  Mail,
+  MessagesSquare,
+  Scale,
+  ScrollText,
+  Server,
+  Settings,
+  Shield,
+  SlidersHorizontal,
+  Sparkles,
+  UserRound,
+  Users,
 } from "lucide-react";
 
 export const PROJECT_SECTIONS = [
@@ -76,7 +76,10 @@ export const NAV_ICONS = {
 
 export type NavIconKey = keyof typeof NAV_ICONS;
 
-export function teamPageIcon(pathname: string, teamId: string): NavIconKey | undefined {
+export function teamPageIcon(
+  pathname: string,
+  teamId: string,
+): NavIconKey | undefined {
   if (pathname === `/teams/${teamId}/projects`) return "projects";
   if (pathname === `/teams/${teamId}/members`) return "members";
   if (pathname === `/teams/${teamId}/settings`) return "teamSettings";

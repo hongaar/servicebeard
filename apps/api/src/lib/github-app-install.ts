@@ -1,8 +1,8 @@
 import {
-    buildGithubAppInstallUrl,
-    getGithubAppSlug,
-    isGithubAppConfigured,
-    isGithubAppEnabled,
+  buildGithubAppInstallUrl,
+  getGithubAppSlug,
+  isGithubAppConfigured,
+  isGithubAppEnabled,
 } from "@servicebeard/providers";
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
@@ -20,7 +20,9 @@ interface GithubAppInstallCookie {
   popup?: boolean;
 }
 
-export function encodeGithubAppInstallCookie(payload: GithubAppInstallCookie): string {
+export function encodeGithubAppInstallCookie(
+  payload: GithubAppInstallCookie,
+): string {
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
@@ -42,7 +44,10 @@ export function defaultGithubAppReturnTo(teamId: string): string {
   return `/teams/${teamId}/projects?create=1&wizardStep=provider`;
 }
 
-export function sanitizeGithubAppReturnTo(returnTo: string | undefined, teamId: string): string {
+export function sanitizeGithubAppReturnTo(
+  returnTo: string | undefined,
+  teamId: string,
+): string {
   const fallback = defaultGithubAppReturnTo(teamId);
   if (!returnTo?.startsWith("/")) return fallback;
   if (returnTo.includes("://")) return fallback;
@@ -51,7 +56,10 @@ export function sanitizeGithubAppReturnTo(returnTo: string | undefined, teamId: 
 }
 
 export function webAppRedirect(path: string): string {
-  const webUrl = (process.env.WEB_URL ?? "http://localhost:5173").replace(/\/$/, "");
+  const webUrl = (process.env.WEB_URL ?? "http://localhost:5173").replace(
+    /\/$/,
+    "",
+  );
   return `${webUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
@@ -80,11 +88,15 @@ export async function startGithubAppInstall(
   const baseUrl = c.req.query("baseUrl")?.trim() || "https://github.com";
 
   if (!isGithubAppEnabled()) {
-    return c.redirect(githubAppInstallErrorRedirect(returnTo, popup, "disabled"));
+    return c.redirect(
+      githubAppInstallErrorRedirect(returnTo, popup, "disabled"),
+    );
   }
 
   if (!isGithubAppConfigured()) {
-    return c.redirect(githubAppInstallErrorRedirect(returnTo, popup, "not_configured"));
+    return c.redirect(
+      githubAppInstallErrorRedirect(returnTo, popup, "not_configured"),
+    );
   }
 
   const state = randomBytes(24).toString("hex");
@@ -106,6 +118,8 @@ export async function startGithubAppInstall(
     const installUrl = buildGithubAppInstallUrl(baseUrl, slug, state);
     return c.redirect(installUrl);
   } catch {
-    return c.redirect(githubAppInstallErrorRedirect(returnTo, popup, "install_failed"));
+    return c.redirect(
+      githubAppInstallErrorRedirect(returnTo, popup, "install_failed"),
+    );
   }
 }

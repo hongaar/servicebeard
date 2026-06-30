@@ -57,12 +57,18 @@ export function RadioCardGroup({
               />
               <span className={styles.cardBody}>
                 <span className={styles.cardTop}>
-                  {option.icon && <span className={styles.icon}>{option.icon}</span>}
+                  {option.icon && (
+                    <span className={styles.icon}>{option.icon}</span>
+                  )}
                   <span className={styles.cardLabel}>{option.label}</span>
-                  {option.badge && <span className={styles.badge}>{option.badge}</span>}
+                  {option.badge && (
+                    <span className={styles.badge}>{option.badge}</span>
+                  )}
                 </span>
                 {option.description && (
-                  <span className={styles.cardDescription}>{option.description}</span>
+                  <span className={styles.cardDescription}>
+                    {option.description}
+                  </span>
                 )}
               </span>
             </label>

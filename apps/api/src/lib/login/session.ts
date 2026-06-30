@@ -1,18 +1,18 @@
 import {
-    generateToken,
-    getDb,
-    hashToken,
-    sessions,
-    users,
+  generateToken,
+  getDb,
+  hashToken,
+  sessions,
+  users,
 } from "@servicebeard/db";
 import type { SessionUser } from "@servicebeard/shared";
 import type { LoginProviderType } from "@servicebeard/shared/login";
 import { and, eq, gt } from "drizzle-orm";
 import { toSessionEmailVerified } from "../transactional-mail";
 import {
-    assertEmailAvailableForSignup,
-    ensureProviderLink,
-    findUserIdByProviderIdentity,
+  assertEmailAvailableForSignup,
+  ensureProviderLink,
+  findUserIdByProviderIdentity,
 } from "./providers";
 import type { LoginIdentity } from "./types";
 
@@ -46,7 +46,10 @@ export async function createSessionForIdentity(
   const db = getDb();
   const oauthProvider = opts.provider !== "local";
 
-  let userId = await findUserIdByProviderIdentity(opts.provider, identity.externalSub);
+  let userId = await findUserIdByProviderIdentity(
+    opts.provider,
+    identity.externalSub,
+  );
 
   if (!userId) {
     if (!opts.allowSignup) {

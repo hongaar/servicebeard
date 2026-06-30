@@ -7,7 +7,10 @@ interface HelpTipProps {
   label?: string;
 }
 
-export function HelpTip({ children, label = "More information" }: HelpTipProps) {
+export function HelpTip({
+  children,
+  label = "More information",
+}: HelpTipProps) {
   return (
     <Tooltip.Provider delay={100}>
       <Tooltip.Root>

@@ -1,25 +1,31 @@
-import { detectIssueProviderFromUrl, lookupMailAutoconfig, parseGithubRepository, parseLinearTeam, usesLocalPartMailAuth } from "@servicebeard/shared";
+import {
+  detectIssueProviderFromUrl,
+  lookupMailAutoconfig,
+  parseGithubRepository,
+  parseLinearTeam,
+  usesLocalPartMailAuth,
+} from "@servicebeard/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { DOC_PATHS } from "../lib/docs";
 import {
-    isGithubAppInstallMessage,
-    openGithubAppInstallPopup,
+  isGithubAppInstallMessage,
+  openGithubAppInstallPopup,
 } from "../lib/githubAppInstall";
 import {
-    applyIssueRepositoryUrl,
-    applyProjectName,
-    applyProvider,
-    applyProviderHosting,
-    applySupportEmailAutoconfig,
-    formToMailConfig,
-    formToProviderConfig,
-    githubProviderCredentialsReady,
-    isMailServerConfigured,
-    type ProjectSettingsFormValues,
-    type ProviderHosting,
+  applyIssueRepositoryUrl,
+  applyProjectName,
+  applyProvider,
+  applyProviderHosting,
+  applySupportEmailAutoconfig,
+  formToMailConfig,
+  formToProviderConfig,
+  githubProviderCredentialsReady,
+  isMailServerConfigured,
+  type ProjectSettingsFormValues,
+  type ProviderHosting,
 } from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
@@ -37,7 +43,9 @@ function connectionErrorMessage(
   result: { error?: string; responseBody?: string },
   fallback = "Connection failed",
 ): string {
-  return [result.error, result.responseBody].filter(Boolean).join(" — ") || fallback;
+  return (
+    [result.error, result.responseBody].filter(Boolean).join(" — ") || fallback
+  );
 }
 
 interface SectionProps {
@@ -114,7 +122,9 @@ export function ProjectMailSection({
 }: MailSectionProps) {
   const isCreate = mode === "create";
   const supportEmail = values.smtpFrom.trim();
-  const initialAutoconfig = supportEmail ? lookupMailAutoconfig(supportEmail) : null;
+  const initialAutoconfig = supportEmail
+    ? lookupMailAutoconfig(supportEmail)
+    : null;
   const initialMailConfigured = isMailServerConfigured(values);
 
   const [settingsRevealed, setSettingsRevealed] = useState(
@@ -128,14 +138,19 @@ export function ProjectMailSection({
       ? initialAutoconfig.providerName
       : null,
   );
-  const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [testState, setTestState] = useState<
+    "idle" | "testing" | "ok" | "error"
+  >("idle");
   const [testMessage, setTestMessage] = useState("");
   const [detectingMail, setDetectingMail] = useState(false);
 
   const patchForm = (patch: Partial<ProjectSettingsFormValues>) => {
     for (const [key, val] of Object.entries(patch)) {
       if (val !== undefined) {
-        onChange(key as keyof ProjectSettingsFormValues, val as string | number | boolean);
+        onChange(
+          key as keyof ProjectSettingsFormValues,
+          val as string | number | boolean,
+        );
       }
     }
   };
@@ -184,7 +199,9 @@ export function ProjectMailSection({
       if (result.found && result.config) {
         patchForm(applySupportEmailAutoconfig(values, email, result.config));
         setSettingsRevealed(true);
-        setDetectedProvider(result.config.providerName ?? email.split("@")[1] ?? "mail server");
+        setDetectedProvider(
+          result.config.providerName ?? email.split("@")[1] ?? "mail server",
+        );
         setShowFullSettings(false);
       } else {
         patchForm(applySupportEmailAutoconfig(values, email));
@@ -205,7 +222,9 @@ export function ProjectMailSection({
   const showManualSettings = () => {
     const email = values.smtpFrom.trim();
     if (!email) return;
-    const mailUser = usesLocalPartMailAuth(email) ? email.slice(0, email.indexOf("@")) : email;
+    const mailUser = usesLocalPartMailAuth(email)
+      ? email.slice(0, email.indexOf("@"))
+      : email;
     patchForm({ smtpFrom: email, imapUser: mailUser, smtpUser: mailUser });
     setSettingsRevealed(true);
     setShowFullSettings(true);
@@ -253,7 +272,11 @@ export function ProjectMailSection({
     values.smtpPassword;
 
   const hasSupportEmail = values.smtpFrom.trim().length > 0;
-  const passwordOnly = isCreate && settingsRevealed && Boolean(detectedProvider) && !showFullSettings;
+  const passwordOnly =
+    isCreate &&
+    settingsRevealed &&
+    Boolean(detectedProvider) &&
+    !showFullSettings;
   const showMailSettings = !isCreate || settingsRevealed;
 
   const mailPasswordHint =
@@ -305,7 +328,12 @@ export function ProjectMailSection({
               "Auto-detect mail settings"
             )}
           </Button>
-          <Button type="button" variant="ghost" onClick={showManualSettings} disabled={detectingMail}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={showManualSettings}
+            disabled={detectingMail}
+          >
             Enter manually
           </Button>
         </div>
@@ -313,23 +341,37 @@ export function ProjectMailSection({
 
       {showMailSettings && passwordOnly && (
         <p className={styles.autoconfigHint}>
-          Detected {detectedProvider} — we&apos;ll use the discovered server settings for this
-          mailbox.
+          Detected {detectedProvider} — we&apos;ll use the discovered server
+          settings for this mailbox.
         </p>
       )}
 
-      {showMailSettings && detectedProvider && showFullSettings && isCreate && testState === "error" && (
-        <p className={[styles.autoconfigHint, styles.autoconfigHintWarning].join(" ")}>
-          Couldn&apos;t connect with the default {detectedProvider} settings — check or adjust the
-          server details below.
-        </p>
-      )}
+      {showMailSettings &&
+        detectedProvider &&
+        showFullSettings &&
+        isCreate &&
+        testState === "error" && (
+          <p
+            className={[
+              styles.autoconfigHint,
+              styles.autoconfigHintWarning,
+            ].join(" ")}
+          >
+            Couldn&apos;t connect with the default {detectedProvider} settings —
+            check or adjust the server details below.
+          </p>
+        )}
 
-      {showMailSettings && !detectedProvider && showFullSettings && isCreate && settingsRevealed && (
-        <p className={styles.autoconfigHint}>
-          No known provider for this domain — enter your mail server settings below.
-        </p>
-      )}
+      {showMailSettings &&
+        !detectedProvider &&
+        showFullSettings &&
+        isCreate &&
+        settingsRevealed && (
+          <p className={styles.autoconfigHint}>
+            No known provider for this domain — enter your mail server settings
+            below.
+          </p>
+        )}
 
       {showMailSettings &&
         (passwordOnly ? (
@@ -343,142 +385,204 @@ export function ProjectMailSection({
           />
         ) : (
           <div className={styles.mailServerFields}>
-          <h4 className={styles.subsectionTitle}>IMAP (incoming)</h4>
-          <div className={styles.row}>
-            <Input
-              label="Host"
-              value={values.imapHost}
-              error={fieldErrors?.imapHost}
-              onChange={(e) => setField(onChange, onClearFieldError, "imapHost")(e.target.value)}
+            <h4 className={styles.subsectionTitle}>IMAP (incoming)</h4>
+            <div className={styles.row}>
+              <Input
+                label="Host"
+                value={values.imapHost}
+                error={fieldErrors?.imapHost}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "imapHost",
+                  )(e.target.value)
+                }
+              />
+              <Input
+                label="Port"
+                type="number"
+                value={values.imapPort}
+                error={fieldErrors?.imapPort}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "imapPort",
+                  )(Number(e.target.value))
+                }
+              />
+            </div>
+            <div className={styles.row}>
+              <Input
+                label="User"
+                value={values.imapUser}
+                error={fieldErrors?.imapUser}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "imapUser",
+                  )(e.target.value)
+                }
+              />
+              <Input
+                label="Password"
+                type="password"
+                value={values.imapPassword}
+                error={fieldErrors?.imapPassword}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "imapPassword",
+                  )(e.target.value)
+                }
+                placeholder={
+                  mode === "edit"
+                    ? "Leave blank to keep current password"
+                    : undefined
+                }
+              />
+            </div>
+            <Checkbox
+              label="IMAP TLS"
+              checked={values.imapSecure}
+              onChange={(v) => onChange("imapSecure", v)}
             />
-            <Input
-              label="Port"
-              type="number"
-              value={values.imapPort}
-              error={fieldErrors?.imapPort}
-              onChange={(e) =>
-                setField(onChange, onClearFieldError, "imapPort")(Number(e.target.value))
-              }
+            <Checkbox
+              label="Mark ingested messages as read in IMAP"
+              checked={values.imapMarkIngestedAsSeen}
+              onChange={(v) => onChange("imapMarkIngestedAsSeen", v)}
+              hint="When enabled, messages are marked as read in your mail client after this project ingests them."
             />
-          </div>
-          <div className={styles.row}>
-            <Input
-              label="User"
-              value={values.imapUser}
-              error={fieldErrors?.imapUser}
-              onChange={(e) => setField(onChange, onClearFieldError, "imapUser")(e.target.value)}
-            />
-            <Input
-              label="Password"
-              type="password"
-              value={values.imapPassword}
-              error={fieldErrors?.imapPassword}
-              onChange={(e) =>
-                setField(onChange, onClearFieldError, "imapPassword")(e.target.value)
-              }
-              placeholder={mode === "edit" ? "Leave blank to keep current password" : undefined}
-            />
-          </div>
-          <Checkbox
-            label="IMAP TLS"
-            checked={values.imapSecure}
-            onChange={(v) => onChange("imapSecure", v)}
-          />
-          <Checkbox
-            label="Mark ingested messages as read in IMAP"
-            checked={values.imapMarkIngestedAsSeen}
-            onChange={(v) => onChange("imapMarkIngestedAsSeen", v)}
-            hint="When enabled, messages are marked as read in your mail client after this project ingests them."
-          />
 
-          <h4 className={styles.subsectionTitle}>SMTP (outgoing)</h4>
-          <div className={styles.row}>
-            <Input
-              label="Host"
-              value={values.smtpHost}
-              error={fieldErrors?.smtpHost}
-              onChange={(e) => setField(onChange, onClearFieldError, "smtpHost")(e.target.value)}
-            />
-            <Input
-              label="Port"
-              type="number"
-              value={values.smtpPort}
-              error={fieldErrors?.smtpPort}
-              onChange={(e) =>
-                setField(onChange, onClearFieldError, "smtpPort")(Number(e.target.value))
-              }
+            <h4 className={styles.subsectionTitle}>SMTP (outgoing)</h4>
+            <div className={styles.row}>
+              <Input
+                label="Host"
+                value={values.smtpHost}
+                error={fieldErrors?.smtpHost}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "smtpHost",
+                  )(e.target.value)
+                }
+              />
+              <Input
+                label="Port"
+                type="number"
+                value={values.smtpPort}
+                error={fieldErrors?.smtpPort}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "smtpPort",
+                  )(Number(e.target.value))
+                }
+              />
+            </div>
+            <div className={styles.row}>
+              <Input
+                label="User"
+                value={values.smtpUser}
+                error={fieldErrors?.smtpUser}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "smtpUser",
+                  )(e.target.value)
+                }
+              />
+              <Input
+                label="Password"
+                type="password"
+                value={values.smtpPassword}
+                error={fieldErrors?.smtpPassword}
+                onChange={(e) =>
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "smtpPassword",
+                  )(e.target.value)
+                }
+                placeholder={
+                  mode === "edit"
+                    ? "Leave blank to keep current password"
+                    : undefined
+                }
+              />
+            </div>
+            <Checkbox
+              label="SMTP TLS"
+              checked={values.smtpSecure}
+              onChange={(v) => onChange("smtpSecure", v)}
             />
           </div>
-          <div className={styles.row}>
-            <Input
-              label="User"
-              value={values.smtpUser}
-              error={fieldErrors?.smtpUser}
-              onChange={(e) => setField(onChange, onClearFieldError, "smtpUser")(e.target.value)}
-            />
-            <Input
-              label="Password"
-              type="password"
-              value={values.smtpPassword}
-              error={fieldErrors?.smtpPassword}
-              onChange={(e) =>
-                setField(onChange, onClearFieldError, "smtpPassword")(e.target.value)
-              }
-              placeholder={mode === "edit" ? "Leave blank to keep current password" : undefined}
-            />
-          </div>
-          <Checkbox
-            label="SMTP TLS"
-            checked={values.smtpSecure}
-            onChange={(v) => onChange("smtpSecure", v)}
-          />
-        </div>
         ))}
 
       {showMailSettings && (
-      <div className={styles.testRow}>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={testMail}
-          disabled={!canTest || testState === "testing"}
-        >
-          {testState === "testing" ? (
-            <>
-              <Loader2 size={16} className={styles.spinIcon} /> Testing…
-            </>
-          ) : (
-            "Test mail connection"
+        <div className={styles.testRow}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={testMail}
+            disabled={!canTest || testState === "testing"}
+          >
+            {testState === "testing" ? (
+              <>
+                <Loader2 size={16} className={styles.spinIcon} /> Testing…
+              </>
+            ) : (
+              "Test mail connection"
+            )}
+          </Button>
+          {testState === "ok" && (
+            <span className={styles.testOk}>
+              <CheckCircle2 size={16} /> {testMessage}
+            </span>
           )}
-        </Button>
-        {testState === "ok" && (
-          <span className={styles.testOk}>
-            <CheckCircle2 size={16} /> {testMessage}
-          </span>
-        )}
-        {testState === "error" && (
-          <span className={styles.testError}>
-            <XCircle size={16} /> {testMessage}
-          </span>
-        )}
-      </div>
+          {testState === "error" && (
+            <span className={styles.testError}>
+              <XCircle size={16} /> {testMessage}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-const GITLAB_HOSTING_OPTIONS: Array<{ value: ProviderHosting; label: string; description: string }> =
-  [
-    { value: "cloud", label: "Cloud", description: "gitlab.com" },
-    { value: "self-hosted", label: "Self-hosted", description: "Your own GitLab instance" },
-    { value: "dedicated", label: "Dedicated", description: "GitLab Dedicated" },
-  ];
+const GITLAB_HOSTING_OPTIONS: Array<{
+  value: ProviderHosting;
+  label: string;
+  description: string;
+}> = [
+  { value: "cloud", label: "Cloud", description: "gitlab.com" },
+  {
+    value: "self-hosted",
+    label: "Self-hosted",
+    description: "Your own GitLab instance",
+  },
+  { value: "dedicated", label: "Dedicated", description: "GitLab Dedicated" },
+];
 
-const GITHUB_HOSTING_OPTIONS: Array<{ value: ProviderHosting; label: string; description: string }> =
-  [
-    { value: "cloud", label: "Cloud", description: "github.com" },
-    { value: "enterprise", label: "Enterprise", description: "GitHub Enterprise Server" },
-  ];
+const GITHUB_HOSTING_OPTIONS: Array<{
+  value: ProviderHosting;
+  label: string;
+  description: string;
+}> = [
+  { value: "cloud", label: "Cloud", description: "github.com" },
+  {
+    value: "enterprise",
+    label: "Enterprise",
+    description: "GitHub Enterprise Server",
+  },
+];
 
 export function ProjectProviderSection({
   values,
@@ -490,7 +594,9 @@ export function ProjectProviderSection({
   projectId,
 }: ProviderSectionProps) {
   const isCreate = mode === "create";
-  const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [testState, setTestState] = useState<
+    "idle" | "testing" | "ok" | "error"
+  >("idle");
   const [testMessage, setTestMessage] = useState("");
   const [githubInstallNotice, setGithubInstallNotice] = useState("");
   const [repoDraft, setRepoDraft] = useState<string | null>(null);
@@ -506,7 +612,8 @@ export function ProjectProviderSection({
   const isGithub = values.provider === "github";
   const isLinear = values.provider === "linear";
   const providerSelected = isGitlab || isGithub || isLinear;
-  const githubAppInstalled = values.providerGithubInstallationId.trim().length > 0;
+  const githubAppInstalled =
+    values.providerGithubInstallationId.trim().length > 0;
   const githubRepositorySlug = useMemo(() => {
     if (!isGithub || !values.providerProjectId.trim()) return null;
     try {
@@ -521,21 +628,30 @@ export function ProjectProviderSection({
     refetch: refetchInstallation,
     isFetching: installationLookupPending,
   } = useQuery({
-    queryKey: ["github-repo-installation", teamId, values.providerBaseUrl, githubRepositorySlug],
+    queryKey: [
+      "github-repo-installation",
+      teamId,
+      values.providerBaseUrl,
+      githubRepositorySlug,
+    ],
     queryFn: () =>
       api.lookupGithubRepositoryInstallation(
         teamId,
         values.providerBaseUrl || "https://github.com",
         githubRepositorySlug!,
       ),
-    enabled: githubAppEnabled && githubAppConfigured && Boolean(githubRepositorySlug),
+    enabled:
+      githubAppEnabled && githubAppConfigured && Boolean(githubRepositorySlug),
     staleTime: 30_000,
   });
 
   const patchForm = (patch: Partial<ProjectSettingsFormValues>) => {
     for (const [key, val] of Object.entries(patch)) {
       if (val !== undefined) {
-        onChange(key as keyof ProjectSettingsFormValues, val as string | number | boolean);
+        onChange(
+          key as keyof ProjectSettingsFormValues,
+          val as string | number | boolean,
+        );
       }
     }
   };
@@ -546,7 +662,10 @@ export function ProjectProviderSection({
       patchForm({ providerGithubAuthType: "github_app", providerToken: "" });
     }
     if (!githubAppEnabled && values.providerGithubAuthType !== "pat") {
-      patchForm({ providerGithubAuthType: "pat", providerGithubInstallationId: "" });
+      patchForm({
+        providerGithubAuthType: "pat",
+        providerGithubInstallationId: "",
+      });
     }
   }, [isGithub, githubAppEnabled, githubApp, values.providerGithubAuthType]);
 
@@ -563,7 +682,9 @@ export function ProjectProviderSection({
         onClearFieldError?.("providerGithubInstallationId");
         setGithubInstallNotice("GitHub App connected.");
       } else if (event.data.error) {
-        setGithubInstallNotice("GitHub App installation did not complete. Try again.");
+        setGithubInstallNotice(
+          "GitHub App installation did not complete. Try again.",
+        );
       }
       void refetchInstallation();
     };
@@ -615,7 +736,8 @@ export function ProjectProviderSection({
 
   const showGitlabBaseUrl =
     isGitlab &&
-    (values.providerHosting === "self-hosted" || values.providerHosting === "dedicated");
+    (values.providerHosting === "self-hosted" ||
+      values.providerHosting === "dedicated");
   const showGithubBaseUrl = isGithub && values.providerHosting === "enterprise";
   const showGitlabTls = isGitlab && values.providerHosting === "self-hosted";
 
@@ -630,7 +752,9 @@ export function ProjectProviderSection({
       if (result.ok) {
         setTestState("ok");
         setTestMessage(
-          result.user ? `Connected as ${result.user.username}` : "Connection succeeded.",
+          result.user
+            ? `Connected as ${result.user.username}`
+            : "Connection succeeded.",
         );
       } else {
         setTestState("error");
@@ -657,7 +781,9 @@ export function ProjectProviderSection({
     );
     const popup = openGithubAppInstallPopup(url);
     if (!popup) {
-      setGithubInstallNotice("Allow popups for this site to install without leaving the wizard.");
+      setGithubInstallNotice(
+        "Allow popups for this site to install without leaving the wizard.",
+      );
     } else {
       setGithubInstallNotice("");
     }
@@ -705,7 +831,9 @@ export function ProjectProviderSection({
     } else if (next.provider) {
       setDetectionNotice("");
     } else if (raw.includes("://") || /^[^/]+\.[^/]+\//.test(raw)) {
-      setDetectionNotice("Could not detect provider — choose GitHub, GitLab, or Linear below.");
+      setDetectionNotice(
+        "Could not detect provider — choose GitHub, GitLab, or Linear below.",
+      );
     } else {
       setDetectionNotice("");
     }
@@ -713,7 +841,9 @@ export function ProjectProviderSection({
 
   return (
     <div className={styles.formSection}>
-      <h3 className={styles.sectionTitle}>{isCreate ? "Issue repository" : "Issue provider"}</h3>
+      <h3 className={styles.sectionTitle}>
+        {isCreate ? "Issue repository" : "Issue provider"}
+      </h3>
       <p className={styles.formHint}>
         {isCreate
           ? "Paste a GitHub repository, GitLab project, or Linear team/project URL — we'll detect the provider and target automatically."
@@ -736,13 +866,16 @@ export function ProjectProviderSection({
             onBlur={handleRepositoryInputBlur}
             hint="GitHub: repository URL · GitLab: project URL · Linear: team or project URL"
           />
-          {detectionNotice && <p className={styles.formHint}>{detectionNotice}</p>}
+          {detectionNotice && (
+            <p className={styles.formHint}>{detectionNotice}</p>
+          )}
         </>
       )}
 
       {isCreate && !providerSelected && (
         <p className={styles.formHint}>
-          Paste a repository, project, or team URL above to auto-detect, or choose a provider below.
+          Paste a repository, project, or team URL above to auto-detect, or
+          choose a provider below.
         </p>
       )}
 
@@ -780,7 +913,9 @@ export function ProjectProviderSection({
             label="Hosting"
             value={values.providerHosting}
             onChange={(hosting) =>
-              patchForm(applyProviderHosting(values, hosting as ProviderHosting))
+              patchForm(
+                applyProviderHosting(values, hosting as ProviderHosting),
+              )
             }
             options={GITHUB_HOSTING_OPTIONS}
           />
@@ -791,49 +926,58 @@ export function ProjectProviderSection({
               value={values.providerBaseUrl}
               error={fieldErrors?.providerBaseUrl}
               onChange={(e) =>
-                setField(onChange, onClearFieldError, "providerBaseUrl")(e.target.value)
+                setField(
+                  onChange,
+                  onClearFieldError,
+                  "providerBaseUrl",
+                )(e.target.value)
               }
               hint="Root URL of your GitHub Enterprise Server, not the API endpoint."
             />
           )}
 
           {!isCreate || !values.providerProjectId.trim() ? (
-          <Input
-            label="Repository"
-            value={values.providerProjectId}
-            error={fieldErrors?.providerProjectId}
-            onChange={(e) =>
-              setField(onChange, onClearFieldError, "providerProjectId")(e.target.value)
-            }
-            onBlur={(e) => {
-              const raw = e.target.value.trim();
-              if (!raw) return;
-              try {
-                const normalized = parseGithubRepository(raw);
-                if (normalized !== raw) {
-                  patchForm({ providerProjectId: normalized });
-                }
-              } catch {
-                // Keep raw input; validation runs on submit.
+            <Input
+              label="Repository"
+              value={values.providerProjectId}
+              error={fieldErrors?.providerProjectId}
+              onChange={(e) =>
+                setField(
+                  onChange,
+                  onClearFieldError,
+                  "providerProjectId",
+                )(e.target.value)
               }
-            }}
-            hint="Paste a GitHub repository URL or enter owner/repo (e.g. acme/support)."
-          />
+              onBlur={(e) => {
+                const raw = e.target.value.trim();
+                if (!raw) return;
+                try {
+                  const normalized = parseGithubRepository(raw);
+                  if (normalized !== raw) {
+                    patchForm({ providerProjectId: normalized });
+                  }
+                } catch {
+                  // Keep raw input; validation runs on submit.
+                }
+              }}
+              hint="Paste a GitHub repository URL or enter owner/repo (e.g. acme/support)."
+            />
           ) : null}
 
           {githubAppEnabled ? (
             <div className={styles.githubAppBlock}>
               {!githubAppConnected && (
                 <p className={styles.formHint}>
-                  Grant the ServiceBeard GitHub App access to this repository. Installation opens
-                  in a new window so you can keep working in the wizard.
+                  Grant the ServiceBeard GitHub App access to this repository.
+                  Installation opens in a new window so you can keep working in
+                  the wizard.
                 </p>
               )}
 
               {githubAppInstallPending && (
                 <p className={styles.formHint}>
-                  <Loader2 size={14} className={styles.spinIcon} /> Checking for an existing
-                  installation…
+                  <Loader2 size={14} className={styles.spinIcon} /> Checking for
+                  an existing installation…
                 </p>
               )}
 
@@ -858,10 +1002,18 @@ export function ProjectProviderSection({
                       "GitHub App connected"
                     )}
                   </span>
-                  <Button type="button" variant="secondary" onClick={startGithubAppInstall}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={startGithubAppInstall}
+                  >
                     <ExternalLink size={16} /> Reinstall
                   </Button>
-                  <Button type="button" variant="secondary" onClick={openInstallationSettings}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={openInstallationSettings}
+                  >
                     <ExternalLink size={16} /> Manage on GitHub
                   </Button>
                 </div>
@@ -885,14 +1037,16 @@ export function ProjectProviderSection({
               )}
               {!githubAppConfigured && (
                 <p className={styles.formHint}>
-                  GitHub App credentials are incomplete on the server (private key missing).
+                  GitHub App credentials are incomplete on the server (private
+                  key missing).
                 </p>
               )}
-              {!githubAppConnected && fieldErrors?.providerGithubInstallationId && (
-                <p className={[styles.alert, styles.alertError].join(" ")}>
-                  {fieldErrors.providerGithubInstallationId}
-                </p>
-              )}
+              {!githubAppConnected &&
+                fieldErrors?.providerGithubInstallationId && (
+                  <p className={[styles.alert, styles.alertError].join(" ")}>
+                    {fieldErrors.providerGithubInstallationId}
+                  </p>
+                )}
             </div>
           ) : (
             <Input
@@ -900,13 +1054,26 @@ export function ProjectProviderSection({
               type="password"
               value={values.providerToken}
               error={fieldErrors?.providerToken}
-              onChange={(e) => setField(onChange, onClearFieldError, "providerToken")(e.target.value)}
-              placeholder={mode === "edit" ? "Leave blank to keep current token" : undefined}
+              onChange={(e) =>
+                setField(
+                  onChange,
+                  onClearFieldError,
+                  "providerToken",
+                )(e.target.value)
+              }
+              placeholder={
+                mode === "edit"
+                  ? "Leave blank to keep current token"
+                  : undefined
+              }
               hint={
                 <>
-                  {mode === "edit" && "Only fill in to replace the stored token. "}
+                  {mode === "edit" &&
+                    "Only fill in to replace the stored token. "}
                   Use a dedicated bot account so issues show as ServiceBeard.{" "}
-                  <DocsLink to={DOC_PATHS.github}>How to create a GitHub token</DocsLink>
+                  <DocsLink to={DOC_PATHS.github}>
+                    How to create a GitHub token
+                  </DocsLink>
                 </>
               }
             />
@@ -921,7 +1088,9 @@ export function ProjectProviderSection({
             label="Hosting"
             value={values.providerHosting}
             onChange={(hosting) =>
-              patchForm(applyProviderHosting(values, hosting as ProviderHosting))
+              patchForm(
+                applyProviderHosting(values, hosting as ProviderHosting),
+              )
             }
             options={GITLAB_HOSTING_OPTIONS}
           />
@@ -932,28 +1101,36 @@ export function ProjectProviderSection({
               value={values.providerBaseUrl}
               error={fieldErrors?.providerBaseUrl}
               onChange={(e) =>
-                setField(onChange, onClearFieldError, "providerBaseUrl")(e.target.value)
+                setField(
+                  onChange,
+                  onClearFieldError,
+                  "providerBaseUrl",
+                )(e.target.value)
               }
               hint="Root URL of your GitLab instance, not the API endpoint."
             />
           )}
 
           {!isCreate || !values.providerProjectId.trim() ? (
-          <Input
-            label="Project"
-            value={values.providerProjectId}
-            error={fieldErrors?.providerProjectId}
-            onChange={(e) =>
-              setField(onChange, onClearFieldError, "providerProjectId")(e.target.value)
-            }
-            onBlur={(e) => {
-              const raw = e.target.value.trim();
-              if (!raw || !isCreate) return;
-              const next = applyIssueRepositoryUrl(values, raw);
-              patchForm({ providerProjectId: next.providerProjectId });
-            }}
-            hint="Paste a GitLab project URL or enter a numeric ID or group/project path."
-          />
+            <Input
+              label="Project"
+              value={values.providerProjectId}
+              error={fieldErrors?.providerProjectId}
+              onChange={(e) =>
+                setField(
+                  onChange,
+                  onClearFieldError,
+                  "providerProjectId",
+                )(e.target.value)
+              }
+              onBlur={(e) => {
+                const raw = e.target.value.trim();
+                if (!raw || !isCreate) return;
+                const next = applyIssueRepositoryUrl(values, raw);
+                patchForm({ providerProjectId: next.providerProjectId });
+              }}
+              hint="Paste a GitLab project URL or enter a numeric ID or group/project path."
+            />
           ) : null}
 
           <Input
@@ -961,11 +1138,20 @@ export function ProjectProviderSection({
             type="password"
             value={values.providerToken}
             error={fieldErrors?.providerToken}
-            onChange={(e) => setField(onChange, onClearFieldError, "providerToken")(e.target.value)}
-            placeholder={mode === "edit" ? "Leave blank to keep current token" : undefined}
+            onChange={(e) =>
+              setField(
+                onChange,
+                onClearFieldError,
+                "providerToken",
+              )(e.target.value)
+            }
+            placeholder={
+              mode === "edit" ? "Leave blank to keep current token" : undefined
+            }
             hint={
               <>
-                {mode === "edit" && "Only fill in to replace the stored token. "}
+                {mode === "edit" &&
+                  "Only fill in to replace the stored token. "}
                 Project access token recommended.{" "}
                 <DocsLink to={DOC_PATHS.gitlab}>GitLab token guide</DocsLink>
               </>
@@ -979,7 +1165,11 @@ export function ProjectProviderSection({
                 value={values.providerCaCert}
                 error={fieldErrors?.providerCaCert}
                 onChange={(e) =>
-                  setField(onChange, onClearFieldError, "providerCaCert")(e.target.value)
+                  setField(
+                    onChange,
+                    onClearFieldError,
+                    "providerCaCert",
+                  )(e.target.value)
                 }
                 placeholder={
                   mode === "edit"
@@ -1002,24 +1192,28 @@ export function ProjectProviderSection({
       {providerSelected && isLinear && (
         <>
           {!isCreate || !values.providerProjectId.trim() ? (
-          <Input
-            label="Team or project"
-            value={values.providerProjectId}
-            error={fieldErrors?.providerProjectId}
-            onChange={(e) =>
-              setField(onChange, onClearFieldError, "providerProjectId")(e.target.value)
-            }
-            onBlur={(e) => {
-              const raw = e.target.value.trim();
-              if (!raw) return;
-              try {
-                patchForm({ providerProjectId: parseLinearTeam(raw) });
-              } catch {
-                // Keep raw value for validation feedback.
+            <Input
+              label="Team or project"
+              value={values.providerProjectId}
+              error={fieldErrors?.providerProjectId}
+              onChange={(e) =>
+                setField(
+                  onChange,
+                  onClearFieldError,
+                  "providerProjectId",
+                )(e.target.value)
               }
-            }}
-            hint="Paste a Linear team or project URL, or enter a team UUID/key (e.g. ENG)."
-          />
+              onBlur={(e) => {
+                const raw = e.target.value.trim();
+                if (!raw) return;
+                try {
+                  patchForm({ providerProjectId: parseLinearTeam(raw) });
+                } catch {
+                  // Keep raw value for validation feedback.
+                }
+              }}
+              hint="Paste a Linear team or project URL, or enter a team UUID/key (e.g. ENG)."
+            />
           ) : null}
 
           <Input
@@ -1027,12 +1221,22 @@ export function ProjectProviderSection({
             type="password"
             value={values.providerToken}
             error={fieldErrors?.providerToken}
-            onChange={(e) => setField(onChange, onClearFieldError, "providerToken")(e.target.value)}
-            placeholder={mode === "edit" ? "Leave blank to keep current token" : undefined}
+            onChange={(e) =>
+              setField(
+                onChange,
+                onClearFieldError,
+                "providerToken",
+              )(e.target.value)
+            }
+            placeholder={
+              mode === "edit" ? "Leave blank to keep current token" : undefined
+            }
             hint={
               <>
-                {mode === "edit" && "Only fill in to replace the stored token. "}
-                Personal API key with Read, Create issues, Create comments, and Admin scopes.{" "}
+                {mode === "edit" &&
+                  "Only fill in to replace the stored token. "}
+                Personal API key with Read, Create issues, Create comments, and
+                Admin scopes.{" "}
                 <DocsLink to={DOC_PATHS.linear}>Permission details</DocsLink>
               </>
             }
@@ -1041,32 +1245,32 @@ export function ProjectProviderSection({
       )}
 
       {providerSelected && (
-      <div className={styles.testRow}>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={testProvider}
-          disabled={!canTest || testState === "testing"}
-        >
-          {testState === "testing" ? (
-            <>
-              <Loader2 size={16} className={styles.spinIcon} /> Testing…
-            </>
-          ) : (
-            "Test provider connection"
+        <div className={styles.testRow}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={testProvider}
+            disabled={!canTest || testState === "testing"}
+          >
+            {testState === "testing" ? (
+              <>
+                <Loader2 size={16} className={styles.spinIcon} /> Testing…
+              </>
+            ) : (
+              "Test provider connection"
+            )}
+          </Button>
+          {testState === "ok" && (
+            <span className={styles.testOk}>
+              <CheckCircle2 size={16} /> {testMessage}
+            </span>
           )}
-        </Button>
-        {testState === "ok" && (
-          <span className={styles.testOk}>
-            <CheckCircle2 size={16} /> {testMessage}
-          </span>
-        )}
-        {testState === "error" && (
-          <span className={styles.testError}>
-            <XCircle size={16} /> {testMessage}
-          </span>
-        )}
-      </div>
+          {testState === "error" && (
+            <span className={styles.testError}>
+              <XCircle size={16} /> {testMessage}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

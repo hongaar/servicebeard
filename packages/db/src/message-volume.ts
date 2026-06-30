@@ -20,17 +20,28 @@ export async function getProjectMessageVolume(
       count: sql<number>`count(*)::int`,
     })
     .from(emailMessages)
-    .where(and(eq(emailMessages.projectId, projectId), gte(emailMessages.processedAt, since)))
+    .where(
+      and(
+        eq(emailMessages.projectId, projectId),
+        gte(emailMessages.processedAt, since),
+      ),
+    )
     .groupBy(
       sql`date_trunc('day', ${emailMessages.processedAt} AT TIME ZONE 'UTC')`,
       emailMessages.direction,
     )
-    .orderBy(sql`date_trunc('day', ${emailMessages.processedAt} AT TIME ZONE 'UTC')`);
+    .orderBy(
+      sql`date_trunc('day', ${emailMessages.processedAt} AT TIME ZONE 'UTC')`,
+    );
 
   const byDate = new Map<string, MessageVolumePoint>();
 
   for (const row of rows) {
-    const point = byDate.get(row.date) ?? { date: row.date, inbound: 0, outbound: 0 };
+    const point = byDate.get(row.date) ?? {
+      date: row.date,
+      inbound: 0,
+      outbound: 0,
+    };
     if (row.direction === "inbound") {
       point.inbound = row.count;
     } else if (row.direction === "outbound") {

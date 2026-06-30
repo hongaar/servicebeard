@@ -1,9 +1,9 @@
 import {
-    firstMailboxAddress,
-    formatMailboxAddress,
-    normalizeMessageId,
-    optionalMailboxAddress,
-    resolveInboundSender,
+  firstMailboxAddress,
+  formatMailboxAddress,
+  normalizeMessageId,
+  optionalMailboxAddress,
+  resolveInboundSender,
 } from "@servicebeard/shared";
 import { buildParsedEmailContent } from "@servicebeard/shared/email-content";
 import { ImapFlow } from "imapflow";
@@ -173,12 +173,15 @@ export async function parseEmail(
   const messageId = normalizeMessageId(
     parsed.messageId ?? `generated-${Date.now()}@servicebeard.local`,
   );
-  const inReplyTo = parsed.inReplyTo ? normalizeMessageId(parsed.inReplyTo) : null;
-  const references = (Array.isArray(parsed.references)
-    ? parsed.references
-    : parsed.references
-      ? [parsed.references]
-      : []
+  const inReplyTo = parsed.inReplyTo
+    ? normalizeMessageId(parsed.inReplyTo)
+    : null;
+  const references = (
+    Array.isArray(parsed.references)
+      ? parsed.references
+      : parsed.references
+        ? [parsed.references]
+        : []
   ).map(normalizeMessageId);
 
   const from = firstMailboxAddress(parsed.from);

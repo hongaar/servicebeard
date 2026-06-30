@@ -1,18 +1,18 @@
 import {
-    decrypt,
-    emailMessages,
-    getDb,
-    issueThreads,
-    projectImapIngestedMessages,
-    projects,
+  decrypt,
+  emailMessages,
+  getDb,
+  issueThreads,
+  projectImapIngestedMessages,
+  projects,
 } from "@servicebeard/db";
 import {
-    isEligibleForInboundRuleEvaluation,
-    isEmailEligibleForInboundSync,
-    normalizeSubject,
-    renderInboundAckTemplate,
-    resolveServicebeardWebUrl,
-    type ProviderType,
+  isEligibleForInboundRuleEvaluation,
+  isEmailEligibleForInboundSync,
+  normalizeSubject,
+  renderInboundAckTemplate,
+  resolveServicebeardWebUrl,
+  type ProviderType,
 } from "@servicebeard/shared";
 import { getEntitlements } from "@servicebeard/shared/entitlements";
 import { and, count, eq, gte, inArray, lt, or } from "drizzle-orm";
@@ -20,20 +20,20 @@ import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
 import {
-    inboundAckCc,
-    inboundEmailAddresses,
-    outboundEmailAddresses,
-    quotedEmailFromParsed,
-    replyBodyWithQuote,
-    threadingForParent,
+  inboundAckCc,
+  inboundEmailAddresses,
+  outboundEmailAddresses,
+  quotedEmailFromParsed,
+  replyBodyWithQuote,
+  threadingForParent,
 } from "./email-thread";
 import { fetchInboxMessagesSince, markMessageSeen, parseEmail } from "./mail";
 import { createProjectProvider } from "./provider";
 import {
-    evaluateRules,
-    formatCommentBody,
-    formatIssueDescription,
-    type ParsedEmail,
+  evaluateRules,
+  formatCommentBody,
+  formatIssueDescription,
+  type ParsedEmail,
 } from "./rules";
 import { sendEmail } from "./smtp";
 
@@ -50,7 +50,9 @@ export function computeImapPollSince(
   if (!imapIngestedThrough) {
     return new Date(floor);
   }
-  return new Date(Math.max(floor, imapIngestedThrough.getTime() - IMAP_POLL_OVERLAP_MS));
+  return new Date(
+    Math.max(floor, imapIngestedThrough.getTime() - IMAP_POLL_OVERLAP_MS),
+  );
 }
 
 export function advanceImapIngestedThrough(
@@ -59,7 +61,9 @@ export function advanceImapIngestedThrough(
 ): Date | null {
   if (!scannedThrough) return current;
   if (!current) return scannedThrough;
-  return scannedThrough.getTime() > current.getTime() ? scannedThrough : current;
+  return scannedThrough.getTime() > current.getTime()
+    ? scannedThrough
+    : current;
 }
 
 export async function loadIngestedMessageIds(
@@ -114,7 +118,10 @@ export async function processImapPoll(projectId: string): Promise<void> {
     imapPassword: decrypt(project.imapPasswordEncrypted),
   };
 
-  const pollSince = computeImapPollSince(project.createdAt, project.imapIngestedThrough);
+  const pollSince = computeImapPollSince(
+    project.createdAt,
+    project.imapIngestedThrough,
+  );
   const ingestedMessageIds = await loadIngestedMessageIds(projectId, pollSince);
 
   let fetchResult;
@@ -244,7 +251,10 @@ export async function processInboundEmail(
       .set({ lastSeenNoteAt: result.createdAt, updatedAt: new Date() })
       .where(eq(issueThreads.id, thread.id));
 
-    logger.info({ threadId: thread.id, messageId: email.messageId }, "added comment to existing thread");
+    logger.info(
+      { threadId: thread.id, messageId: email.messageId },
+      "added comment to existing thread",
+    );
     return;
   }
 
@@ -254,7 +264,10 @@ export async function processInboundEmail(
       projectCreatedAt: project.createdAt,
     })
   ) {
-    logger.info({ messageId: email.messageId }, "skipping mail ineligible for new issue rules");
+    logger.info(
+      { messageId: email.messageId },
+      "skipping mail ineligible for new issue rules",
+    );
     return;
   }
 
@@ -267,11 +280,16 @@ export async function processInboundEmail(
   );
 
   if (!matched || !rule?.actionCreateIssue) {
-    logger.info({ messageId: email.messageId }, "no matching rule or create disabled");
+    logger.info(
+      { messageId: email.messageId },
+      "no matching rule or create disabled",
+    );
     return;
   }
 
-  const billingPeriod = await getEntitlements().getBillingPeriod?.(project.teamId);
+  const billingPeriod = await getEntitlements().getBillingPeriod?.(
+    project.teamId,
+  );
   const periodStart =
     billingPeriod?.start ??
     (() => {
@@ -293,7 +311,10 @@ export async function processInboundEmail(
       ),
     );
   try {
-    await getEntitlements().assertCanCreateConversation?.(project.teamId, conversationsThisMonth);
+    await getEntitlements().assertCanCreateConversation?.(
+      project.teamId,
+      conversationsThisMonth,
+    );
   } catch (err) {
     if (err instanceof Error && err.message === "CONVERSATION_LIMIT_REACHED") {
       logger.info(

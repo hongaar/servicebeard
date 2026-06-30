@@ -1,4 +1,7 @@
-import type { TeamEntitlementUsage, TeamListingMeta } from "@servicebeard/shared/entitlements";
+import type {
+  TeamEntitlementUsage,
+  TeamListingMeta,
+} from "@servicebeard/shared/entitlements";
 import type { Project, ProjectStatusEvent, Rule, Thread } from "./api";
 import type { ProjectSection } from "./navigation";
 

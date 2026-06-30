@@ -13,5 +13,11 @@ export function HomePage() {
     return null;
   }
 
-  return <DashboardPage user={data.user} teams={data.teams} pendingInvites={data.pendingInvites} />;
+  return (
+    <DashboardPage
+      user={data.user}
+      teams={data.teams}
+      pendingInvites={data.pendingInvites}
+    />
+  );
 }

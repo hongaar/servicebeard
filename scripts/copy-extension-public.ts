@@ -1,9 +1,14 @@
 #!/usr/bin/env bun
-import { copyExtensionPublicAssets, loadExtensionManifest } from "@servicebeard/shared/extensions";
+import {
+  copyExtensionPublicAssets,
+  loadExtensionManifest,
+} from "@servicebeard/shared/extensions";
 
 const targetDir = process.argv[2];
 if (!targetDir) {
-  console.error("Usage: bun run scripts/copy-extension-public.ts <web-public-dir>");
+  console.error(
+    "Usage: bun run scripts/copy-extension-public.ts <web-public-dir>",
+  );
   process.exit(1);
 }
 
@@ -19,4 +24,6 @@ if (!result.copied) {
   process.exit(0);
 }
 
-console.log(`Copied extension public assets from ${result.source} to ${targetDir}`);
+console.log(
+  `Copied extension public assets from ${result.source} to ${targetDir}`,
+);

@@ -9,7 +9,13 @@ interface FieldProps {
   children: React.ReactNode;
 }
 
-export function Field({ label, error, hint, labelAction, children }: FieldProps) {
+export function Field({
+  label,
+  error,
+  hint,
+  labelAction,
+  children,
+}: FieldProps) {
   return (
     <div className={styles.field}>
       <div className={styles.labelRow}>
@@ -34,7 +40,10 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export function Input({ label, error, hint, className, ...props }: InputProps) {
   return (
     <Field label={label} error={error} hint={hint}>
-      <input className={[styles.input, className].filter(Boolean).join(" ")} {...props} />
+      <input
+        className={[styles.input, className].filter(Boolean).join(" ")}
+        {...props}
+      />
     </Field>
   );
 }
@@ -46,7 +55,14 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   labelAction?: React.ReactNode;
 }
 
-export function Textarea({ label, error, hint, labelAction, className, ...props }: TextareaProps) {
+export function Textarea({
+  label,
+  error,
+  hint,
+  labelAction,
+  className,
+  ...props
+}: TextareaProps) {
   return (
     <Field label={label} error={error} hint={hint} labelAction={labelAction}>
       <textarea
@@ -64,10 +80,20 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   options: Array<{ value: string; label: string }>;
 }
 
-export function Select({ label, error, hint, options, className, ...props }: SelectProps) {
+export function Select({
+  label,
+  error,
+  hint,
+  options,
+  className,
+  ...props
+}: SelectProps) {
   return (
     <Field label={label} error={error} hint={hint}>
-      <select className={[styles.select, className].filter(Boolean).join(" ")} {...props}>
+      <select
+        className={[styles.select, className].filter(Boolean).join(" ")}
+        {...props}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

@@ -30,7 +30,10 @@ function gitlabWebhookPayload(externalIssueId: string) {
   };
 }
 
-async function waitForSendEmailJob(projectId: string, timeoutMs = 30_000): Promise<boolean> {
+async function waitForSendEmailJob(
+  projectId: string,
+  timeoutMs = 30_000,
+): Promise<boolean> {
   const { db } = createDb();
   const deadline = Date.now() + timeoutMs;
 
@@ -61,14 +64,17 @@ describe("Worker and database pipeline integration", () => {
     const payload = gitlabWebhookPayload(seed.threads.threadA.externalIssueId);
     const body = JSON.stringify(payload);
 
-    const response = await apiFetch(`/webhooks/gitlab/${seed.projects.projectA.id}`, {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gitlab-Token": seed.projects.projectA.webhookSecret,
+    const response = await apiFetch(
+      `/webhooks/gitlab/${seed.projects.projectA.id}`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gitlab-Token": seed.projects.projectA.webhookSecret,
+        },
       },
-    });
+    );
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
@@ -82,14 +88,17 @@ describe("Worker and database pipeline integration", () => {
     const payload = gitlabWebhookPayload(seed.threads.threadB.externalIssueId);
     const body = JSON.stringify(payload);
 
-    const response = await apiFetch(`/webhooks/gitlab/${seed.projects.projectB.id}`, {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gitlab-Token": seed.projects.projectB.webhookSecret,
+    const response = await apiFetch(
+      `/webhooks/gitlab/${seed.projects.projectB.id}`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gitlab-Token": seed.projects.projectB.webhookSecret,
+        },
       },
-    });
+    );
 
     expect(response.status).toBe(200);
 

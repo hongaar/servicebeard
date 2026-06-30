@@ -1,10 +1,5 @@
 export type SeedUserKey =
-  | "ownerA"
-  | "adminA"
-  | "memberA"
-  | "ownerB"
-  | "outsider"
-  | "platformAdmin";
+  "ownerA" | "adminA" | "memberA" | "ownerB" | "outsider" | "platformAdmin";
 
 export interface SeedUserRef {
   id: string;

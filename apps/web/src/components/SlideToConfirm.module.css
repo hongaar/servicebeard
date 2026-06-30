@@ -35,7 +35,11 @@
 
 .trackUnlocked {
   border-color: var(--color-danger);
-  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg-subtle));
+  background: color-mix(
+    in srgb,
+    var(--color-danger) 10%,
+    var(--color-bg-subtle)
+  );
 }
 
 .fill {
@@ -73,7 +77,8 @@
 
 .trackCueOnFill {
   color: #fff;
-  text-shadow: 0 1px 2px color-mix(in srgb, var(--color-danger) 50%, transparent);
+  text-shadow: 0 1px 2px
+    color-mix(in srgb, var(--color-danger) 50%, transparent);
 }
 
 .thumb {

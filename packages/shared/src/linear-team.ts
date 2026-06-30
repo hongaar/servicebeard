@@ -55,7 +55,12 @@ export function parseLinearTeam(input: string): string {
       const slug = decodeURIComponent(projectPathMatch[1]);
       const segments = parsed.pathname.split("/").filter(Boolean);
       const workspace = segments[0];
-      if (workspace && workspace !== "project" && workspace !== "issue" && workspace !== "team") {
+      if (
+        workspace &&
+        workspace !== "project" &&
+        workspace !== "issue" &&
+        workspace !== "team"
+      ) {
         return `${LINEAR_PROJECT_PREFIX}${workspace}/${slug}`;
       }
       return `${LINEAR_PROJECT_PREFIX}${slug}`;
@@ -90,7 +95,9 @@ export function parseLinearTeam(input: string): string {
   );
 }
 
-export function parseLinearIssueNumberFromUrl(url: string | undefined): number | null {
+export function parseLinearIssueNumberFromUrl(
+  url: string | undefined,
+): number | null {
   if (!url) return null;
   const match = url.match(/\/issue\/[A-Za-z0-9]+-(\d+)/);
   if (!match?.[1]) return null;

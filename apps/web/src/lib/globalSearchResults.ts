@@ -2,7 +2,9 @@ import { extensionGlobalSearchGroupOrder } from "@extensions";
 import type { GlobalSearchResponse } from "../lib/api";
 import type { GlobalSearchResultItem } from "./globalSearch";
 
-export function apiResultsToItems(data: GlobalSearchResponse): GlobalSearchResultItem[] {
+export function apiResultsToItems(
+  data: GlobalSearchResponse,
+): GlobalSearchResultItem[] {
   const items: GlobalSearchResultItem[] = [];
 
   for (const team of data.teams) {
@@ -26,7 +28,11 @@ export function apiResultsToItems(data: GlobalSearchResponse): GlobalSearchResul
       icon: "project",
       kind: "navigate",
       to: "/teams/$teamId/projects/$projectId/$section",
-      params: { teamId: project.teamId, projectId: project.id, section: "overview" },
+      params: {
+        teamId: project.teamId,
+        projectId: project.id,
+        section: "overview",
+      },
     });
   }
 
@@ -106,7 +112,9 @@ function buildGroupOrder(): string[] {
   ];
 }
 
-export function groupSearchResults(items: GlobalSearchResultItem[]): SearchResultGroup[] {
+export function groupSearchResults(
+  items: GlobalSearchResultItem[],
+): SearchResultGroup[] {
   const byGroup = new Map<string, GlobalSearchResultItem[]>();
 
   for (const item of items) {

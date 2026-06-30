@@ -1,11 +1,14 @@
-import { isGithubAppConfigured, isGithubAppEnabled } from "@servicebeard/providers";
+import {
+  isGithubAppConfigured,
+  isGithubAppEnabled,
+} from "@servicebeard/providers";
 import { Hono } from "hono";
 import { deleteCookie, getCookie } from "hono/cookie";
 import {
-    decodeGithubAppInstallCookie,
-    GITHUB_APP_INSTALL_COMPLETE_PATH,
-    GITHUB_APP_INSTALL_COOKIE,
-    webAppRedirect,
+  decodeGithubAppInstallCookie,
+  GITHUB_APP_INSTALL_COMPLETE_PATH,
+  GITHUB_APP_INSTALL_COOKIE,
+  webAppRedirect,
 } from "../lib/github-app-install";
 
 const githubAppRoutes = new Hono();
@@ -25,14 +28,18 @@ githubAppRoutes.get("/setup", (c) => {
 
     if (!installationId || !state || !cookie) {
       return c.redirect(
-        webAppRedirect(`${GITHUB_APP_INSTALL_COMPLETE_PATH}?githubAppError=invalid_callback`),
+        webAppRedirect(
+          `${GITHUB_APP_INSTALL_COMPLETE_PATH}?githubAppError=invalid_callback`,
+        ),
       );
     }
 
     const payload = decodeGithubAppInstallCookie(cookie);
     if (!payload || payload.state !== state) {
       return c.redirect(
-        webAppRedirect(`${GITHUB_APP_INSTALL_COMPLETE_PATH}?githubAppError=state_mismatch`),
+        webAppRedirect(
+          `${GITHUB_APP_INSTALL_COMPLETE_PATH}?githubAppError=state_mismatch`,
+        ),
       );
     }
 
@@ -54,7 +61,9 @@ githubAppRoutes.get("/setup", (c) => {
     );
   } catch {
     return c.redirect(
-      webAppRedirect(`${GITHUB_APP_INSTALL_COMPLETE_PATH}?githubAppError=invalid_callback`),
+      webAppRedirect(
+        `${GITHUB_APP_INSTALL_COMPLETE_PATH}?githubAppError=invalid_callback`,
+      ),
     );
   }
 });

@@ -1,15 +1,21 @@
 import { useNavigate } from "@tanstack/react-router";
 import { CircleHelp, Loader2, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MIN_QUERY_LENGTH, useGlobalSearchQuery } from "../hooks/useGlobalSearch";
 import {
-    buildSearchActions,
-    filterSearchActions,
-    searchActionsToItems,
-    type GlobalSearchContext,
-    type GlobalSearchResultItem,
+  MIN_QUERY_LENGTH,
+  useGlobalSearchQuery,
+} from "../hooks/useGlobalSearch";
+import {
+  buildSearchActions,
+  filterSearchActions,
+  searchActionsToItems,
+  type GlobalSearchContext,
+  type GlobalSearchResultItem,
 } from "../lib/globalSearch";
-import { apiResultsToItems, groupSearchResults } from "../lib/globalSearchResults";
+import {
+  apiResultsToItems,
+  groupSearchResults,
+} from "../lib/globalSearchResults";
 import { iconMd, iconSm } from "../lib/icons";
 import { NAV_ICONS, type NavIconKey } from "../lib/navigation";
 import styles from "./GlobalSearch.module.css";
@@ -19,7 +25,10 @@ interface GlobalSearchProps {
 }
 
 function isMacPlatform() {
-  return typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  return (
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+  );
 }
 
 function ResultIcon({ icon }: { icon?: NavIconKey }) {
@@ -53,7 +62,10 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
     [actionItems, resourceItems],
   );
 
-  const flatItems = useMemo(() => groups.flatMap((group) => group.items), [groups]);
+  const flatItems = useMemo(
+    () => groups.flatMap((group) => group.items),
+    [groups],
+  );
 
   const selectItem = useCallback(
     (item: GlobalSearchResultItem) => {
@@ -105,7 +117,9 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
         setSelectedIndex((index) => (index + 1) % flatItems.length);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
-        setSelectedIndex((index) => (index - 1 + flatItems.length) % flatItems.length);
+        setSelectedIndex(
+          (index) => (index - 1 + flatItems.length) % flatItems.length,
+        );
       } else if (event.key === "Enter") {
         event.preventDefault();
         const item = flatItems[selectedIndex];
@@ -119,7 +133,9 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
 
   useEffect(() => {
     if (!listRef.current) return;
-    const active = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
+    const active = listRef.current.querySelector(
+      `[data-index="${selectedIndex}"]`,
+    );
     if (active instanceof HTMLElement) {
       active.scrollIntoView({ block: "nearest" });
     }
@@ -142,7 +158,11 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
       </button>
 
       {open && (
-        <div className={styles.overlay} role="presentation" onClick={() => setOpen(false)}>
+        <div
+          className={styles.overlay}
+          role="presentation"
+          onClick={() => setOpen(false)}
+        >
           <div
             className={styles.palette}
             role="dialog"
@@ -162,7 +182,9 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
                 autoComplete="off"
                 spellCheck={false}
               />
-              {showLoading && <Loader2 {...iconSm} className={styles.spinner} />}
+              {showLoading && (
+                <Loader2 {...iconSm} className={styles.spinner} />
+              )}
             </div>
 
             <div className={styles.results} ref={listRef}>
@@ -186,7 +208,10 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
                         <li key={item.id}>
                           <button
                             type="button"
-                            className={[styles.result, active ? styles.resultActive : ""]
+                            className={[
+                              styles.result,
+                              active ? styles.resultActive : "",
+                            ]
                               .filter(Boolean)
                               .join(" ")}
                             data-index={index}
@@ -195,9 +220,13 @@ export function GlobalSearch({ context }: GlobalSearchProps) {
                           >
                             <ResultIcon icon={item.icon} />
                             <span className={styles.resultText}>
-                              <span className={styles.resultLabel}>{item.label}</span>
+                              <span className={styles.resultLabel}>
+                                {item.label}
+                              </span>
                               {item.description && (
-                                <span className={styles.resultDescription}>{item.description}</span>
+                                <span className={styles.resultDescription}>
+                                  {item.description}
+                                </span>
                               )}
                             </span>
                           </button>

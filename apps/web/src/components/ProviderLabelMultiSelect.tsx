@@ -92,7 +92,11 @@ export function ProviderLabelMultiSelect({
 
         {open && options.length > 0 && (
           <div
-            className={[popoverStyles.menu, popoverStyles.menuLeft, styles.menu].join(" ")}
+            className={[
+              popoverStyles.menu,
+              popoverStyles.menuLeft,
+              styles.menu,
+            ].join(" ")}
             role="listbox"
             aria-multiselectable="true"
             aria-label={label}

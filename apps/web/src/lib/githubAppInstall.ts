@@ -16,7 +16,9 @@ export function openGithubAppInstallPopup(url: string): Window | null {
   );
 }
 
-export function isGithubAppInstallMessage(data: unknown): data is GithubAppInstallMessage {
+export function isGithubAppInstallMessage(
+  data: unknown,
+): data is GithubAppInstallMessage {
   return (
     typeof data === "object" &&
     data !== null &&

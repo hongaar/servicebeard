@@ -10,7 +10,9 @@ function readGlobalCaBundle(): string | undefined {
   return readFileSync(resolved, "utf8");
 }
 
-export function buildTlsOptions(config: ProviderConfig): Record<string, unknown> | undefined {
+export function buildTlsOptions(
+  config: ProviderConfig,
+): Record<string, unknown> | undefined {
   const tls: Record<string, unknown> = {};
 
   if (config.tlsInsecure) {

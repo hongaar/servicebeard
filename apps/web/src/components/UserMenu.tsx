@@ -55,7 +55,11 @@ export function UserMenu({ user }: UserMenuProps) {
 
       {open && (
         <div
-          className={[popoverStyles.menu, popoverStyles.menuRight, styles.menu].join(" ")}
+          className={[
+            popoverStyles.menu,
+            popoverStyles.menuRight,
+            styles.menu,
+          ].join(" ")}
           role="menu"
         >
           <div className={styles.menuHeader}>
@@ -70,7 +74,12 @@ export function UserMenu({ user }: UserMenuProps) {
           <div className={styles.menuActions}>
             <Link
               to="/account"
-              className={[btn.button, btn.ghost, btn.small, styles.menuAction].join(" ")}
+              className={[
+                btn.button,
+                btn.ghost,
+                btn.small,
+                styles.menuAction,
+              ].join(" ")}
               role="menuitem"
               onClick={close}
             >
@@ -79,7 +88,12 @@ export function UserMenu({ user }: UserMenuProps) {
             </Link>
             <DocsLink
               to={DOC_PATHS.index}
-              className={[btn.button, btn.ghost, btn.small, styles.menuAction].join(" ")}
+              className={[
+                btn.button,
+                btn.ghost,
+                btn.small,
+                styles.menuAction,
+              ].join(" ")}
               role="menuitem"
               iconSize={14}
               onClick={close}
@@ -87,7 +101,12 @@ export function UserMenu({ user }: UserMenuProps) {
               <CircleHelp {...iconSm} />
               Help
             </DocsLink>
-            <Button variant="ghost" size="small" onClick={handleLogout} className={styles.menuAction}>
+            <Button
+              variant="ghost"
+              size="small"
+              onClick={handleLogout}
+              className={styles.menuAction}
+            >
               <LogOut {...iconSm} />
               Sign out
             </Button>

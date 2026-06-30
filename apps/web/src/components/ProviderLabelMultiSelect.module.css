@@ -67,7 +67,9 @@
   white-space: nowrap;
   background: var(--label-bg, var(--color-border));
   color: var(--label-fg, var(--color-text));
-  transition: filter var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    filter var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .tagDisplay {
@@ -124,5 +126,7 @@
 }
 
 .option:focus-within .tag {
-  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-primary);
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 3.5px var(--color-primary);
 }

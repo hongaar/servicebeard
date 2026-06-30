@@ -9,7 +9,9 @@ const INTERNAL_MARKER_END = /\s*\[internal\]$/i;
 export function isServicebeardInternalContent(body: string): boolean {
   const trimmed = body.trim();
   if (!trimmed) return false;
-  return INTERNAL_MARKER_START.test(trimmed) || INTERNAL_MARKER_END.test(trimmed);
+  return (
+    INTERNAL_MARKER_START.test(trimmed) || INTERNAL_MARKER_END.test(trimmed)
+  );
 }
 
 export interface IssueSupportDetailsOptions {

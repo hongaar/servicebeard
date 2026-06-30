@@ -1,13 +1,13 @@
 import {
-    INBOUND_ACK_TEMPLATE_VARIABLES,
-    INBOUND_COMMENT_TEMPLATE_VARIABLES,
-    INBOUND_ISSUE_TEMPLATE_VARIABLES,
-    OUTBOUND_COMMENT_TEMPLATE_VARIABLES,
+  INBOUND_ACK_TEMPLATE_VARIABLES,
+  INBOUND_COMMENT_TEMPLATE_VARIABLES,
+  INBOUND_ISSUE_TEMPLATE_VARIABLES,
+  OUTBOUND_COMMENT_TEMPLATE_VARIABLES,
 } from "@servicebeard/shared";
 import {
-    TEMPLATE_DEFAULTS,
-    type ProjectTemplatesFormValues,
-    type TemplateField,
+  TEMPLATE_DEFAULTS,
+  type ProjectTemplatesFormValues,
+  type TemplateField,
 } from "../lib/projectTemplatesForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
@@ -15,7 +15,10 @@ import { Checkbox, Textarea } from "./Input";
 
 interface ProjectTemplatesFormProps {
   values: ProjectTemplatesFormValues;
-  onChange: (field: keyof ProjectTemplatesFormValues, value: string | boolean) => void;
+  onChange: (
+    field: keyof ProjectTemplatesFormValues,
+    value: string | boolean,
+  ) => void;
   onSubmit: () => void;
   submitLabel: string;
   isPending?: boolean;
@@ -99,7 +102,10 @@ export function ProjectTemplatesForm({
   fieldErrors,
   onClearFieldError,
 }: ProjectTemplatesFormProps) {
-  const handleChange = (field: keyof ProjectTemplatesFormValues, value: string | boolean) => {
+  const handleChange = (
+    field: keyof ProjectTemplatesFormValues,
+    value: string | boolean,
+  ) => {
     onChange(field, value);
     onClearFieldError?.(field);
   };
@@ -146,7 +152,8 @@ export function ProjectTemplatesForm({
       <div className={styles.formSection}>
         <h3 className={styles.sectionTitle}>Comment reply emails</h3>
         <p className={styles.templateSectionLead}>
-          Sent to the customer when your team posts a public comment on the linked issue.
+          Sent to the customer when your team posts a public comment on the
+          linked issue.
         </p>
         <Checkbox
           label="CC support mailbox"
@@ -168,8 +175,8 @@ export function ProjectTemplatesForm({
       <div className={styles.formSection}>
         <h3 className={styles.sectionTitle}>Issue tracker templates</h3>
         <p className={styles.templateSectionLead}>
-          Controls how customer emails appear as issues and comments in your tracker. ServiceBeard
-          appends sync metadata automatically.
+          Controls how customer emails appear as issues and comments in your
+          tracker. ServiceBeard appends sync metadata automatically.
         </p>
         <TemplateTextarea
           field="inboundIssueTemplate"

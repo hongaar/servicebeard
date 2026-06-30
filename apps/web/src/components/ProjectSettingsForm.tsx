@@ -2,16 +2,19 @@ import type { ProjectSettingsFormValues } from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
 import {
-    ProjectEditOptionsSection,
-    ProjectMailSection,
-    ProjectNameSection,
-    ProjectProviderSection,
+  ProjectEditOptionsSection,
+  ProjectMailSection,
+  ProjectNameSection,
+  ProjectProviderSection,
 } from "./ProjectFormSections";
 
 interface ProjectSettingsFormProps {
   mode: "create" | "edit";
   values: ProjectSettingsFormValues;
-  onChange: (field: keyof ProjectSettingsFormValues, value: string | number | boolean) => void;
+  onChange: (
+    field: keyof ProjectSettingsFormValues,
+    value: string | number | boolean,
+  ) => void;
   onSubmit: () => void;
   onCancel?: () => void;
   submitLabel: string;
@@ -83,7 +86,12 @@ export function ProjectSettingsForm({
           {submitLabel}
         </Button>
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            disabled={isPending}
+          >
             Cancel
           </Button>
         )}

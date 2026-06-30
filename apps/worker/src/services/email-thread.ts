@@ -1,12 +1,12 @@
 import type { emailMessages, issueThreads, projects } from "@servicebeard/db";
 import {
-    buildReferencesChain,
-    formatMailboxAddress,
-    formatQuotedReply,
-    normalizeMessageId,
-    parseMailFromAddress,
-    supportMailboxCc,
-    type QuotedEmail,
+  buildReferencesChain,
+  formatMailboxAddress,
+  formatQuotedReply,
+  normalizeMessageId,
+  parseMailFromAddress,
+  supportMailboxCc,
+  type QuotedEmail,
 } from "@servicebeard/shared";
 import type { ParsedEmail } from "./rules";
 
@@ -59,7 +59,10 @@ export function quotedEmailFromStored(
   };
 }
 
-export function threadingForParent(parentMessageId: string, parentReferences: string[]) {
+export function threadingForParent(
+  parentMessageId: string,
+  parentReferences: string[],
+) {
   const inReplyTo = normalizeMessageId(parentMessageId);
   const references = buildReferencesChain(parentReferences, parentMessageId);
   return { inReplyTo, references };

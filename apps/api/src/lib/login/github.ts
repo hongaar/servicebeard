@@ -65,7 +65,9 @@ async function fetchGithubPrimaryEmail(accessToken: string) {
   }>;
 
   const primary = emails.find((entry) => entry.primary && entry.verified);
-  return primary?.email ?? emails.find((entry) => entry.verified)?.email ?? null;
+  return (
+    primary?.email ?? emails.find((entry) => entry.verified)?.email ?? null
+  );
 }
 
 export class GithubLoginAdapter implements RedirectLoginAdapter {
@@ -108,7 +110,8 @@ export class GithubLoginAdapter implements RedirectLoginAdapter {
 
     const profile = await fetchGithubUser(access_token);
     const email =
-      profile.email ?? (await fetchGithubPrimaryEmail(access_token)) ??
+      profile.email ??
+      (await fetchGithubPrimaryEmail(access_token)) ??
       `${profile.login}@users.noreply.github.com`;
 
     return {

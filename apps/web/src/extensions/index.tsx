@@ -2,7 +2,10 @@ import type { AnyRoute } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import type { EntitlementRequiredError } from "../lib/api";
-import type { GlobalSearchAction, GlobalSearchContext } from "../lib/globalSearch";
+import type {
+  GlobalSearchAction,
+  GlobalSearchContext,
+} from "../lib/globalSearch";
 import type { LimitReachedDialogProps } from "../lib/limitDialog";
 import type { NavIconKey } from "../lib/navigation";
 
@@ -40,21 +43,25 @@ export const ExtensionLanding: ComponentType | undefined = undefined;
 
 export const ExtensionDocsPublicHeader: ComponentType | undefined = undefined;
 
-export const LimitReachedDialog: ComponentType<LimitReachedDialogProps> | undefined = undefined;
+export const LimitReachedDialog:
+  ComponentType<LimitReachedDialogProps> | undefined = undefined;
 
-export type { LimitReachedDialogProps, LimitResource } from "../lib/limitDialog";
+export type {
+  LimitReachedDialogProps,
+  LimitResource,
+} from "../lib/limitDialog";
 
 export {
-    extensionCreateTeamDialogHint,
-    extensionDashboardTeamsDescription,
-    extensionProjectsEmptyAction,
-    extensionProjectsEmptyHint,
-    extensionProjectsSectionDescription,
-    extensionTeamCardBadge
+  extensionCreateTeamDialogHint,
+  extensionDashboardTeamsDescription,
+  extensionProjectsEmptyAction,
+  extensionProjectsEmptyHint,
+  extensionProjectsSectionDescription,
+  extensionTeamCardBadge,
 } from "./ui";
 export type {
-    ExtensionCreateTeamContext,
-    ExtensionProjectsPageContext
+  ExtensionCreateTeamContext,
+  ExtensionProjectsPageContext,
 } from "./ui";
 
 export function extensionTeamNavItems(_teamId: string): ExtensionTeamNavItem[] {

@@ -1,12 +1,12 @@
 import { and, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { getDb } from "./index";
 import {
-    issueThreads,
-    projectStatusEvents,
-    projects,
-    teamMembers,
-    teams,
-    users,
+  issueThreads,
+  projectStatusEvents,
+  projects,
+  teamMembers,
+  teams,
+  users,
 } from "./schema";
 
 const MIN_QUERY_LENGTH = 2;

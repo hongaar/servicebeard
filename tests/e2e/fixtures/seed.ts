@@ -1,29 +1,29 @@
 import {
-    closeDb,
-    createDb,
-    emailMessages,
-    encrypt,
-    generateWebhookSecret,
-    issueThreads,
-    projects,
-    rules,
-    teamMembers,
-    teams,
-    userAuthProviders,
-    users,
+  closeDb,
+  createDb,
+  emailMessages,
+  encrypt,
+  generateWebhookSecret,
+  issueThreads,
+  projects,
+  rules,
+  teamMembers,
+  teams,
+  userAuthProviders,
+  users,
 } from "@servicebeard/db";
 import { and, eq } from "drizzle-orm";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import {
-    E2E_PASSWORD,
-    E2E_PROJECTS,
-    E2E_RULES,
-    E2E_TEAMS,
-    E2E_THREAD,
-    E2E_USERS,
-    localExternalSub,
-    SEED_DATA_PATH,
+  E2E_PASSWORD,
+  E2E_PROJECTS,
+  E2E_RULES,
+  E2E_TEAMS,
+  E2E_THREAD,
+  E2E_USERS,
+  localExternalSub,
+  SEED_DATA_PATH,
 } from "./constants";
 import type { SeedData, SeedUserKey } from "./types";
 
@@ -99,7 +99,10 @@ async function ensureTeam(name: string, slug: string) {
     where: eq(teams.slug, slug),
   });
   if (existing) {
-    await db.update(teams).set({ name, updatedAt: new Date() }).where(eq(teams.id, existing.id));
+    await db
+      .update(teams)
+      .set({ name, updatedAt: new Date() })
+      .where(eq(teams.id, existing.id));
     return existing;
   }
   const [created] = await db.insert(teams).values({ name, slug }).returning();
@@ -260,15 +263,30 @@ export async function seedE2EData(): Promise<SeedData> {
   const webhookSecretB = generateWebhookSecret();
 
   const seededUsers = {
-    ownerA: await ensureUser("ownerA", E2E_USERS.ownerA.email, E2E_USERS.ownerA.name, false),
-    adminA: await ensureUser("adminA", E2E_USERS.adminA.email, E2E_USERS.adminA.name, false),
+    ownerA: await ensureUser(
+      "ownerA",
+      E2E_USERS.ownerA.email,
+      E2E_USERS.ownerA.name,
+      false,
+    ),
+    adminA: await ensureUser(
+      "adminA",
+      E2E_USERS.adminA.email,
+      E2E_USERS.adminA.name,
+      false,
+    ),
     memberA: await ensureUser(
       "memberA",
       E2E_USERS.memberA.email,
       E2E_USERS.memberA.name,
       false,
     ),
-    ownerB: await ensureUser("ownerB", E2E_USERS.ownerB.email, E2E_USERS.ownerB.name, false),
+    ownerB: await ensureUser(
+      "ownerB",
+      E2E_USERS.ownerB.email,
+      E2E_USERS.ownerB.name,
+      false,
+    ),
     outsider: await ensureUser(
       "outsider",
       E2E_USERS.outsider.email,

@@ -1,8 +1,8 @@
 export type {
-    EntitlementsProvider,
-    TeamAccessContext,
-    TeamEntitlementUsage,
-    TeamListingMeta
+  EntitlementsProvider,
+  TeamAccessContext,
+  TeamEntitlementUsage,
+  TeamListingMeta,
 } from "../entitlements";
 
 export interface ExtensionApp {
@@ -24,7 +24,11 @@ export interface ExtensionContext {
     minRole?: "member" | "admin" | "owner",
   ): Promise<{ userId: string; role: string }>;
   /** Platform admin gate (users.is_admin). Provided by the host API. */
-  requirePlatformAdmin(c: unknown): { id: string; email: string; isAdmin: boolean };
+  requirePlatformAdmin(c: unknown): {
+    id: string;
+    email: string;
+    isAdmin: boolean;
+  };
 }
 
 export interface ExtensionModule {
@@ -33,7 +37,10 @@ export interface ExtensionModule {
 
 export interface WorkerExtensionContext {
   boss: {
-    createQueue(name: string, options?: { name?: string; policy?: string }): Promise<void>;
+    createQueue(
+      name: string,
+      options?: { name?: string; policy?: string },
+    ): Promise<void>;
     schedule(
       name: string,
       cron: string,

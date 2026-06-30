@@ -59,7 +59,9 @@ describe("Unauthenticated endpoint exposure and search scoping", () => {
     const ownerBBody = ownerB.body as {
       teams?: Array<{ id: string }>;
     };
-    const ownerBTeamIds = new Set((ownerBBody.teams ?? []).map((team) => team.id));
+    const ownerBTeamIds = new Set(
+      (ownerBBody.teams ?? []).map((team) => team.id),
+    );
     if (ownerBTeamIds.size > 0) {
       expect(ownerBTeamIds.has(seed.teams.teamB.id)).toBe(true);
       expect(ownerBTeamIds.has(seed.teams.teamA.id)).toBe(false);

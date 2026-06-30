@@ -25,7 +25,8 @@ export function DocsIndexPage() {
         <Link to={DOC_PATHS.issueProviders} className={styles.card}>
           <h2 className={styles.cardTitle}>Issue providers</h2>
           <p className={styles.cardDesc}>
-            GitHub App, access tokens, and repository settings for GitHub and GitLab.
+            GitHub App, access tokens, and repository settings for GitHub and
+            GitLab.
           </p>
         </Link>
       </div>

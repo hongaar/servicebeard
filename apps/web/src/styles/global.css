@@ -67,7 +67,12 @@
     --color-primary-deep: #2d6fc4;
     --color-primary-subtle: rgba(74, 143, 232, 0.12);
     --color-primary-text: #ffffff;
-    --gradient-primary: linear-gradient(135deg, #7bb8ff 0%, #4a8fe8 48%, #3a7fd8 100%);
+    --gradient-primary: linear-gradient(
+      135deg,
+      #7bb8ff 0%,
+      #4a8fe8 48%,
+      #3a7fd8 100%
+    );
     /* Warm ginger — complements the blue with personality */
     --color-secondary: #f08c3a;
     --color-secondary-hover: #e07a28;
@@ -108,7 +113,12 @@
     --color-primary-deep: #4a8fe8;
     --color-primary-subtle: rgba(123, 184, 255, 0.14);
     --color-primary-text: #0a0e18;
-    --gradient-primary: linear-gradient(135deg, #9acbff 0%, #5b9fe8 50%, #4a8fe8 100%);
+    --gradient-primary: linear-gradient(
+      135deg,
+      #9acbff 0%,
+      #5b9fe8 50%,
+      #4a8fe8 100%
+    );
     --color-secondary: #ffa04d;
     --color-secondary-hover: #ffb366;
     --color-secondary-subtle: rgba(255, 160, 77, 0.14);

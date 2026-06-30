@@ -20,11 +20,7 @@ async function handleProviderWebhook(c: Context, expectedProvider: string) {
     where: eq(projects.id, projectId),
   });
 
-  if (
-    !project ||
-    !project.isActive ||
-    project.provider !== expectedProvider
-  ) {
+  if (!project || !project.isActive || project.provider !== expectedProvider) {
     return c.json({ error: "Not found" }, 404);
   }
 
@@ -41,7 +37,10 @@ async function handleProviderWebhook(c: Context, expectedProvider: string) {
   });
 
   if (!provider.verifyWebhook(headers, body, project.webhookSecret)) {
-    logger.warn({ projectId, provider: expectedProvider }, "webhook verification failed");
+    logger.warn(
+      { projectId, provider: expectedProvider },
+      "webhook verification failed",
+    );
     return c.json({ error: "Unauthorized" }, 401);
   }
 
@@ -64,8 +63,14 @@ async function handleProviderWebhook(c: Context, expectedProvider: string) {
   return c.json({ ok: true });
 }
 
-webhookRoutes.post("/gitlab/:projectId", (c) => handleProviderWebhook(c, "gitlab"));
-webhookRoutes.post("/github/:projectId", (c) => handleProviderWebhook(c, "github"));
-webhookRoutes.post("/linear/:projectId", (c) => handleProviderWebhook(c, "linear"));
+webhookRoutes.post("/gitlab/:projectId", (c) =>
+  handleProviderWebhook(c, "gitlab"),
+);
+webhookRoutes.post("/github/:projectId", (c) =>
+  handleProviderWebhook(c, "github"),
+);
+webhookRoutes.post("/linear/:projectId", (c) =>
+  handleProviderWebhook(c, "linear"),
+);
 
 export { webhookRoutes };

@@ -8,13 +8,13 @@ Projects are **strictly isolated**. Each project has its own mailbox credentials
 
 ## Runtime layout
 
-| Piece | Role |
-|-------|------|
-| **API** (`apps/api`) | HTTP surface: auth, project CRUD, webhook receivers, connection tests |
-| **Worker** (`apps/worker`) | Background sync: IMAP poll, comment poll, outbound email, webhook registration |
-| **Web** (`apps/web`) | UI for teams, projects, rules, and conversation history |
-| **Database** | Postgres via Drizzle — projects, threads, messages, rules, ingest cursors |
-| **Providers** (`packages/providers`) | GitLab/GitHub API + webhook parsing |
+| Piece                                | Role                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------ |
+| **API** (`apps/api`)                 | HTTP surface: auth, project CRUD, webhook receivers, connection tests          |
+| **Worker** (`apps/worker`)           | Background sync: IMAP poll, comment poll, outbound email, webhook registration |
+| **Web** (`apps/web`)                 | UI for teams, projects, rules, and conversation history                        |
+| **Database**                         | Postgres via Drizzle — projects, threads, messages, rules, ingest cursors      |
+| **Providers** (`packages/providers`) | GitLab/GitHub API + webhook parsing                                            |
 
 The worker uses **pg-boss** (Postgres-backed queues) for scheduling and job handoff. The API enqueues outbound work when a webhook arrives; the worker does all heavy lifting.
 
@@ -24,10 +24,10 @@ The worker uses **pg-boss** (Postgres-backed queues) for scheduling and job hand
 
 A cron tick runs **once per minute** (`* * * * *`). Each tick walks **active projects independently** and runs jobs only when the project's interval has elapsed:
 
-| Job | Default interval | Purpose |
-|-----|------------------|---------|
-| IMAP poll | 60s | Inbound email → issue/comment |
-| Comment poll | 120s | Outbound fallback when webhooks are unavailable |
+| Job          | Default interval | Purpose                                         |
+| ------------ | ---------------- | ----------------------------------------------- |
+| IMAP poll    | 60s              | Inbound email → issue/comment                   |
+| Comment poll | 120s             | Outbound fallback when webhooks are unavailable |
 
 Additional queues:
 
@@ -135,10 +135,10 @@ Setting **`imapMarkIngestedAsSeen`** (default on) writes `\Seen` to the mailbox 
 
 ### Eligibility and threading
 
-| Check | Behavior |
-|-------|----------|
-| Email `Date` before project creation | Skip; record ingest |
-| `Message-ID` already in ingest table | Skip envelope/body fetch |
+| Check                                    | Behavior                     |
+| ---------------------------------------- | ---------------------------- |
+| Email `Date` before project creation     | Skip; record ingest          |
+| `Message-ID` already in ingest table     | Skip envelope/body fetch     |
 | `Message-ID` already in `email_messages` | Skip processing (safety net) |
 
 **Thread detection** (first match wins, scoped to project):
@@ -223,9 +223,9 @@ sequenceDiagram
 
 ### Triggers
 
-| Path | When |
-|------|------|
-| **Webhook** (preferred) | Provider pushes `note` (GitLab) or `issue_comment` (GitHub) to API |
+| Path                        | When                                                                       |
+| --------------------------- | -------------------------------------------------------------------------- |
+| **Webhook** (preferred)     | Provider pushes `note` (GitLab) or `issue_comment` (GitHub) to API         |
 | **Comment poll** (fallback) | Worker lists comments since `thread.lastSeenNoteAt` for each active thread |
 
 Webhook handling is fast-path only: API validates, enqueues, returns `200`. Sending happens asynchronously in the worker.
@@ -234,14 +234,14 @@ Webhook handling is fast-path only: API validates, enqueues, returns `200`. Send
 
 Outbound email is **not** sent when:
 
-| Reason | Detail |
-|--------|--------|
-| Internal note | GitLab confidential/internal flag |
-| System note | GitLab system-generated notes |
-| `[internal]` marker | Comment starts or ends with `[internal]` |
-| Sync marker | Body contains `<!-- servicebeard-sync:… -->` (email-originated content) |
-| Bot author | GitHub `user.type === "Bot"` at webhook parse time |
-| Already processed | `externalNoteId` exists in `email_messages` |
+| Reason              | Detail                                                                  |
+| ------------------- | ----------------------------------------------------------------------- |
+| Internal note       | GitLab confidential/internal flag                                       |
+| System note         | GitLab system-generated notes                                           |
+| `[internal]` marker | Comment starts or ends with `[internal]`                                |
+| Sync marker         | Body contains `<!-- servicebeard-sync:… -->` (email-originated content) |
+| Bot author          | GitHub `user.type === "Bot"` at webhook parse time                      |
+| Already processed   | `externalNoteId` exists in `email_messages`                             |
 
 Skipped notes still advance `lastSeenNoteAt` so polling does not revisit them.
 
@@ -293,16 +293,16 @@ External failures (IMAP, SMTP, provider API) are logged and surfaced as **projec
 
 ## Configuration surface (sync-relevant)
 
-| Setting | Effect |
-|---------|--------|
-| `isActive` | Master switch — inactive projects are not polled |
-| `IMAP_POLL_INTERVAL_SECONDS` | Env var (min 60s, default 60); inbound poll frequency |
+| Setting                         | Effect                                                      |
+| ------------------------------- | ----------------------------------------------------------- |
+| `isActive`                      | Master switch — inactive projects are not polled            |
+| `IMAP_POLL_INTERVAL_SECONDS`    | Env var (min 60s, default 60); inbound poll frequency       |
 | `COMMENT_POLL_INTERVAL_SECONDS` | Env var (min 60s, default 120); outbound fallback frequency |
-| `imapMarkIngestedAsSeen` | Write IMAP `\Seen` after ingest |
-| `inboundAckEnabled` | Send auto-reply on new issue |
-| `inboundAckCcMailbox` | CC support address on ack |
-| `webhookEnabled` | Accept provider push events |
-| Rules | Which inbound mail creates issues vs is ignored |
+| `imapMarkIngestedAsSeen`        | Write IMAP `\Seen` after ingest                             |
+| `inboundAckEnabled`             | Send auto-reply on new issue                                |
+| `inboundAckCcMailbox`           | CC support address on ack                                   |
+| `webhookEnabled`                | Accept provider push events                                 |
+| Rules                           | Which inbound mail creates issues vs is ignored             |
 
 Templates (`inboundIssueTemplate`, `inboundCommentTemplate`, `outboundCommentTemplate`, `inboundAckTemplate`) control rendered bodies without changing sync control flow.
 
@@ -333,7 +333,9 @@ export default {
   api: "./path/to/api-extension/index.ts",
   web: "./path/to/web-extension/index.tsx",
   public: "./path/to/static-assets", // optional — merged into web public/ at build time
-  migrations: [{ dir: "./path/to/drizzle", table: "__drizzle_migrations_extension" }],
+  migrations: [
+    { dir: "./path/to/drizzle", table: "__drizzle_migrations_extension" },
+  ],
 };
 ```
 
@@ -367,10 +369,10 @@ Default (self-host): both methods are no-ops — unlimited projects, no access g
 
 Extensions replace the provider via `setEntitlementsProvider` during `register`. Implementations should throw errors with these messages, mapped to HTTP 402 by the API:
 
-| Error message            | HTTP | `code` field               |
-|--------------------------|------|----------------------------|
-| `PROJECT_LIMIT_REACHED`  | 402  | `PROJECT_LIMIT_REACHED`    |
-| `SUBSCRIPTION_REQUIRED`  | 402  | `SUBSCRIPTION_REQUIRED`    |
+| Error message           | HTTP | `code` field            |
+| ----------------------- | ---- | ----------------------- |
+| `PROJECT_LIMIT_REACHED` | 402  | `PROJECT_LIMIT_REACHED` |
+| `SUBSCRIPTION_REQUIRED` | 402  | `SUBSCRIPTION_REQUIRED` |
 
 Enforcement points:
 
@@ -389,7 +391,9 @@ The web app resolves `@extensions` via Vite/TypeScript path alias (`apps/web/vit
 export const extensionRoutes: AnyRoute[] = [];
 export const extensionPublicRoutes: AnyRoute[] = [];
 export const ExtensionLanding: ComponentType | undefined = undefined;
-export function extensionTeamNavItems(teamId: string): ExtensionTeamNavItem[] { return []; }
+export function extensionTeamNavItems(teamId: string): ExtensionTeamNavItem[] {
+  return [];
+}
 ```
 
 An extended build points the manifest's `web` entry at a module that exports:

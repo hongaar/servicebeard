@@ -1,16 +1,20 @@
 import { extractEmailDomain } from "@servicebeard/shared/mail-autoconfig";
 import {
-    mailAutoconfigFromSrvRecords,
-    parseMicrosoftAutodiscoverXml,
-    parseMozillaAutoconfigXml,
-    type MailDiscoverResult,
+  mailAutoconfigFromSrvRecords,
+  parseMicrosoftAutodiscoverXml,
+  parseMozillaAutoconfigXml,
+  type MailDiscoverResult,
 } from "@servicebeard/shared/mail-discover";
 import { resolveSrv } from "node:dns/promises";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
 function isDiscoverableDomain(domain: string): boolean {
-  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(domain)) {
+  if (
+    !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(
+      domain,
+    )
+  ) {
     return false;
   }
   if (
@@ -44,7 +48,9 @@ async function fetchText(url: string): Promise<string | null> {
   }
 }
 
-async function resolveSrvTarget(service: string): Promise<{ name: string; port: number } | null> {
+async function resolveSrvTarget(
+  service: string,
+): Promise<{ name: string; port: number } | null> {
   try {
     const records = await resolveSrv(service);
     if (records.length === 0) return null;
@@ -89,7 +95,10 @@ async function discoverFromMozillaAutoconfig(
     if (!xml) continue;
     const config = parseMozillaAutoconfigXml(xml, domain);
     if (config) {
-      return { found: true, config: { ...config, source: "mozilla-autoconfig" } };
+      return {
+        found: true,
+        config: { ...config, source: "mozilla-autoconfig" },
+      };
     }
   }
 
@@ -101,8 +110,10 @@ async function discoverFromMicrosoftAutodiscover(
   domain: string,
 ): Promise<MailDiscoverResult> {
   const autodiscoverHost =
-    (await resolveSrvTarget(`_autodiscover._tcp.${domain}`))?.name.replace(/\.$/, "") ??
-    `autodiscover.${domain}`;
+    (await resolveSrvTarget(`_autodiscover._tcp.${domain}`))?.name.replace(
+      /\.$/,
+      "",
+    ) ?? `autodiscover.${domain}`;
 
   const requestBody = `<?xml version="1.0" encoding="utf-8"?>
 <Autodiscover xmlns="http://schemas.microsoft.com/exchange/autodiscover/outlook/requestschema/2006">
@@ -115,21 +126,27 @@ async function discoverFromMicrosoftAutodiscover(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(`https://${autodiscoverHost}/autodiscover/autodiscover.xml`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        Accept: "text/xml",
+    const response = await fetch(
+      `https://${autodiscoverHost}/autodiscover/autodiscover.xml`,
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          Accept: "text/xml",
+        },
+        body: requestBody,
+        redirect: "follow",
       },
-      body: requestBody,
-      redirect: "follow",
-    });
+    );
     if (!response.ok) return { found: false };
     const xml = await response.text();
     const config = parseMicrosoftAutodiscoverXml(xml, domain);
     if (!config) return { found: false };
-    return { found: true, config: { ...config, source: "microsoft-autodiscover" } };
+    return {
+      found: true,
+      config: { ...config, source: "microsoft-autodiscover" },
+    };
   } catch {
     return { found: false };
   } finally {
@@ -138,7 +155,9 @@ async function discoverFromMicrosoftAutodiscover(
 }
 
 /** Discover IMAP/SMTP settings via DNS SRV, Mozilla autoconfig, and Microsoft autodiscover. */
-export async function discoverMailAutoconfig(email: string): Promise<MailDiscoverResult> {
+export async function discoverMailAutoconfig(
+  email: string,
+): Promise<MailDiscoverResult> {
   const domain = extractEmailDomain(email);
   if (!domain || !isDiscoverableDomain(domain)) return { found: false };
 

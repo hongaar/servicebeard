@@ -1,10 +1,10 @@
 import type { IssueProvider } from "@servicebeard/providers";
 import type { ParsedEmail } from "@servicebeard/shared";
 import {
-    extractDataUriImagesFromMarkdown,
-    normalizeContentId,
-    replaceCidImagesInMarkdown,
-    replaceImagePlaceholdersInMarkdown,
+  extractDataUriImagesFromMarkdown,
+  normalizeContentId,
+  replaceCidImagesInMarkdown,
+  replaceImagePlaceholdersInMarkdown,
 } from "@servicebeard/shared/email-content";
 import { logExternalError } from "../lib/external-error";
 
@@ -19,7 +19,10 @@ async function uploadInlineImage(
     const uploaded = await provider.uploadFile(filename, content, contentType);
     return uploaded.markdown;
   } catch (err) {
-    logExternalError("inbound", "upload-inline-image", err, { filename, projectId });
+    logExternalError("inbound", "upload-inline-image", err, {
+      filename,
+      projectId,
+    });
     throw err;
   }
 }
@@ -59,7 +62,10 @@ export async function resolveEmailMarkdown(
     appended.push(uploadedMarkdown);
   }
 
-  markdown = replaceImagePlaceholdersInMarkdown(markdown, placeholderToMarkdown);
+  markdown = replaceImagePlaceholdersInMarkdown(
+    markdown,
+    placeholderToMarkdown,
+  );
   markdown = replaceCidImagesInMarkdown(markdown, cidToMarkdown);
 
   const dataUriImages = extractDataUriImagesFromMarkdown(markdown);

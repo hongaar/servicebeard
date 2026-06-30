@@ -10,25 +10,29 @@ export function DocsSelfHostPage() {
       lead="Run ServiceBeard on your own infrastructure with Docker Compose or Kubernetes. The same codebase powers the managed cloud."
     >
       <p>
-        ServiceBeard is open source under the MIT license. For production self-hosting, deploy with
-        Docker Compose on a single server or with the Helm chart on Kubernetes. If you prefer not to
-        operate the stack yourself, use the managed cloud instead.
+        ServiceBeard is open source under the MIT license. For production
+        self-hosting, deploy with Docker Compose on a single server or with the
+        Helm chart on Kubernetes. If you prefer not to operate the stack
+        yourself, use the managed cloud instead.
       </p>
       <p>
         For local development, see the{" "}
-        <a href="https://github.com/hongaar/servicebeard" rel="noopener noreferrer">
+        <a
+          href="https://github.com/hongaar/servicebeard"
+          rel="noopener noreferrer"
+        >
           repository README
         </a>
-        — the root <code>docker-compose.yml</code> is for dev workflows only (Postgres, GreenMail,
-        hot reload).
+        — the root <code>docker-compose.yml</code> is for dev workflows only
+        (Postgres, GreenMail, hot reload).
       </p>
 
       <h2>Production on Docker Compose</h2>
       <p>
-        The production stack lives in{" "}
-        <code>deploy/compose/</code> in the repository: Postgres, API, worker, web (nginx), and Caddy
-        for HTTPS. You need a VPS with Docker, a public hostname, and a DNS <code>A</code> record
-        pointing at the server.
+        The production stack lives in <code>deploy/compose/</code> in the
+        repository: Postgres, API, worker, web (nginx), and Caddy for HTTPS. You
+        need a VPS with Docker, a public hostname, and a DNS <code>A</code>{" "}
+        record pointing at the server.
       </p>
       <pre>
         <code>{`cd deploy/compose
@@ -38,8 +42,9 @@ cp .env.example .env
 docker compose --env-file .env -f docker-compose.yml up -d --build`}</code>
       </pre>
       <p>
-        Caddy obtains a Let&apos;s Encrypt certificate automatically. The API runs database migrations
-        on startup. See the repository README for extension overlays and environment variables.
+        Caddy obtains a Let&apos;s Encrypt certificate automatically. The API
+        runs database migrations on startup. See the repository README for
+        extension overlays and environment variables.
       </p>
 
       <h2>Production on Kubernetes</h2>
@@ -62,9 +67,9 @@ docker compose --env-file .env -f docker-compose.yml up -d --build`}</code>
   --set secrets.sessionSecret=<secret>`}</code>
       </pre>
       <p>
-        Pin a release with <code>--set image.tag=&lt;git-sha&gt;</code>. You can also build images
-        locally and install from the chart in the repository&apos;s <code>deploy/helm</code>{" "}
-        directory.
+        Pin a release with <code>--set image.tag=&lt;git-sha&gt;</code>. You can
+        also build images locally and install from the chart in the
+        repository&apos;s <code>deploy/helm</code> directory.
       </p>
 
       <h2>What you operate</h2>
@@ -73,27 +78,29 @@ docker compose --env-file .env -f docker-compose.yml up -d --build`}</code>
           <strong>API</strong> — REST API, webhooks, and session handling
         </li>
         <li>
-          <strong>Worker</strong> — IMAP polling, SMTP outbound, and issue sync jobs
+          <strong>Worker</strong> — IMAP polling, SMTP outbound, and issue sync
+          jobs
         </li>
         <li>
           <strong>Web</strong> — React frontend (same UI as cloud)
         </li>
         <li>
-          <strong>Postgres</strong> — application database (included in Compose and Helm)
+          <strong>Postgres</strong> — application database (included in Compose
+          and Helm)
         </li>
       </ul>
       <p>
-        Mail credentials and issue-tracker tokens are stored encrypted in your database. You control
-        backups, upgrades, and network access.
+        Mail credentials and issue-tracker tokens are stored encrypted in your
+        database. You control backups, upgrades, and network access.
       </p>
 
       <h2>Managed cloud</h2>
       <p>
-        If you do not want to run your own server or maintain Postgres yourself, use the hosted cloud
-        at <Link to="/">servicebeard.app</Link>. Setup guides for{" "}
-        <Link to={DOC_PATHS.mailbox}>mailbox configuration</Link> and{" "}
-        <Link to={DOC_PATHS.issueProviders}>issue providers</Link> apply to both self-hosted and cloud
-        deployments.
+        If you do not want to run your own server or maintain Postgres yourself,
+        use the hosted cloud at <Link to="/">servicebeard.app</Link>. Setup
+        guides for <Link to={DOC_PATHS.mailbox}>mailbox configuration</Link> and{" "}
+        <Link to={DOC_PATHS.issueProviders}>issue providers</Link> apply to both
+        self-hosted and cloud deployments.
       </p>
 
       <div className={styles.cardGrid}>
@@ -104,8 +111,8 @@ docker compose --env-file .env -f docker-compose.yml up -d --build`}</code>
         >
           <h2 className={styles.cardTitle}>Source &amp; README</h2>
           <p className={styles.cardDesc}>
-            Local development setup, Docker Compose production deploy, and architecture notes on
-            GitHub.
+            Local development setup, Docker Compose production deploy, and
+            architecture notes on GitHub.
           </p>
         </a>
         <a
@@ -115,7 +122,8 @@ docker compose --env-file .env -f docker-compose.yml up -d --build`}</code>
         >
           <h2 className={styles.cardTitle}>Container images</h2>
           <p className={styles.cardDesc}>
-            Pre-built API, worker, and web images on GHCR for Kubernetes deployments.
+            Pre-built API, worker, and web images on GHCR for Kubernetes
+            deployments.
           </p>
         </a>
       </div>

@@ -1,9 +1,4 @@
-import {
-    generateToken,
-    getDb,
-    hashToken,
-    sessions,
-} from "@servicebeard/db";
+import { generateToken, getDb, hashToken, sessions } from "@servicebeard/db";
 import { SESSION_COOKIE } from "./constants";
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;

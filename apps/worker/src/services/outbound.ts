@@ -1,28 +1,28 @@
 import {
-    decrypt,
-    emailMessages,
-    getDb,
-    issueThreads,
-    projects,
+  decrypt,
+  emailMessages,
+  getDb,
+  issueThreads,
+  projects,
 } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
 import { ProviderApiError } from "@servicebeard/providers";
 import {
-    isServicebeardInternalContent,
-    isServicebeardSyncedContent,
-    renderOutboundCommentTemplate,
+  isServicebeardInternalContent,
+  isServicebeardSyncedContent,
+  renderOutboundCommentTemplate,
 } from "@servicebeard/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { logExternalError } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import {
-    latestThreadMessage,
-    outboundCommentCc,
-    outboundEmailAddresses,
-    quotedEmailFromStored,
-    replyBodyWithQuote,
-    threadingForParent,
+  latestThreadMessage,
+  outboundCommentCc,
+  outboundEmailAddresses,
+  quotedEmailFromStored,
+  replyBodyWithQuote,
+  threadingForParent,
 } from "./email-thread";
 import { createProjectProvider, projectProviderConfig } from "./provider";
 import { sendEmail } from "./smtp";
@@ -109,19 +109,30 @@ export async function processOutboundComment(
   );
 
   if (!project || !project.isActive) {
-    logger.debug({ projectId, noteId: event.noteId }, "skipping outbound comment, project inactive or missing");
+    logger.debug(
+      { projectId, noteId: event.noteId },
+      "skipping outbound comment, project inactive or missing",
+    );
     return;
   }
 
   if (event.internal) {
     logger.debug({ noteId: event.noteId }, "skipping internal note");
-    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    await advanceLastSeenNoteAtForIssue(
+      projectId,
+      event.issueExternalId,
+      event.createdAt,
+    );
     return;
   }
 
   if (event.system) {
     logger.debug({ noteId: event.noteId }, "skipping system note");
-    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    await advanceLastSeenNoteAtForIssue(
+      projectId,
+      event.issueExternalId,
+      event.createdAt,
+    );
     return;
   }
 
@@ -134,13 +145,21 @@ export async function processOutboundComment(
   );
   if (skipReason === "internal_marker") {
     logger.debug({ noteId: event.noteId }, "skipping internal marker comment");
-    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    await advanceLastSeenNoteAtForIssue(
+      projectId,
+      event.issueExternalId,
+      event.createdAt,
+    );
     return;
   }
 
   if (skipReason === "sync_marker") {
     logger.debug({ noteId: event.noteId }, "skipping email-synced comment");
-    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    await advanceLastSeenNoteAtForIssue(
+      projectId,
+      event.issueExternalId,
+      event.createdAt,
+    );
     return;
   }
 
@@ -153,7 +172,11 @@ export async function processOutboundComment(
 
   if (existing) {
     logger.debug({ noteId: event.noteId }, "note already processed");
-    await advanceLastSeenNoteAtForIssue(projectId, event.issueExternalId, event.createdAt);
+    await advanceLastSeenNoteAtForIssue(
+      projectId,
+      event.issueExternalId,
+      event.createdAt,
+    );
     return;
   }
 
@@ -166,24 +189,33 @@ export async function processOutboundComment(
   });
 
   if (!thread) {
-    logger.warn({ issueExternalId: event.issueExternalId }, "no thread found for issue");
+    logger.warn(
+      { issueExternalId: event.issueExternalId },
+      "no thread found for issue",
+    );
     return;
   }
 
   const parent = latestThreadMessage(thread.messages);
   if (!parent) {
-    logger.warn({ threadId: thread.id }, "no messages in thread for outbound reply");
+    logger.warn(
+      { threadId: thread.id },
+      "no messages in thread for outbound reply",
+    );
     return;
   }
 
   const provider = createProjectProvider(project);
 
-  const replyIntro = renderOutboundCommentTemplate(project.outboundCommentTemplate, {
-    commentBody: event.noteBody,
-    authorName: commentAuthorDisplayName(event),
-    issueNumber: thread.issueIid,
-    issueUrl: thread.issueUrl,
-  });
+  const replyIntro = renderOutboundCommentTemplate(
+    project.outboundCommentTemplate,
+    {
+      commentBody: event.noteBody,
+      authorName: commentAuthorDisplayName(event),
+      issueNumber: thread.issueIid,
+      issueUrl: thread.issueUrl,
+    },
+  );
   const body = replyBodyWithQuote(
     replyIntro,
     quotedEmailFromStored(parent, thread, project.smtpFrom),
@@ -414,7 +446,9 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
   );
 }
 
-export async function ensureWebhookForProject(projectId: string): Promise<void> {
+export async function ensureWebhookForProject(
+  projectId: string,
+): Promise<void> {
   const db = getDb();
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
@@ -422,7 +456,10 @@ export async function ensureWebhookForProject(projectId: string): Promise<void> 
 
   if (!project) return;
 
-  const webhookBase = process.env.WEBHOOK_BASE_URL ?? process.env.API_URL ?? "http://localhost:3000";
+  const webhookBase =
+    process.env.WEBHOOK_BASE_URL ??
+    process.env.API_URL ??
+    "http://localhost:3000";
   const webhookUrl = `${webhookBase.replace(/\/$/, "")}/webhooks/${project.provider}/${projectId}`;
 
   const provider = createProjectProvider(project, {
@@ -430,10 +467,12 @@ export async function ensureWebhookForProject(projectId: string): Promise<void> 
     webhookSecret: project.webhookSecret,
   });
 
-  await provider.ensureWebhook(projectProviderConfig(project, {
-    webhookUrl,
-    webhookSecret: project.webhookSecret,
-  }));
+  await provider.ensureWebhook(
+    projectProviderConfig(project, {
+      webhookUrl,
+      webhookSecret: project.webhookSecret,
+    }),
+  );
 
   logger.info({ projectId, webhookUrl }, "webhook ensured");
 }

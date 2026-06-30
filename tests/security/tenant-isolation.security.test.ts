@@ -6,7 +6,9 @@ useSecurityContext();
 describe("Tenant isolation — cross-team access must be denied", () => {
   test("Member of Team A cannot read Team B details by swapping teamId in URL", async () => {
     const { seed, client } = await getSecurityContext();
-    const response = await client.memberA.get(`/api/teams/${seed.teams.teamB.id}`);
+    const response = await client.memberA.get(
+      `/api/teams/${seed.teams.teamB.id}`,
+    );
     expect(response.status).toBe(403);
     expect(bodyError(response.body)).toBe("Forbidden");
   });
@@ -66,6 +68,8 @@ describe("Tenant isolation — cross-team access must be denied", () => {
     );
     expect(rulesResponse.status).toBe(200);
     const rulesBody = rulesResponse.body as { rules: Array<{ id: string }> };
-    expect(rulesBody.rules.some((rule) => rule.id === seed.rules.ruleB.id)).toBe(true);
+    expect(
+      rulesBody.rules.some((rule) => rule.id === seed.rules.ruleB.id),
+    ).toBe(true);
   });
 });

@@ -1,46 +1,46 @@
 import { getDb, users } from "@servicebeard/db";
 import type { LoginProviderType } from "@servicebeard/shared/login";
 import type {
-    AuthenticationResponseJSON,
-    RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+  RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import {
-    getLoginAdapter,
-    isCredentialLoginAdapter,
-    isRedirectLoginAdapter,
+  getLoginAdapter,
+  isCredentialLoginAdapter,
+  isRedirectLoginAdapter,
 } from "./login";
 import {
-    createPasskeyAuthenticationOptions,
-    createPasskeyRegistrationOptions,
-    verifyPasskeyAuthentication,
-    verifyPasskeyRegistration,
+  createPasskeyAuthenticationOptions,
+  createPasskeyRegistrationOptions,
+  verifyPasskeyAuthentication,
+  verifyPasskeyRegistration,
 } from "./login/passkey";
 import { createSessionForIdentity } from "./login/session";
 import {
-    ensureEmailVerifiedForLogin,
-    issueEmailVerification,
-    shouldRequireEmailVerification,
+  ensureEmailVerifiedForLogin,
+  issueEmailVerification,
+  shouldRequireEmailVerification,
 } from "./transactional-mail";
 
 export {
-    getEnabledLoginAdapters,
-    getLoginAdapter,
-    getPublicLoginConfig
+  getEnabledLoginAdapters,
+  getLoginAdapter,
+  getPublicLoginConfig,
 } from "./login";
 export {
-    countSignInMethods,
-    isRedirectProvider,
-    linkProviderToUser,
-    listLinkedProviders,
-    unlinkProviderFromUser
+  countSignInMethods,
+  isRedirectProvider,
+  linkProviderToUser,
+  listLinkedProviders,
+  unlinkProviderFromUser,
 } from "./login/providers";
 export {
-    createSessionForIdentity,
-    destroySession,
-    getSessionCookieName,
-    getSessionUser
+  createSessionForIdentity,
+  destroySession,
+  getSessionCookieName,
+  getSessionUser,
 } from "./login/session";
 
 export async function startProviderLogin(type: string) {
@@ -103,7 +103,10 @@ export async function credentialProviderLogin(
     return { requiresVerification: true as const };
   }
 
-  const session = await createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  const session = await createSessionForIdentity(identity, {
+    allowSignup: false,
+    provider: "local",
+  });
   await ensureEmailVerifiedForLogin(session.user.id);
   return { requiresVerification: false as const, ...session };
 }
@@ -148,7 +151,10 @@ export async function passkeyRegistrationVerify(
     return { requiresVerification: true as const };
   }
 
-  const session = await createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  const session = await createSessionForIdentity(identity, {
+    allowSignup: false,
+    provider: "local",
+  });
   return { requiresVerification: false as const, ...session };
 }
 
@@ -169,7 +175,10 @@ export async function passkeyAuthenticationVerify(
   if (!adapter?.isEnabled()) throw new Error("LOGIN_PROVIDER_DISABLED");
 
   const identity = await verifyPasskeyAuthentication(response);
-  const session = await createSessionForIdentity(identity, { allowSignup: false, provider: "local" });
+  const session = await createSessionForIdentity(identity, {
+    allowSignup: false,
+    provider: "local",
+  });
   await ensureEmailVerifiedForLogin(session.user.id);
   return session;
 }

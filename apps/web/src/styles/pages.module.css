@@ -7,7 +7,11 @@
   min-height: 100vh;
   padding: var(--space-8);
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, var(--color-primary-subtle), transparent),
+    radial-gradient(
+      ellipse 80% 60% at 50% -10%,
+      var(--color-primary-subtle),
+      transparent
+    ),
     var(--color-bg);
 }
 
@@ -562,7 +566,9 @@
   display: inline-flex;
   align-items: center;
   color: var(--color-text-muted);
-  transition: color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .teamCard:hover .teamArrow {
@@ -1398,7 +1404,8 @@
 
 .autoconfigHintWarning {
   background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, var(--color-border));
+  border: 1px solid
+    color-mix(in srgb, var(--color-danger) 25%, var(--color-border));
   color: var(--color-text);
 }
 
@@ -1561,7 +1568,8 @@
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
   padding-bottom: var(--space-3);
-  border-bottom: var(--border-width) solid var(--color-border-subtle, var(--color-border));
+  border-bottom: var(--border-width) solid
+    var(--color-border-subtle, var(--color-border));
 }
 
 .adminCheckRow:last-child {

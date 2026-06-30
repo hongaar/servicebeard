@@ -1,15 +1,21 @@
 import {
-    getDb,
-    userAuthProviders,
-    users,
-    webauthnCredentials,
+  getDb,
+  userAuthProviders,
+  users,
+  webauthnCredentials,
 } from "@servicebeard/db";
 import type { LoginProviderType } from "@servicebeard/shared/login";
 import { and, eq } from "drizzle-orm";
 
-const REDIRECT_PROVIDERS = new Set<LoginProviderType>(["github", "gitlab", "oidc"]);
+const REDIRECT_PROVIDERS = new Set<LoginProviderType>([
+  "github",
+  "gitlab",
+  "oidc",
+]);
 
-export function inferProviderFromExternalSub(externalSub: string): LoginProviderType {
+export function inferProviderFromExternalSub(
+  externalSub: string,
+): LoginProviderType {
   if (externalSub.startsWith("github:")) return "github";
   if (externalSub.startsWith("gitlab:")) return "gitlab";
   if (externalSub.startsWith("local:")) return "local";
@@ -137,7 +143,9 @@ export async function countSignInMethods(userId: string): Promise<number> {
     }),
   ]);
 
-  const redirectCount = providerRows.filter((row) => row.provider !== "local").length;
+  const redirectCount = providerRows.filter(
+    (row) => row.provider !== "local",
+  ).length;
   const hasLocal =
     providerRows.some((row) => row.provider === "local") ||
     Boolean(user?.passwordHash) ||
@@ -168,7 +176,10 @@ export async function unlinkProviderFromUser(
   await db
     .delete(userAuthProviders)
     .where(
-      and(eq(userAuthProviders.userId, userId), eq(userAuthProviders.provider, provider)),
+      and(
+        eq(userAuthProviders.userId, userId),
+        eq(userAuthProviders.provider, provider),
+      ),
     );
 }
 

@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { PROVIDERS, TEAM_ROLES } from "./constants";
 import { stripEmptyStrings } from "./errors";
-import { looksLikeGithubRepositoryUrl, parseGithubRepository } from "./github-repository";
+import {
+  looksLikeGithubRepositoryUrl,
+  parseGithubRepository,
+} from "./github-repository";
 import { looksLikeLinearTeamUrl, parseLinearTeam } from "./linear-team";
 import { mailFromSchema } from "./mail";
 
@@ -11,7 +14,8 @@ function preprocessProviderProjectId(input: unknown): unknown {
   if (typeof data.providerProjectId === "string") {
     const providerProjectId = data.providerProjectId;
     const shouldParseGithub =
-      data.provider === "github" || looksLikeGithubRepositoryUrl(providerProjectId);
+      data.provider === "github" ||
+      looksLikeGithubRepositoryUrl(providerProjectId);
     if (shouldParseGithub) {
       try {
         data.providerProjectId = parseGithubRepository(providerProjectId);
@@ -44,7 +48,10 @@ function refineLinearTeamId(
     data.provider === "linear" || looksLikeLinearTeamUrl(projectId);
   if (!isLinear) return;
 
-  if (projectId.startsWith("project:") && !projectId.slice("project:".length).trim()) {
+  if (
+    projectId.startsWith("project:") &&
+    !projectId.slice("project:".length).trim()
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Linear project reference is required",
@@ -71,7 +78,8 @@ function refineGithubProjectId(
   const projectId = data.providerProjectId;
   if (!projectId) return;
 
-  const isGithub = data.provider === "github" || looksLikeGithubRepositoryUrl(projectId);
+  const isGithub =
+    data.provider === "github" || looksLikeGithubRepositoryUrl(projectId);
   if (!isGithub) return;
 
   try {
@@ -220,7 +228,10 @@ export const createRuleSchema = z.object({
   actionAssigneeId: z.string().nullable().optional(),
 });
 
-export const updateRuleSchema = z.preprocess(stripEmptyStrings, createRuleSchema.partial());
+export const updateRuleSchema = z.preprocess(
+  stripEmptyStrings,
+  createRuleSchema.partial(),
+);
 
 export const testRuleSchema = z.object({
   matchSender: z.string().nullable().optional(),

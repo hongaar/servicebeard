@@ -5,32 +5,32 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
-    auditLog,
-    completeProviderIdentity,
-    completeProviderLogin,
-    countSignInMethods,
-    credentialProviderLogin,
-    destroySession,
-    getLoginAdapter,
-    getPublicLoginConfig,
-    getSessionCookieName,
-    isRedirectProvider,
-    linkProviderToUser,
-    listLinkedProviders,
-    passkeyAuthenticationOptions,
-    passkeyAuthenticationVerify,
-    passkeyRegistrationOptions,
-    passkeyRegistrationVerify,
-    startProviderLogin,
-    unlinkProviderFromUser,
+  auditLog,
+  completeProviderIdentity,
+  completeProviderLogin,
+  countSignInMethods,
+  credentialProviderLogin,
+  destroySession,
+  getLoginAdapter,
+  getPublicLoginConfig,
+  getSessionCookieName,
+  isRedirectProvider,
+  linkProviderToUser,
+  listLinkedProviders,
+  passkeyAuthenticationOptions,
+  passkeyAuthenticationVerify,
+  passkeyRegistrationOptions,
+  passkeyRegistrationVerify,
+  startProviderLogin,
+  unlinkProviderFromUser,
 } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { isRedirectLoginAdapter } from "../lib/login";
 import {
-    requestPasswordReset,
-    resendEmailVerification,
-    resetPasswordWithToken,
-    verifyEmailWithToken,
+  requestPasswordReset,
+  resendEmailVerification,
+  resetPasswordWithToken,
+  verifyEmailWithToken,
 } from "../lib/transactional-mail";
 import type { AppVariables } from "../middleware/auth";
 import { requireAuth } from "../middleware/auth";
@@ -51,10 +51,7 @@ function setSessionCookie(c: Context, token: string) {
   });
 }
 
-function setOAuthStateCookie(
-  c: Context,
-  value: string,
-) {
+function setOAuthStateCookie(c: Context, value: string) {
   setCookie(c, "sd_oauth_state", value, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -78,12 +75,20 @@ function parseOAuthStateCookie(value: string) {
 
 function mapAuthError(err: unknown) {
   if (!(err instanceof Error)) {
-    return { status: 400 as const, message: "Login failed", code: "login_failed" as const };
+    return {
+      status: 400 as const,
+      message: "Login failed",
+      code: "login_failed" as const,
+    };
   }
 
   switch (err.message) {
     case "LOGIN_PROVIDER_DISABLED":
-      return { status: 404 as const, message: "Not available", code: "not_available" as const };
+      return {
+        status: 404 as const,
+        message: "Not available",
+        code: "not_available" as const,
+      };
     case "SIGNUP_DISABLED":
       return {
         status: 403 as const,
@@ -172,7 +177,11 @@ function mapAuthError(err: unknown) {
         code: "mail_send_failed" as const,
       };
     default:
-      return { status: 400 as const, message: "Login failed", code: "login_failed" as const };
+      return {
+        status: 400 as const,
+        message: "Login failed",
+        code: "login_failed" as const,
+      };
   }
 }
 
@@ -189,7 +198,8 @@ authRoutes.get("/login/:provider", async (c) => {
   const provider = c.req.param("provider");
 
   try {
-    const { redirectUrl, state, codeVerifier } = await startProviderLogin(provider);
+    const { redirectUrl, state, codeVerifier } =
+      await startProviderLogin(provider);
     setOAuthStateCookie(c, `${state}|${codeVerifier}|${provider}`);
     return c.redirect(redirectUrl);
   } catch {
@@ -210,8 +220,12 @@ authRoutes.get("/link/:provider", async (c) => {
   }
 
   try {
-    const { redirectUrl, state, codeVerifier } = await startProviderLogin(provider);
-    setOAuthStateCookie(c, `${state}|${codeVerifier}|${provider}|link|${user.id}`);
+    const { redirectUrl, state, codeVerifier } =
+      await startProviderLogin(provider);
+    setOAuthStateCookie(
+      c,
+      `${state}|${codeVerifier}|${provider}|link|${user.id}`,
+    );
     return c.redirect(redirectUrl);
   } catch {
     return c.json({ error: "Login provider not available" }, 404);
@@ -247,7 +261,10 @@ authRoutes.get("/callback", async (c) => {
         return redirectWithAuthError(c, "link_session_expired", true);
       }
 
-      const identity = await completeProviderIdentity(provider, { code, codeVerifier });
+      const identity = await completeProviderIdentity(provider, {
+        code,
+        codeVerifier,
+      });
       await linkProviderToUser(
         sessionUser.id,
         provider as LoginProviderType,
@@ -263,7 +280,9 @@ authRoutes.get("/callback", async (c) => {
         metadata: { provider },
       });
 
-      return c.redirect(`${webUrl()}/account?linked=${encodeURIComponent(provider)}`);
+      return c.redirect(
+        `${webUrl()}/account?linked=${encodeURIComponent(provider)}`,
+      );
     }
 
     const { token, user } = await completeProviderLogin(provider, {
@@ -351,7 +370,8 @@ authRoutes.post("/login/:provider", async (c) => {
   const provider = c.req.param("provider");
   const body = await c.req.json().catch(() => ({}));
   const email = typeof body.email === "string" ? body.email : undefined;
-  const password = typeof body.password === "string" ? body.password : undefined;
+  const password =
+    typeof body.password === "string" ? body.password : undefined;
   const name = typeof body.name === "string" ? body.name : undefined;
   const mode = body.mode === "signup" ? "signup" : "login";
 
@@ -484,7 +504,10 @@ authRoutes.post("/login/:provider/passkey/authenticate/verify", async (c) => {
   }
 
   try {
-    const { token, user } = await passkeyAuthenticationVerify(provider, response);
+    const { token, user } = await passkeyAuthenticationVerify(
+      provider,
+      response,
+    );
     setSessionCookie(c, token);
 
     await auditLog({
@@ -538,7 +561,8 @@ authRoutes.post("/forgot-password", async (c) => {
     await requestPasswordReset(email);
     return c.json({
       ok: true,
-      message: "If an account exists for that email, a reset link has been sent.",
+      message:
+        "If an account exists for that email, a reset link has been sent.",
     });
   } catch (err) {
     const mapped = mapAuthError(err);
@@ -557,7 +581,10 @@ authRoutes.post("/reset-password", async (c) => {
 
   try {
     await resetPasswordWithToken(token, password);
-    return c.json({ ok: true, message: "Password updated. You can sign in now." });
+    return c.json({
+      ok: true,
+      message: "Password updated. You can sign in now.",
+    });
   } catch (err) {
     const mapped = mapAuthError(err);
     return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
@@ -580,7 +607,10 @@ authRoutes.post("/verify-email", async (c) => {
       resourceType: "user",
       resourceId: userId,
     });
-    return c.json({ ok: true, message: "Email confirmed. You can sign in now." });
+    return c.json({
+      ok: true,
+      message: "Email confirmed. You can sign in now.",
+    });
   } catch (err) {
     const mapped = mapAuthError(err);
     return c.json({ error: mapped.message, code: mapped.code }, mapped.status);
@@ -589,7 +619,8 @@ authRoutes.post("/verify-email", async (c) => {
 
 authRoutes.post("/resend-verification", async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const email =
+    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
 
   if (!email) {
     return c.json({ error: "Email is required" }, 400);
@@ -605,14 +636,16 @@ authRoutes.post("/resend-verification", async (c) => {
     if (!user || user.emailVerifiedAt) {
       return c.json({
         ok: true,
-        message: "If an unverified account exists for that email, a confirmation link has been sent.",
+        message:
+          "If an unverified account exists for that email, a confirmation link has been sent.",
       });
     }
 
     await resendEmailVerification(user.id);
     return c.json({
       ok: true,
-      message: "If an unverified account exists for that email, a confirmation link has been sent.",
+      message:
+        "If an unverified account exists for that email, a confirmation link has been sent.",
     });
   } catch (err) {
     const mapped = mapAuthError(err);

@@ -2,11 +2,7 @@ import { evaluateDraftRule } from "@servicebeard/shared/rules";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
-import {
-    api,
-    type CreateRuleInput,
-    type ProviderOptions,
-} from "../lib/api";
+import { api, type CreateRuleInput, type ProviderOptions } from "../lib/api";
 import { iconSm } from "../lib/icons";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
@@ -58,7 +54,10 @@ export function RuleForm({
   fieldErrors,
   onClearFieldError,
 }: RuleFormProps) {
-  const [form, setForm] = useState<CreateRuleInput>({ ...emptyForm, ...initial });
+  const [form, setForm] = useState<CreateRuleInput>({
+    ...emptyForm,
+    ...initial,
+  });
   const [previewExpanded, setPreviewExpanded] = useState(false);
 
   const providerOptions = useQuery({
@@ -168,7 +167,9 @@ export function RuleForm({
         }}
       >
         {formError && (
-          <div className={[styles.alert, styles.alertError].join(" ")}>{formError}</div>
+          <div className={[styles.alert, styles.alertError].join(" ")}>
+            {formError}
+          </div>
         )}
         <Input
           label="Name"
@@ -224,7 +225,10 @@ export function RuleForm({
           >
             <span className={styles.collapseTitle}>Match preview</span>
             <span className={styles.collapseSummary}>{previewSummary}</span>
-            <span className={styles.collapseChevron} data-expanded={previewExpanded}>
+            <span
+              className={styles.collapseChevron}
+              data-expanded={previewExpanded}
+            >
               <ChevronDown {...iconSm} />
             </span>
           </button>
@@ -232,7 +236,8 @@ export function RuleForm({
           {previewExpanded && (
             <div className={styles.collapseBody}>
               <p className={styles.formHint}>
-                Recent inbox messages are matched live as you edit the criteria above.
+                Recent inbox messages are matched live as you edit the criteria
+                above.
               </p>
 
               {mailboxSnapshot.isError && (
@@ -252,7 +257,9 @@ export function RuleForm({
                   <div
                     className={[
                       styles.alert,
-                      preview.matchedCount > 0 ? styles.alertSuccess : styles.alertError,
+                      preview.matchedCount > 0
+                        ? styles.alertSuccess
+                        : styles.alertError,
                     ].join(" ")}
                   >
                     {preview.matchedCount} of {preview.total} messages match
@@ -273,7 +280,9 @@ export function RuleForm({
                               <span
                                 className={[
                                   styles.badge,
-                                  r.matched ? styles.badgeActive : styles.badgeInactive,
+                                  r.matched
+                                    ? styles.badgeActive
+                                    : styles.badgeInactive,
                                 ].join(" ")}
                               >
                                 {r.matched ? "Yes" : "No"}
@@ -281,14 +290,19 @@ export function RuleForm({
                             </td>
                             <td>{r.subject}</td>
                             <td>
-                              {r.fromName ? `${r.fromName} <${r.fromEmail}>` : r.fromEmail}
+                              {r.fromName
+                                ? `${r.fromName} <${r.fromEmail}>`
+                                : r.fromEmail}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <div className={styles.formActions} style={{ justifyContent: "flex-start" }}>
+                  <div
+                    className={styles.formActions}
+                    style={{ justifyContent: "flex-start" }}
+                  >
                     <Button
                       variant="secondary"
                       size="small"
@@ -302,7 +316,9 @@ export function RuleForm({
               )}
 
               {mailboxSnapshot.data && preview?.total === 0 && (
-                <p className={styles.formHint}>No messages found in the inbox.</p>
+                <p className={styles.formHint}>
+                  No messages found in the inbox.
+                </p>
               )}
             </div>
           )}
@@ -337,7 +353,10 @@ export function RuleForm({
             label="Default assignee"
             value={form.actionAssigneeId ?? ""}
             onChange={(e) =>
-              setForm((f) => ({ ...f, actionAssigneeId: e.target.value || null }))
+              setForm((f) => ({
+                ...f,
+                actionAssigneeId: e.target.value || null,
+              }))
             }
             options={assigneeSelectOptions}
             disabled={providerOptions.isLoading}
@@ -370,7 +389,10 @@ export function RuleForm({
                 Cancel
               </Button>
             )}
-            <Button type="submit" disabled={isPending || isDeleting || !form.name.trim()}>
+            <Button
+              type="submit"
+              disabled={isPending || isDeleting || !form.name.trim()}
+            >
               {submitLabel}
             </Button>
           </div>

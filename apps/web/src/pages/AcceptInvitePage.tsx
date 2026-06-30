@@ -53,10 +53,17 @@ export function AcceptInvitePage() {
       <div className={styles.container}>
         <div className={styles.card}>
           <h1 className={styles.title}>Team invite</h1>
-          <p className={styles.subtitle}>Sign in or create an account to accept this invite.</p>
+          <p className={styles.subtitle}>
+            Sign in or create an account to accept this invite.
+          </p>
           <Button
             className={styles.fullWidth}
-            onClick={() => navigate({ to: "/login", search: { redirect: `/invites/${token}` } })}
+            onClick={() =>
+              navigate({
+                to: "/login",
+                search: { redirect: `/invites/${token}` },
+              })
+            }
           >
             Continue to sign in
           </Button>
@@ -78,7 +85,11 @@ export function AcceptInvitePage() {
             <p className={styles.subtitle}>
               Accept the invite as <strong>{user.email}</strong>?
             </p>
-            {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
+            {error && (
+              <div className={[styles.alert, styles.alertError].join(" ")}>
+                {error}
+              </div>
+            )}
             <div className={styles.form}>
               <Button
                 className={styles.fullWidth}

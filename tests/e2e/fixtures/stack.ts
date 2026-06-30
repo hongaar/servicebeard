@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_API_URL, DEFAULT_WEB_URL, STACK_PID_FILE } from "./constants";
@@ -6,7 +12,9 @@ import { DEFAULT_API_URL, DEFAULT_WEB_URL, STACK_PID_FILE } from "./constants";
 const ROOT = join(fileURLToPath(import.meta.url), "../../../..");
 const LOG_DIR = join(ROOT, "reports/integration");
 const FETCH_TIMEOUT_MS = 10_000;
-const STACK_READY_TIMEOUT_MS = Number(process.env.STACK_READY_TIMEOUT_MS ?? 180_000);
+const STACK_READY_TIMEOUT_MS = Number(
+  process.env.STACK_READY_TIMEOUT_MS ?? 180_000,
+);
 
 const E2E_ENV: Record<string, string> = {
   NODE_ENV: "test",
@@ -54,7 +62,10 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   return fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
 }
 
-async function waitForUrl(url: string, timeoutMs = STACK_READY_TIMEOUT_MS): Promise<void> {
+async function waitForUrl(
+  url: string,
+  timeoutMs = STACK_READY_TIMEOUT_MS,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
   let attempts = 0;
@@ -72,14 +83,19 @@ async function waitForUrl(url: string, timeoutMs = STACK_READY_TIMEOUT_MS): Prom
     }
 
     if (attempts === 1 || attempts % 20 === 0) {
-      const remainingSec = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      const remainingSec = Math.max(
+        0,
+        Math.round((deadline - Date.now()) / 1000),
+      );
       console.log(`Waiting for ${url} (${remainingSec}s remaining)`);
     }
 
     await Bun.sleep(500);
   }
 
-  throw new Error(`Timed out waiting for ${url} after ${timeoutMs}ms: ${String(lastError)}`);
+  throw new Error(
+    `Timed out waiting for ${url} after ${timeoutMs}ms: ${String(lastError)}`,
+  );
 }
 
 function readPids(): number[] {
@@ -104,8 +120,13 @@ function stopPid(pid: number, signal: NodeJS.Signals = "SIGTERM"): void {
 }
 
 function killListenersOnPort(port: number): void {
-  const result = Bun.spawnSync(["lsof", "-ti", `:${port}`], { stdout: "pipe", stderr: "ignore" });
-  const output = result.stdout ? new TextDecoder().decode(result.stdout).trim() : "";
+  const result = Bun.spawnSync(["lsof", "-ti", `:${port}`], {
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  const output = result.stdout
+    ? new TextDecoder().decode(result.stdout).trim()
+    : "";
   if (!output) return;
 
   for (const pidText of output.split("\n")) {
@@ -140,14 +161,25 @@ async function startStack(): Promise<void> {
     const pidText = await new Response(proc.stdout).text();
     const pid = Number(pidText.trim());
     if (!Number.isFinite(pid) || pid <= 0) {
-      throw new Error(`Failed to start ${name} (invalid pid: ${pidText.trim()})`);
+      throw new Error(
+        `Failed to start ${name} (invalid pid: ${pidText.trim()})`,
+      );
     }
     return pid;
   };
 
-  const apiPid = await spawn(["bun", "run", "--filter", "@servicebeard/api", "start"], "api");
-  const workerPid = await spawn(["bun", "run", "--filter", "@servicebeard/worker", "start"], "worker");
-  const webPid = await spawn(["bun", "run", "--filter", "@servicebeard/web", "dev"], "web");
+  const apiPid = await spawn(
+    ["bun", "run", "--filter", "@servicebeard/api", "start"],
+    "api",
+  );
+  const workerPid = await spawn(
+    ["bun", "run", "--filter", "@servicebeard/worker", "start"],
+    "worker",
+  );
+  const webPid = await spawn(
+    ["bun", "run", "--filter", "@servicebeard/web", "dev"],
+    "web",
+  );
 
   writePids([apiPid, workerPid, webPid]);
   console.log(`Started e2e stack (pids: ${apiPid}, ${workerPid}, ${webPid})`);
@@ -175,8 +207,15 @@ function stopStack(): void {
   }
 
   // nohup-spawned filter wrappers can outlive the recorded pid; sweep known services.
-  for (const pattern of ["@servicebeard/api start", "@servicebeard/worker start", "@servicebeard/web dev"]) {
-    Bun.spawnSync(["pkill", "-f", pattern], { stdout: "ignore", stderr: "ignore" });
+  for (const pattern of [
+    "@servicebeard/api start",
+    "@servicebeard/worker start",
+    "@servicebeard/web dev",
+  ]) {
+    Bun.spawnSync(["pkill", "-f", pattern], {
+      stdout: "ignore",
+      stderr: "ignore",
+    });
   }
 
   if (existsSync(STACK_PID_FILE)) {
@@ -215,4 +254,3 @@ if (import.meta.main) {
 }
 
 export { stackEnv, startAndWaitStack, startStack, stopStack, waitStack };
-

@@ -2,9 +2,9 @@ import { ExtensionLanding } from "@extensions";
 import { createRoute, redirect } from "@tanstack/react-router";
 import { api, ApiError } from "../lib/api";
 import {
-    DEFAULT_PROJECT_SECTION,
-    isProjectSection,
-    type ProjectSection,
+  DEFAULT_PROJECT_SECTION,
+  isProjectSection,
+  type ProjectSection,
 } from "../lib/navigation";
 import { AcceptInvitePage } from "../pages/AcceptInvitePage";
 import { AccountPage } from "../pages/AccountPage";
@@ -48,12 +48,13 @@ async function loadTeamContext(teamId: string) {
 async function loadProjectContext(teamId: string, projectId: string) {
   const user = await requireUser();
   try {
-    const [team, projectData, { threads }, { events: statusEvents }] = await Promise.all([
-      api.getTeam(teamId),
-      api.getProject(teamId, projectId),
-      api.getThreads(teamId, projectId),
-      api.getStatusEvents(teamId, projectId),
-    ]);
+    const [team, projectData, { threads }, { events: statusEvents }] =
+      await Promise.all([
+        api.getTeam(teamId),
+        api.getProject(teamId, projectId),
+        api.getThreads(teamId, projectId),
+        api.getStatusEvents(teamId, projectId),
+      ]);
     const { entitlements, rules, ...project } = projectData;
     return {
       user,

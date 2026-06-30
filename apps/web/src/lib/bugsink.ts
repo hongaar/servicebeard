@@ -1,9 +1,9 @@
 import * as Sentry from "@sentry/react";
 import {
-    bugsinkUserPayload,
-    normalizeBugsinkCaptureContext,
-    type BugsinkCaptureContext,
-    type SessionUser,
+  bugsinkUserPayload,
+  normalizeBugsinkCaptureContext,
+  type BugsinkCaptureContext,
+  type SessionUser,
 } from "@servicebeard/shared";
 
 const SERVICE = "web";

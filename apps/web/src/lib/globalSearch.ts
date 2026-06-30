@@ -1,6 +1,13 @@
-import { extensionGlobalSearchGroups, extensionTeamNavItems } from "@extensions";
+import {
+  extensionGlobalSearchGroups,
+  extensionTeamNavItems,
+} from "@extensions";
 import { DOC_PATHS } from "./docs";
-import { PROJECT_SECTION_LABELS, type NavIconKey, type ProjectSection } from "./navigation";
+import {
+  PROJECT_SECTION_LABELS,
+  type NavIconKey,
+  type ProjectSection,
+} from "./navigation";
 
 export interface GlobalSearchContext {
   teamId?: string;
@@ -44,7 +51,11 @@ export function filterSearchActions(
   if (!q) return actions;
 
   return actions.filter((action) => {
-    const haystack = [action.label, action.description, ...(action.keywords ?? [])]
+    const haystack = [
+      action.label,
+      action.description,
+      ...(action.keywords ?? []),
+    ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -52,7 +63,9 @@ export function filterSearchActions(
   });
 }
 
-export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAction[] {
+export function buildSearchActions(
+  context: GlobalSearchContext,
+): GlobalSearchAction[] {
   const { teamId, projectId, isAdmin } = context;
   const actions: GlobalSearchAction[] = [
     {
@@ -69,7 +82,15 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
       id: "nav-account",
       label: "Account",
       description: "Profile and connected sign-in providers",
-      keywords: ["profile", "user", "settings", "providers", "password", "passkey", "sso"],
+      keywords: [
+        "profile",
+        "user",
+        "settings",
+        "providers",
+        "password",
+        "passkey",
+        "sso",
+      ],
       group: "Navigation",
       kind: "navigate",
       to: "/account",
@@ -140,7 +161,9 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
       {
         id: "nav-projects",
         label: "Projects",
-        description: context.teamName ? `${context.teamName} projects` : undefined,
+        description: context.teamName
+          ? `${context.teamName} projects`
+          : undefined,
         keywords: ["project", "mailbox"],
         group: "Navigation",
         kind: "navigate",
@@ -151,7 +174,9 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
       {
         id: "nav-members",
         label: "Members",
-        description: context.teamName ? `${context.teamName} members` : undefined,
+        description: context.teamName
+          ? `${context.teamName} members`
+          : undefined,
         keywords: ["people", "invite", "users"],
         group: "Navigation",
         kind: "navigate",
@@ -212,7 +237,9 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
     }
   }
 
-  for (const { label, actions: groupActions } of extensionGlobalSearchGroups(context)) {
+  for (const { label, actions: groupActions } of extensionGlobalSearchGroups(
+    context,
+  )) {
     for (const action of groupActions) {
       actions.push({ ...action, group: label });
     }
@@ -221,7 +248,9 @@ export function buildSearchActions(context: GlobalSearchContext): GlobalSearchAc
   return actions;
 }
 
-export function searchActionsToItems(actions: GlobalSearchAction[]): GlobalSearchResultItem[] {
+export function searchActionsToItems(
+  actions: GlobalSearchAction[],
+): GlobalSearchResultItem[] {
   return actions.map((action) => ({
     id: action.id,
     label: action.label,

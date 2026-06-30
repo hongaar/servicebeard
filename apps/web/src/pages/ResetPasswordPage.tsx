@@ -46,8 +46,16 @@ export function ResetPasswordPage() {
       <div className={styles.card}>
         <h1 className={styles.title}>Choose a new password</h1>
 
-        {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
-        {message && <div className={[styles.alert, styles.alertSuccess].join(" ")}>{message}</div>}
+        {error && (
+          <div className={[styles.alert, styles.alertError].join(" ")}>
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className={[styles.alert, styles.alertSuccess].join(" ")}>
+            {message}
+          </div>
+        )}
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <Input
@@ -66,7 +74,11 @@ export function ResetPasswordPage() {
             required
             autoComplete="new-password"
           />
-          <Button type="submit" disabled={loading || !token} className={styles.fullWidth}>
+          <Button
+            type="submit"
+            disabled={loading || !token}
+            className={styles.fullWidth}
+          >
             {loading ? "Updating…" : "Update password"}
           </Button>
         </form>

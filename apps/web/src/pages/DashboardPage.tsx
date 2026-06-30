@@ -1,7 +1,7 @@
 import {
-    extensionCreateTeamDialogHint,
-    extensionDashboardTeamsDescription,
-    extensionTeamCardBadge,
+  extensionCreateTeamDialogHint,
+  extensionDashboardTeamsDescription,
+  extensionTeamCardBadge,
 } from "@extensions";
 import { slugifyName } from "@servicebeard/shared";
 import { useMutation } from "@tanstack/react-query";
@@ -14,8 +14,8 @@ import { EmptyIcon } from "../components/EmptyIcon";
 import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
 import {
-    PendingInvitesBanner,
-    type PendingTeamInvite,
+  PendingInvitesBanner,
+  type PendingTeamInvite,
 } from "../components/PendingInvitesBanner";
 import { api } from "../lib/api";
 import { iconMd } from "../lib/icons";
@@ -28,7 +28,11 @@ type DashboardPageProps = {
   pendingInvites: PendingTeamInvite[];
 };
 
-export function DashboardPage({ user, teams, pendingInvites }: DashboardPageProps) {
+export function DashboardPage({
+  user,
+  teams,
+  pendingInvites,
+}: DashboardPageProps) {
   const ownedTeamCount = teams.filter((team) => team.role === "owner").length;
   const teamsDescription = extensionDashboardTeamsDescription();
   const createTeamHint = extensionCreateTeamDialogHint({ ownedTeamCount });
@@ -74,8 +78,15 @@ export function DashboardPage({ user, teams, pendingInvites }: DashboardPageProp
         </div>
 
         {showCreate && (
-          <Dialog open={showCreate} onOpenChange={setShowCreate} title="Create a team">
-            <p className={styles.formHint} style={{ marginTop: 0, marginBottom: "1rem" }}>
+          <Dialog
+            open={showCreate}
+            onOpenChange={setShowCreate}
+            title="Create a team"
+          >
+            <p
+              className={styles.formHint}
+              style={{ marginTop: 0, marginBottom: "1rem" }}
+            >
               Teams group people and projects together.
               {createTeamHint ? ` ${createTeamHint}` : ""}
             </p>
@@ -94,7 +105,11 @@ export function DashboardPage({ user, teams, pendingInvites }: DashboardPageProp
                 autoFocus
               />
               <div className={styles.formActions}>
-                <Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowCreate(false)}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -113,9 +128,12 @@ export function DashboardPage({ user, teams, pendingInvites }: DashboardPageProp
             <EmptyIcon icon={Users} />
             <p className={styles.emptyTitle}>No teams yet</p>
             <p className={styles.emptyHint}>
-              Create your first team to start syncing support mail with your issue board.
+              Create your first team to start syncing support mail with your
+              issue board.
             </p>
-            <Button onClick={() => setShowCreate(true)}>Create your first team</Button>
+            <Button onClick={() => setShowCreate(true)}>
+              Create your first team
+            </Button>
           </div>
         ) : (
           <div className={styles.grid}>

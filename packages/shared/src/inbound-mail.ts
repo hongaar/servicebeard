@@ -16,7 +16,10 @@ export interface InboundEmailEligibility {
   date: Date;
 }
 
-function effectiveSenderEmail(email: { fromEmail: string; senderEmail?: string }): string {
+function effectiveSenderEmail(email: {
+  fromEmail: string;
+  senderEmail?: string;
+}): string {
   return email.senderEmail ?? email.fromEmail;
 }
 
@@ -42,7 +45,9 @@ export function isEmailFromSupportMailbox(
   supportEmail: string,
   fromEmail: string,
 ): boolean {
-  return normalizeMailboxEmail(fromEmail) === normalizeMailboxEmail(supportEmail);
+  return (
+    normalizeMailboxEmail(fromEmail) === normalizeMailboxEmail(supportEmail)
+  );
 }
 
 /**
@@ -64,7 +69,9 @@ export function buildThreadMatchIndex(
   threads: Array<{ subjectNormalized: string; originalSenderEmail: string }>,
 ): ThreadMatchIndex {
   return {
-    storedMessageIds: new Set(storedMessages.map((message) => message.messageId)),
+    storedMessageIds: new Set(
+      storedMessages.map((message) => message.messageId),
+    ),
     storedInReplyTos: new Set(
       storedMessages
         .map((message) => message.inReplyTo)

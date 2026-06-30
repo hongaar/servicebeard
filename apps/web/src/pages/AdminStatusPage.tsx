@@ -4,7 +4,11 @@ import { CheckCircle2, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Layout } from "../components/Layout";
-import { api, type AdminCheckResult, type AdminStatusResponse } from "../lib/api";
+import {
+  api,
+  type AdminCheckResult,
+  type AdminStatusResponse,
+} from "../lib/api";
 import { iconMd } from "../lib/icons";
 import styles from "../styles/pages.module.css";
 
@@ -14,7 +18,11 @@ const CATEGORY_LABELS: Record<AdminCheckResult["category"], string> = {
   git: "Issue providers",
 };
 
-const CATEGORY_ORDER: AdminCheckResult["category"][] = ["service", "mail", "git"];
+const CATEGORY_ORDER: AdminCheckResult["category"][] = [
+  "service",
+  "mail",
+  "git",
+];
 
 function CheckRow({ check }: { check: AdminCheckResult }) {
   return (
@@ -29,8 +37,12 @@ function CheckRow({ check }: { check: AdminCheckResult }) {
       </div>
       <div className={styles.adminCheckMeta}>
         {check.latencyMs != null && <span>{check.latencyMs} ms</span>}
-        {check.detail && <span className={styles.adminCheckDetail}>{check.detail}</span>}
-        {check.error && <span className={styles.adminCheckError}>{check.error}</span>}
+        {check.detail && (
+          <span className={styles.adminCheckDetail}>{check.detail}</span>
+        )}
+        {check.error && (
+          <span className={styles.adminCheckError}>{check.error}</span>
+        )}
       </div>
     </div>
   );
@@ -47,7 +59,10 @@ function StatusSummary({ status }: { status: AdminStatusResponse }) {
         <span className={styles.testError}>
           <XCircle size={18} />{" "}
           {status.checks.filter((check) => !check.ok).length} check
-          {status.checks.filter((check) => !check.ok).length === 1 ? "" : "s"} failed
+          {status.checks.filter((check) => !check.ok).length === 1
+            ? ""
+            : "s"}{" "}
+          failed
         </span>
       )}
       <span className={styles.adminCheckedAt}>
@@ -93,9 +108,10 @@ export function AdminStatusPage() {
           <div className={styles.sectionHeaderText}>
             <h2 className={styles.sectionTitle}>Health checks</h2>
             <p className={styles.sectionDescription}>
-              Checks local services and outbound access required for mailbox sync and issue
-              providers. Mail port probes use Gmail as a well-known target; failures usually mean
-              egress restrictions on SMTP/IMAP.
+              Checks local services and outbound access required for mailbox
+              sync and issue providers. Mail port probes use Gmail as a
+              well-known target; failures usually mean egress restrictions on
+              SMTP/IMAP.
             </p>
           </div>
           <Button
@@ -131,7 +147,9 @@ export function AdminStatusPage() {
         {runChecks.isError && (
           <p className={styles.testError}>
             <XCircle size={16} />{" "}
-            {runChecks.error instanceof Error ? runChecks.error.message : "Checks failed"}
+            {runChecks.error instanceof Error
+              ? runChecks.error.message
+              : "Checks failed"}
           </p>
         )}
 
@@ -144,7 +162,11 @@ export function AdminStatusPage() {
             <StatusSummary status={status} />
             {checksByCategory.map(({ category, label, checks }) =>
               checks.length > 0 ? (
-                <Card key={category} title={label} className={styles.adminCheckCard}>
+                <Card
+                  key={category}
+                  title={label}
+                  className={styles.adminCheckCard}
+                >
                   <div className={styles.adminCheckList}>
                     {checks.map((check) => (
                       <CheckRow key={check.id} check={check} />

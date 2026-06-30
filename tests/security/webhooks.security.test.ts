@@ -30,40 +30,55 @@ function gitlabWebhookPayload(externalIssueId: string) {
 describe("Webhook authentication and signature verification", () => {
   test("GitLab webhook with missing token is rejected", async () => {
     const { seed } = await getSecurityContext();
-    const body = JSON.stringify(gitlabWebhookPayload(seed.threads.threadA.externalIssueId));
-    const response = await apiFetch(`/webhooks/gitlab/${seed.projects.projectA.id}`, {
-      method: "POST",
-      body,
-      headers: { "Content-Type": "application/json" },
-    });
+    const body = JSON.stringify(
+      gitlabWebhookPayload(seed.threads.threadA.externalIssueId),
+    );
+    const response = await apiFetch(
+      `/webhooks/gitlab/${seed.projects.projectA.id}`,
+      {
+        method: "POST",
+        body,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
     expect(response.status).toBe(401);
   });
 
   test("GitLab webhook with invalid token is rejected", async () => {
     const { seed } = await getSecurityContext();
-    const body = JSON.stringify(gitlabWebhookPayload(seed.threads.threadA.externalIssueId));
-    const response = await apiFetch(`/webhooks/gitlab/${seed.projects.projectA.id}`, {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gitlab-Token": "invalid-secret",
+    const body = JSON.stringify(
+      gitlabWebhookPayload(seed.threads.threadA.externalIssueId),
+    );
+    const response = await apiFetch(
+      `/webhooks/gitlab/${seed.projects.projectA.id}`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gitlab-Token": "invalid-secret",
+        },
       },
-    });
+    );
     expect(response.status).toBe(401);
   });
 
   test("GitLab webhook with valid token is accepted and queued", async () => {
     const { seed } = await getSecurityContext();
-    const body = JSON.stringify(gitlabWebhookPayload(seed.threads.threadA.externalIssueId));
-    const response = await apiFetch(`/webhooks/gitlab/${seed.projects.projectA.id}`, {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Gitlab-Token": seed.projects.projectA.webhookSecret,
+    const body = JSON.stringify(
+      gitlabWebhookPayload(seed.threads.threadA.externalIssueId),
+    );
+    const response = await apiFetch(
+      `/webhooks/gitlab/${seed.projects.projectA.id}`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gitlab-Token": seed.projects.projectA.webhookSecret,
+        },
       },
-    });
+    );
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
   });
@@ -85,14 +100,17 @@ describe("Webhook authentication and signature verification", () => {
   test("GitHub webhook endpoint rejects wrong provider project", async () => {
     const { seed } = await getSecurityContext();
     const body = JSON.stringify({ action: "created" });
-    const response = await apiFetch(`/webhooks/github/${seed.projects.projectA.id}`, {
-      method: "POST",
-      body,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Hub-Signature-256": "sha256=deadbeef",
+    const response = await apiFetch(
+      `/webhooks/github/${seed.projects.projectA.id}`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Hub-Signature-256": "sha256=deadbeef",
+        },
       },
-    });
+    );
     expect(response.status).toBe(404);
   });
 });

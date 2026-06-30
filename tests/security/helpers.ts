@@ -11,7 +11,13 @@ export type SecurityContext = {
     string
   >;
   client: Record<
-    "ownerA" | "adminA" | "memberA" | "ownerB" | "outsider" | "platformAdmin" | "anonymous",
+    | "ownerA"
+    | "adminA"
+    | "memberA"
+    | "ownerB"
+    | "outsider"
+    | "platformAdmin"
+    | "anonymous",
     ReturnType<typeof createApiClient>
   >;
 };

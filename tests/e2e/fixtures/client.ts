@@ -26,7 +26,11 @@ export async function apiFetch(
   init: RequestInit = {},
   opts: ApiClientOptions = {},
 ): Promise<ApiResponse> {
-  const baseUrl = (opts.baseUrl ?? process.env.API_URL ?? DEFAULT_API_URL).replace(/\/$/, "");
+  const baseUrl = (
+    opts.baseUrl ??
+    process.env.API_URL ??
+    DEFAULT_API_URL
+  ).replace(/\/$/, "");
   const headers = new Headers(init.headers);
 
   if (opts.sessionToken) {

@@ -1,10 +1,18 @@
 import { loadExtensionManifest } from "@servicebeard/shared/extensions";
-import type { WorkerExtensionContext, WorkerExtensionModule } from "@servicebeard/shared/extensions";
+import type {
+  WorkerExtensionContext,
+  WorkerExtensionModule,
+} from "@servicebeard/shared/extensions";
 import type PgBoss from "pg-boss";
 
-export type { WorkerExtensionContext, WorkerExtensionModule } from "@servicebeard/shared/extensions";
+export type {
+  WorkerExtensionContext,
+  WorkerExtensionModule,
+} from "@servicebeard/shared/extensions";
 
-export async function loadWorkerExtensions(ctx: { boss: PgBoss }): Promise<void> {
+export async function loadWorkerExtensions(ctx: {
+  boss: PgBoss;
+}): Promise<void> {
   const manifest = await loadExtensionManifest();
   if (!manifest) return;
 

@@ -1,4 +1,7 @@
-import type { InboundEmailEligibility, InboundMailboxContext } from "./inbound-mail";
+import type {
+  InboundEmailEligibility,
+  InboundMailboxContext,
+} from "./inbound-mail";
 import { isEligibleForInboundRuleEvaluation } from "./inbound-mail";
 import type { EmailInlineImage, Rule } from "./types";
 
@@ -38,7 +41,10 @@ export interface RuleTestInput {
   isEnabled?: boolean;
 }
 
-function testPattern(pattern: string | null | undefined, value: string): boolean {
+function testPattern(
+  pattern: string | null | undefined,
+  value: string,
+): boolean {
   if (!pattern) return true;
   try {
     return new RegExp(pattern, "i").test(value);
@@ -55,7 +61,10 @@ export function evaluateRule(rule: RuleTestInput, email: ParsedEmail): boolean {
   return senderMatch && subjectMatch && bodyMatch;
 }
 
-export function evaluateRules(rules: Rule[], email: ParsedEmail): RuleMatchResult {
+export function evaluateRules(
+  rules: Rule[],
+  email: ParsedEmail,
+): RuleMatchResult {
   const enabled = rules
     .filter((r) => r.isEnabled)
     .sort((a, b) => a.priority - b.priority);
@@ -69,7 +78,10 @@ export function evaluateRules(rules: Rule[], email: ParsedEmail): RuleMatchResul
   return { matched: false, rule: null };
 }
 
-export function evaluateDraftRule(rule: RuleTestInput, email: ParsedEmail): boolean {
+export function evaluateDraftRule(
+  rule: RuleTestInput,
+  email: ParsedEmail,
+): boolean {
   return evaluateRule({ ...rule, isEnabled: rule.isEnabled ?? true }, email);
 }
 
@@ -82,7 +94,9 @@ export function evaluateDraftRuleForInbound(
   return evaluateDraftRule(rule, email);
 }
 
-export function toInboundEligibility(email: ParsedEmail): InboundEmailEligibility {
+export function toInboundEligibility(
+  email: ParsedEmail,
+): InboundEmailEligibility {
   return {
     fromEmail: email.fromEmail,
     senderEmail: email.senderEmail,

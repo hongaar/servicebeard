@@ -2,7 +2,10 @@ import type { Page } from "@playwright/test";
 import { loadSeedData } from "./fixtures/load-seed";
 import type { SeedUserKey } from "./fixtures/types";
 
-export async function authenticateAs(page: Page, userKey: SeedUserKey): Promise<void> {
+export async function authenticateAs(
+  page: Page,
+  userKey: SeedUserKey,
+): Promise<void> {
   const seed = loadSeedData();
   const user = seed.users[userKey];
 
@@ -15,7 +18,9 @@ export async function authenticateAs(page: Page, userKey: SeedUserKey): Promise<
   });
 
   if (!response.ok()) {
-    throw new Error(`Failed to authenticate as ${userKey}: HTTP ${response.status()}`);
+    throw new Error(
+      `Failed to authenticate as ${userKey}: HTTP ${response.status()}`,
+    );
   }
 }
 

@@ -11,7 +11,10 @@ export const E2E_USERS = {
   memberA: { email: "e2e-member-a@test.local", name: "E2E Member A" },
   ownerB: { email: "e2e-owner-b@test.local", name: "E2E Owner B" },
   outsider: { email: "e2e-outsider@test.local", name: "E2E Outsider" },
-  platformAdmin: { email: "e2e-platform-admin@test.local", name: "E2E Platform Admin" },
+  platformAdmin: {
+    email: "e2e-platform-admin@test.local",
+    name: "E2E Platform Admin",
+  },
 } as const;
 
 export const E2E_TEAMS = {

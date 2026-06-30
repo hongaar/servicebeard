@@ -1,13 +1,13 @@
 import type { ParsedEmail, ProviderType } from "@servicebeard/shared";
 import {
-    buildIssueSupportDetailsFooter,
-    buildSyncMarker,
-    formatEmailSender,
-    renderInboundCommentTemplate,
-    renderInboundIssueTemplate,
-    stripQuotedReply,
-    type IssueSupportDetailsOptions,
-    type RuleMatchResult,
+  buildIssueSupportDetailsFooter,
+  buildSyncMarker,
+  formatEmailSender,
+  renderInboundCommentTemplate,
+  renderInboundIssueTemplate,
+  stripQuotedReply,
+  type IssueSupportDetailsOptions,
+  type RuleMatchResult,
 } from "@servicebeard/shared";
 
 export { evaluateRules } from "@servicebeard/shared";
@@ -39,7 +39,9 @@ export function formatCommentBody(
   bodyMarkdown?: string,
   provider?: ProviderType | string,
 ): string {
-  const body = stripQuotedReply(bodyMarkdown ?? email.bodyMarkdown ?? email.body);
+  const body = stripQuotedReply(
+    bodyMarkdown ?? email.bodyMarkdown ?? email.body,
+  );
   const rendered = renderInboundCommentTemplate(template, {
     sender: formatEmailSender(email.senderName, email.senderEmail),
     senderName: email.senderName ?? email.senderEmail,

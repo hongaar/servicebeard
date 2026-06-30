@@ -1,5 +1,9 @@
 import { parseGithubRepository } from "./github-repository";
-import { isLinearProjectId, LINEAR_PROJECT_PREFIX, parseLinearTeam } from "./linear-team";
+import {
+  isLinearProjectId,
+  LINEAR_PROJECT_PREFIX,
+  parseLinearTeam,
+} from "./linear-team";
 
 export type IssueProviderType = "github" | "gitlab" | "linear";
 
@@ -109,7 +113,10 @@ export function providerIssuesWebUrl(
   return `${origin}/${projectId}/issues`;
 }
 
-function detectFromLinear(input: string, baseUrl: string): DetectedIssueRepository | null {
+function detectFromLinear(
+  input: string,
+  baseUrl: string,
+): DetectedIssueRepository | null {
   try {
     return {
       provider: "linear",
@@ -125,7 +132,10 @@ function hostLooksLikeLinear(host: string): boolean {
   return host === "linear.app" || host === "www.linear.app";
 }
 
-function detectFromGithub(input: string, baseUrl: string): DetectedIssueRepository | null {
+function detectFromGithub(
+  input: string,
+  baseUrl: string,
+): DetectedIssueRepository | null {
   try {
     return {
       provider: "github",
@@ -137,7 +147,10 @@ function detectFromGithub(input: string, baseUrl: string): DetectedIssueReposito
   }
 }
 
-function detectFromGitlab(input: string, baseUrl: string): DetectedIssueRepository | null {
+function detectFromGitlab(
+  input: string,
+  baseUrl: string,
+): DetectedIssueRepository | null {
   try {
     return {
       provider: "gitlab",
@@ -150,17 +163,27 @@ function detectFromGitlab(input: string, baseUrl: string): DetectedIssueReposito
 }
 
 function hostLooksLikeGithub(host: string): boolean {
-  return host === "github.com" || host === "www.github.com" || host.includes("github");
+  return (
+    host === "github.com" ||
+    host === "www.github.com" ||
+    host.includes("github")
+  );
 }
 
 function hostLooksLikeGitlab(host: string): boolean {
-  return host === "gitlab.com" || host === "www.gitlab.com" || host.includes("gitlab");
+  return (
+    host === "gitlab.com" ||
+    host === "www.gitlab.com" ||
+    host.includes("gitlab")
+  );
 }
 
 /**
  * Infer issue provider, instance URL, and project/repository id from a pasted URL or path.
  */
-export function detectIssueProviderFromUrl(input: string): DetectedIssueRepository | null {
+export function detectIssueProviderFromUrl(
+  input: string,
+): DetectedIssueRepository | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 

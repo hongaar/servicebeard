@@ -13,7 +13,10 @@ import { GitLabProvider } from "./gitlab";
 import { LinearProvider } from "./linear";
 import type { IssueProvider, ProviderConfig } from "./types";
 
-export function createProvider(type: string, config: ProviderConfig): IssueProvider {
+export function createProvider(
+  type: string,
+  config: ProviderConfig,
+): IssueProvider {
   switch (type) {
     case "gitlab":
       return new GitLabProvider(config);

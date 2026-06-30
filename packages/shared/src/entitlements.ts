@@ -17,12 +17,17 @@ export interface EntitlementsProvider {
   assertCanCreateProject(teamId: string, currentCount: number): Promise<void>;
   assertTeamAccess(teamId: string, ctx: TeamAccessContext): Promise<void>;
   assertCanCreateRule?(teamId: string, currentRuleCount: number): Promise<void>;
-  assertCanCreateConversation?(teamId: string, conversationsThisMonth: number): Promise<void>;
+  assertCanCreateConversation?(
+    teamId: string,
+    conversationsThisMonth: number,
+  ): Promise<void>;
   getBillingPeriod?(teamId: string): Promise<{ start: Date; end: Date }>;
   getTeamEntitlementUsage?(teamId: string): Promise<TeamEntitlementUsage>;
   getTeamListingMeta?(teamId: string): Promise<TeamListingMeta>;
   isTeamOperational?(teamId: string): Promise<boolean>;
-  getImapPollIntervalSeconds?(teamId: string): number | Promise<number | undefined> | undefined;
+  getImapPollIntervalSeconds?(
+    teamId: string,
+  ): number | Promise<number | undefined> | undefined;
 }
 
 const unlimitedEntitlements: EntitlementsProvider = {

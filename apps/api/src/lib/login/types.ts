@@ -1,6 +1,6 @@
 import type {
-    LoginProviderPublicConfig,
-    LoginProviderType,
+  LoginProviderPublicConfig,
+  LoginProviderType,
 } from "@servicebeard/shared";
 
 export interface LoginAdapterSettings {

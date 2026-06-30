@@ -3,9 +3,9 @@ import { Fragment, type ReactNode } from "react";
 import type { ProviderOptions, Rule } from "../lib/api";
 import { providerLabelTagVars } from "../lib/providerLabel";
 import {
-    resolveAssigneeName,
-    resolveStatusName,
-    ruleHasActions,
+  resolveAssigneeName,
+  resolveStatusName,
+  ruleHasActions,
 } from "../lib/ruleDisplay";
 import labelStyles from "./ProviderLabelMultiSelect.module.css";
 import styles from "./RuleActionsCell.module.css";
@@ -17,16 +17,14 @@ interface RuleActionsCellProps {
 }
 
 function ActionSpinner() {
-  return (
-    <Loader2
-      size={14}
-      className={styles.spinner}
-      aria-hidden="true"
-    />
-  );
+  return <Loader2 size={14} className={styles.spinner} aria-hidden="true" />;
 }
 
-export function RuleActionsCell({ rule, options, optionsLoading }: RuleActionsCellProps) {
+export function RuleActionsCell({
+  rule,
+  options,
+  optionsLoading,
+}: RuleActionsCellProps) {
   if (!ruleHasActions(rule)) {
     return <span className={styles.empty}>—</span>;
   }
@@ -83,10 +81,7 @@ export function RuleActionsCell({ rule, options, optionsLoading }: RuleActionsCe
   }
 
   return (
-    <div
-      className={styles.root}
-      aria-busy={optionsLoading || undefined}
-    >
+    <div className={styles.root} aria-busy={optionsLoading || undefined}>
       {parts.map((part, index) => (
         <Fragment key={index}>
           {index > 0 ? (

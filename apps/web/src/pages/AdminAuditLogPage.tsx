@@ -25,7 +25,9 @@ function hasMetadata(metadata: Record<string, unknown> | null): boolean {
 
 const DETAILS_PREVIEW_MAX_LENGTH = 20;
 
-function formatMetadataPreview(metadata: Record<string, unknown> | null): string {
+function formatMetadataPreview(
+  metadata: Record<string, unknown> | null,
+): string {
   if (!hasMetadata(metadata)) {
     return "—";
   }
@@ -67,7 +69,9 @@ function AuditLogDetailsDialog({
         <>
           <dl className={styles.debugGrid}>
             <dt className={styles.debugLabel}>Time</dt>
-            <dd className={styles.debugValue}>{formatTimestamp(entry.createdAt)}</dd>
+            <dd className={styles.debugValue}>
+              {formatTimestamp(entry.createdAt)}
+            </dd>
             <dt className={styles.debugLabel}>Action</dt>
             <dd className={styles.debugValue}>
               <code>{entry.action}</code>
@@ -92,7 +96,9 @@ function AuditLogDetailsDialog({
             </dd>
           </dl>
           {hasMetadata(entry.metadata) ? (
-            <pre className={styles.adminAuditLogJson}>{formatMetadataJson(entry.metadata)}</pre>
+            <pre className={styles.adminAuditLogJson}>
+              {formatMetadataJson(entry.metadata)}
+            </pre>
           ) : (
             <p className={styles.formHint}>No additional details recorded.</p>
           )}
@@ -115,11 +121,17 @@ function AuditLogTable({
   onShowDetails: (entry: AdminAuditLogEntry) => void;
 }) {
   if (entries.length === 0) {
-    return <p className={styles.formHint}>No audit log entries match your filters.</p>;
+    return (
+      <p className={styles.formHint}>
+        No audit log entries match your filters.
+      </p>
+    );
   }
 
   return (
-    <div className={[styles.tableWrap, styles.adminAuditLogTableWrap].join(" ")}>
+    <div
+      className={[styles.tableWrap, styles.adminAuditLogTableWrap].join(" ")}
+    >
       <table className={[styles.table, styles.adminAuditLogTable].join(" ")}>
         <thead>
           <tr>
@@ -134,7 +146,12 @@ function AuditLogTable({
         <tbody>
           {entries.map((entry) => (
             <tr key={entry.id}>
-              <td className={[styles.adminAuditLogCompactCell, styles.adminMuted].join(" ")}>
+              <td
+                className={[
+                  styles.adminAuditLogCompactCell,
+                  styles.adminMuted,
+                ].join(" ")}
+              >
                 {formatTimestamp(entry.createdAt)}
               </td>
               <td className={styles.adminAuditLogCompactCell}>
@@ -163,8 +180,15 @@ function AuditLogTable({
                   "—"
                 )}
               </td>
-              <td className={[styles.adminAuditLogCompactCell, styles.adminMuted].join(" ")}>
-                {entry.userEmail ?? entry.userName ?? (entry.userId ? entry.userId : "—")}
+              <td
+                className={[
+                  styles.adminAuditLogCompactCell,
+                  styles.adminMuted,
+                ].join(" ")}
+              >
+                {entry.userEmail ??
+                  entry.userName ??
+                  (entry.userId ? entry.userId : "—")}
               </td>
               <td className={styles.adminAuditLogDetailsCol}>
                 {hasMetadata(entry.metadata) ? (
@@ -201,7 +225,9 @@ export function AdminAuditLogPage() {
     resourceType: "",
   });
   const [offset, setOffset] = useState(0);
-  const [detailsEntry, setDetailsEntry] = useState<AdminAuditLogEntry | null>(null);
+  const [detailsEntry, setDetailsEntry] = useState<AdminAuditLogEntry | null>(
+    null,
+  );
   const limit = 50;
 
   useEffect(() => {
@@ -287,10 +313,15 @@ export function AdminAuditLogPage() {
           />
         )}
 
-        <AuditLogDetailsDialog entry={detailsEntry} onClose={() => setDetailsEntry(null)} />
+        <AuditLogDetailsDialog
+          entry={detailsEntry}
+          onClose={() => setDetailsEntry(null)}
+        />
 
         <div className={styles.adminPagination}>
-          <span>{total === 0 ? "No results" : `${pageStart}–${pageEnd} of ${total}`}</span>
+          <span>
+            {total === 0 ? "No results" : `${pageStart}–${pageEnd} of ${total}`}
+          </span>
           <Button
             variant="secondary"
             disabled={offset === 0}

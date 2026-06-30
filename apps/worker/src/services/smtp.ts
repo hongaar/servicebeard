@@ -45,9 +45,12 @@ export async function sendEmail(
     tls: smtpTlsOptions(creds.smtpHost),
   });
 
-  const domain = parseMailFromAddress(creds.smtpFrom).split("@")[1] ?? "servicebeard.local";
+  const domain =
+    parseMailFromAddress(creds.smtpFrom).split("@")[1] ?? "servicebeard.local";
   const messageId = `<${randomBytes(16).toString("hex")}@${domain}>`;
-  const inReplyTo = email.inReplyTo ? normalizeMessageId(email.inReplyTo) : undefined;
+  const inReplyTo = email.inReplyTo
+    ? normalizeMessageId(email.inReplyTo)
+    : undefined;
   const references = (email.references ?? []).map(normalizeMessageId);
 
   try {
@@ -55,7 +58,9 @@ export async function sendEmail(
       from: creds.smtpFrom,
       to: email.toName ? `"${email.toName}" <${email.to}>` : email.to,
       cc: email.cc,
-      subject: email.subject.startsWith("Re:") ? email.subject : `Re: ${email.subject}`,
+      subject: email.subject.startsWith("Re:")
+        ? email.subject
+        : `Re: ${email.subject}`,
       text: email.body,
       html: email.bodyHtml,
       attachments: email.attachments?.map((attachment) => ({

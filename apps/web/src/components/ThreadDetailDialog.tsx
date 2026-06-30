@@ -31,8 +31,14 @@ function ThreadDetailContent({ thread }: { thread: ThreadDetail }) {
         <h3 className={styles.debugSectionTitle}>Thread</h3>
         <dl className={styles.debugGrid}>
           <DetailField label="ID" value={<code>{thread.id}</code>} />
-          <DetailField label="Project ID" value={<code>{thread.projectId}</code>} />
-          <DetailField label="External issue ID" value={<code>{thread.externalIssueId}</code>} />
+          <DetailField
+            label="Project ID"
+            value={<code>{thread.projectId}</code>}
+          />
+          <DetailField
+            label="External issue ID"
+            value={<code>{thread.externalIssueId}</code>}
+          />
           <DetailField
             label="Issue"
             value={
@@ -41,7 +47,10 @@ function ThreadDetailContent({ thread }: { thread: ThreadDetail }) {
               </a>
             }
           />
-          <DetailField label="Subject (normalized)" value={thread.subjectNormalized} />
+          <DetailField
+            label="Subject (normalized)"
+            value={thread.subjectNormalized}
+          />
           <DetailField
             label="Original sender"
             value={
@@ -50,9 +59,18 @@ function ThreadDetailContent({ thread }: { thread: ThreadDetail }) {
                 : thread.originalSenderEmail
             }
           />
-          <DetailField label="Last seen note" value={formatTimestamp(thread.lastSeenNoteAt)} />
-          <DetailField label="Created" value={formatTimestamp(thread.createdAt)} />
-          <DetailField label="Updated" value={formatTimestamp(thread.updatedAt)} />
+          <DetailField
+            label="Last seen note"
+            value={formatTimestamp(thread.lastSeenNoteAt)}
+          />
+          <DetailField
+            label="Created"
+            value={formatTimestamp(thread.createdAt)}
+          />
+          <DetailField
+            label="Updated"
+            value={formatTimestamp(thread.updatedAt)}
+          />
         </dl>
       </section>
 
@@ -61,7 +79,9 @@ function ThreadDetailContent({ thread }: { thread: ThreadDetail }) {
           Messages ({thread.messages.length})
         </h3>
         {thread.messages.length === 0 ? (
-          <p className={styles.formHint}>No messages recorded for this thread.</p>
+          <p className={styles.formHint}>
+            No messages recorded for this thread.
+          </p>
         ) : (
           <div className={styles.debugMessageList}>
             {thread.messages.map((message, index) => (
@@ -84,10 +104,15 @@ function ThreadDetailContent({ thread }: { thread: ThreadDetail }) {
                 </div>
                 <dl className={styles.debugGrid}>
                   <DetailField label="ID" value={<code>{message.id}</code>} />
-                  <DetailField label="Message-ID" value={<code>{message.messageId}</code>} />
+                  <DetailField
+                    label="Message-ID"
+                    value={<code>{message.messageId}</code>}
+                  />
                   <DetailField
                     label="In-Reply-To"
-                    value={message.inReplyTo ? <code>{message.inReplyTo}</code> : "—"}
+                    value={
+                      message.inReplyTo ? <code>{message.inReplyTo}</code> : "—"
+                    }
                   />
                   <DetailField
                     label="References"
@@ -108,14 +133,35 @@ function ThreadDetailContent({ thread }: { thread: ThreadDetail }) {
                   <DetailField label="Subject" value={message.subject ?? "—"} />
                   <DetailField
                     label="From"
-                    value={message.fromAddress ? <code>{message.fromAddress}</code> : "—"}
+                    value={
+                      message.fromAddress ? (
+                        <code>{message.fromAddress}</code>
+                      ) : (
+                        "—"
+                      )
+                    }
                   />
-                  <DetailField label="To" value={formatAddresses(message.toAddresses)} />
-                  <DetailField label="Cc" value={formatAddresses(message.ccAddresses)} />
-                  <DetailField label="Bcc" value={formatAddresses(message.bccAddresses)} />
+                  <DetailField
+                    label="To"
+                    value={formatAddresses(message.toAddresses)}
+                  />
+                  <DetailField
+                    label="Cc"
+                    value={formatAddresses(message.ccAddresses)}
+                  />
+                  <DetailField
+                    label="Bcc"
+                    value={formatAddresses(message.bccAddresses)}
+                  />
                   <DetailField
                     label="External note ID"
-                    value={message.externalNoteId ? <code>{message.externalNoteId}</code> : "—"}
+                    value={
+                      message.externalNoteId ? (
+                        <code>{message.externalNoteId}</code>
+                      ) : (
+                        "—"
+                      )
+                    }
                   />
                 </dl>
                 <div className={styles.debugBody}>

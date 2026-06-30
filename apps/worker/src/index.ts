@@ -1,7 +1,10 @@
 import { getDb, projects } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
 import { setProviderLog } from "@servicebeard/providers";
-import { getCommentPollIntervalSeconds, getImapPollIntervalSeconds } from "@servicebeard/shared";
+import {
+  getCommentPollIntervalSeconds,
+  getImapPollIntervalSeconds,
+} from "@servicebeard/shared";
 import { getEntitlements } from "@servicebeard/shared/entitlements";
 import { eq } from "drizzle-orm";
 import PgBoss from "pg-boss";
@@ -13,9 +16,9 @@ import { logger } from "./lib/logger";
 import { runExclusive } from "./lib/run-guard";
 import { processImapPoll } from "./services/inbound";
 import {
-    ensureWebhookForProject,
-    pollCommentsForProject,
-    processOutboundComment,
+  ensureWebhookForProject,
+  pollCommentsForProject,
+  processOutboundComment,
 } from "./services/outbound";
 
 initBugsink();
@@ -54,15 +57,21 @@ async function runImapPollsForDueProjects(): Promise<void> {
   let skippedNotDue = 0;
 
   for (const project of activeProjects) {
-    const operational = await getEntitlements().isTeamOperational?.(project.teamId);
+    const operational = await getEntitlements().isTeamOperational?.(
+      project.teamId,
+    );
     if (operational === false) {
       skippedNotDue++;
       continue;
     }
 
-    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(project.teamId);
+    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(
+      project.teamId,
+    );
     const teamInterval =
-      teamIntervalResult instanceof Promise ? await teamIntervalResult : teamIntervalResult;
+      teamIntervalResult instanceof Promise
+        ? await teamIntervalResult
+        : teamIntervalResult;
     const intervalSeconds = teamInterval ?? imapPollIntervalSeconds;
     if (!isProjectPollDue(project.lastImapPollAt, intervalSeconds)) {
       skippedNotDue++;
@@ -87,7 +96,9 @@ async function runImapPollsForDueProjects(): Promise<void> {
       await processImapPoll(project.id);
       polled++;
     } catch (err) {
-      logExternalError("worker", "imap-poll-project", err, { projectId: project.id });
+      logExternalError("worker", "imap-poll-project", err, {
+        projectId: project.id,
+      });
     }
   }
 
@@ -108,15 +119,21 @@ async function runCommentPollsForDueProjects(): Promise<void> {
   let skippedNotDue = 0;
 
   for (const project of activeProjects) {
-    const operational = await getEntitlements().isTeamOperational?.(project.teamId);
+    const operational = await getEntitlements().isTeamOperational?.(
+      project.teamId,
+    );
     if (operational === false) {
       skippedNotDue++;
       continue;
     }
 
-    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(project.teamId);
+    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(
+      project.teamId,
+    );
     const teamInterval =
-      teamIntervalResult instanceof Promise ? await teamIntervalResult : teamIntervalResult;
+      teamIntervalResult instanceof Promise
+        ? await teamIntervalResult
+        : teamIntervalResult;
     const intervalSeconds = teamInterval ?? commentPollIntervalSeconds;
     if (!isProjectPollDue(project.lastCommentPollAt, intervalSeconds)) {
       skippedNotDue++;
@@ -141,7 +158,9 @@ async function runCommentPollsForDueProjects(): Promise<void> {
       await pollCommentsForProject(project.id);
       polled++;
     } catch (err) {
-      logExternalError("worker", "comment-poll-project", err, { projectId: project.id });
+      logExternalError("worker", "comment-poll-project", err, {
+        projectId: project.id,
+      });
     }
   }
 
@@ -225,9 +244,8 @@ export async function startWorker(): Promise<PgBoss> {
     event: NormalizedWebhookEvent;
   }>(QUEUE_NAMES.SEND_EMAIL, { batchSize: 1 }, async ([job]) => {
     try {
-      await runExclusive(
-        `send-email:${job!.data.event.noteId}`,
-        async () => processOutboundComment(job!.data.projectId, job!.data.event),
+      await runExclusive(`send-email:${job!.data.event.noteId}`, async () =>
+        processOutboundComment(job!.data.projectId, job!.data.event),
       );
     } catch (err) {
       logExternalError("pg-boss", "send-email", err, {
@@ -270,10 +288,7 @@ async function schedulePollJobs(boss: PgBoss): Promise<void> {
     { tz: "UTC" },
   );
 
-  logger.info(
-    { cron: POLL_TICK_CRON },
-    "scheduled imap and comment poll jobs",
-  );
+  logger.info({ cron: POLL_TICK_CRON }, "scheduled imap and comment poll jobs");
 }
 
 async function shutdown(): Promise<void> {

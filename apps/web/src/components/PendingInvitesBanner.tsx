@@ -28,7 +28,9 @@ export function PendingInvitesBanner({
   const acceptInvite = useMutation({
     mutationFn: (inviteId: string) => api.acceptPendingInvite(inviteId),
     onSuccess: async (_member, inviteId) => {
-      setInvites((current) => current.filter((invite) => invite.id !== inviteId));
+      setInvites((current) =>
+        current.filter((invite) => invite.id !== inviteId),
+      );
       setAcceptingId(null);
       setError("");
       await router.invalidate();
@@ -51,7 +53,11 @@ export function PendingInvitesBanner({
             : `You have ${invites.length} pending team invites`}
         </span>
       </div>
-      {error && <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>}
+      {error && (
+        <div className={[styles.alert, styles.alertError].join(" ")}>
+          {error}
+        </div>
+      )}
       <ul className={styles.inviteBannerList}>
         {invites.map((invite) => (
           <li key={invite.id} className={styles.inviteBannerItem}>

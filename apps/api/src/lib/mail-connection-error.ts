@@ -15,18 +15,26 @@ function endpointLabel(endpoint: MailEndpoint): string {
 }
 
 /** Turn low-level IMAP/SMTP errors into actionable messages for the UI. */
-export function formatMailConnectionError(endpoint: MailEndpoint, err: unknown): Error {
+export function formatMailConnectionError(
+  endpoint: MailEndpoint,
+  err: unknown,
+): Error {
   const raw = err instanceof Error ? err.message : String(err);
   const target = endpointLabel(endpoint);
 
-  if (/invalid login|authentication failed|\b535\b|\b534\b|\bauth\b/i.test(raw)) {
+  if (
+    /invalid login|authentication failed|\b535\b|\b534\b|\bauth\b/i.test(raw)
+  ) {
     return new Error(
       `${endpoint.protocol} authentication failed for ${target}. Check the username and password.`,
     );
   }
 
   if (/timeout|ETIMEDOUT|ESOCKETTIMEDOUT/i.test(raw)) {
-    if (endpoint.protocol === "SMTP" && (endpoint.port === 465 || endpoint.port === 25)) {
+    if (
+      endpoint.protocol === "SMTP" &&
+      (endpoint.port === 465 || endpoint.port === 25)
+    ) {
       return new Error(
         `Could not reach the SMTP server at ${target} (timed out). ` +
           `Port ${endpoint.port} is often blocked by cloud hosts; try port 587 with STARTTLS if your provider supports it.`,
@@ -38,8 +46,16 @@ export function formatMailConnectionError(endpoint: MailEndpoint, err: unknown):
     );
   }
 
-  if (/connection closed|ECONNRESET|socket hang up|EPIPE|unexpected eof/i.test(raw)) {
-    if (endpoint.protocol === "SMTP" && endpoint.secure && endpoint.port === 465) {
+  if (
+    /connection closed|ECONNRESET|socket hang up|EPIPE|unexpected eof/i.test(
+      raw,
+    )
+  ) {
+    if (
+      endpoint.protocol === "SMTP" &&
+      endpoint.secure &&
+      endpoint.port === 465
+    ) {
       return new Error(
         `SMTP connection to ${target} was closed before the handshake completed. ` +
           `Port 465 is often blocked by cloud hosts; try port 587 with STARTTLS if your provider supports it.`,
@@ -64,8 +80,12 @@ export function formatMailConnectionError(endpoint: MailEndpoint, err: unknown):
   }
 
   if (/certificate|altnames|TLS|SSL|UNABLE_TO_VERIFY/i.test(raw)) {
-    return new Error(`${endpoint.protocol} TLS handshake failed for ${target}: ${raw}`);
+    return new Error(
+      `${endpoint.protocol} TLS handshake failed for ${target}: ${raw}`,
+    );
   }
 
-  return new Error(`${endpoint.protocol} connection to ${target} failed: ${raw}`);
+  return new Error(
+    `${endpoint.protocol} connection to ${target} failed: ${raw}`,
+  );
 }

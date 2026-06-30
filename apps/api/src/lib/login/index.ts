@@ -3,17 +3,14 @@ import { GitlabLoginAdapter } from "./gitlab";
 import { LocalLoginAdapter } from "./local";
 import { OidcLoginAdapter } from "./oidc";
 import type { LoginAdapter } from "./types";
-export {
-    isCredentialLoginAdapter,
-    isRedirectLoginAdapter
-} from "./types";
+export { isCredentialLoginAdapter, isRedirectLoginAdapter } from "./types";
 export type {
-    CredentialLoginAdapter,
-    LoginAdapter,
-    LoginAdapterSettings,
-    LoginIdentity,
-    OidcLoginStart,
-    RedirectLoginAdapter
+  CredentialLoginAdapter,
+  LoginAdapter,
+  LoginAdapterSettings,
+  LoginIdentity,
+  OidcLoginStart,
+  RedirectLoginAdapter,
 } from "./types";
 
 const adapters: LoginAdapter[] = [

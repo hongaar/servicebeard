@@ -8,7 +8,10 @@ function isGitlabSignupEnabled(): boolean {
 }
 
 function getGitlabBaseUrl(): string {
-  return (process.env.GITLAB_BASE_URL ?? "https://gitlab.com").replace(/\/$/, "");
+  return (process.env.GITLAB_BASE_URL ?? "https://gitlab.com").replace(
+    /\/$/,
+    "",
+  );
 }
 
 function getGitlabConfig() {

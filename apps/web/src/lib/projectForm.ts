@@ -1,20 +1,21 @@
 import type { MailAutoconfig } from "@servicebeard/shared";
 import {
-    detectIssueProviderFromUrl,
-    formatMailFrom,
-    GREENMAIL_DEV_PROJECT_MAIL,
-    lookupMailAutoconfig,
-    parseGithubRepository,
-    parseGitlabProject,
-    parseLinearTeam,
-    parseMailFromAddress,
-    parseMailFromName,
-    slugifyName,
-    usesLocalPartMailAuth,
+  detectIssueProviderFromUrl,
+  formatMailFrom,
+  GREENMAIL_DEV_PROJECT_MAIL,
+  lookupMailAutoconfig,
+  parseGithubRepository,
+  parseGitlabProject,
+  parseLinearTeam,
+  parseMailFromAddress,
+  parseMailFromName,
+  slugifyName,
+  usesLocalPartMailAuth,
 } from "@servicebeard/shared";
 import type { CreateProjectInput, Project, UpdateProjectInput } from "./api";
 
-export type ProviderHosting = "cloud" | "self-hosted" | "enterprise" | "dedicated";
+export type ProviderHosting =
+  "cloud" | "self-hosted" | "enterprise" | "dedicated";
 
 export type GithubProviderAuthType = "pat" | "github_app";
 
@@ -52,7 +53,10 @@ export const CLOUD_PROVIDER_URLS: Record<string, string> = {
   linear: "https://linear.app",
 };
 
-export function inferProviderHosting(provider: string, baseUrl: string): ProviderHosting {
+export function inferProviderHosting(
+  provider: string,
+  baseUrl: string,
+): ProviderHosting {
   const normalized = baseUrl.replace(/\/$/, "").toLowerCase();
   const cloud = CLOUD_PROVIDER_URLS[provider]?.toLowerCase();
   if (cloud && normalized === cloud) return "cloud";
@@ -65,7 +69,9 @@ export function cloudProviderBaseUrl(provider: string): string {
   return CLOUD_PROVIDER_URLS[provider] ?? "https://gitlab.com";
 }
 
-export function isMailServerConfigured(form: ProjectSettingsFormValues): boolean {
+export function isMailServerConfigured(
+  form: ProjectSettingsFormValues,
+): boolean {
   return (
     form.imapHost.trim().length > 0 &&
     form.imapUser.trim().length > 0 &&
@@ -104,7 +110,8 @@ const baseProjectSettingsForm: ProjectSettingsFormValues = {
   imapMarkIngestedAsSeen: true,
 };
 
-export const defaultProjectSettingsForm: ProjectSettingsFormValues = import.meta.env.DEV
+export const defaultProjectSettingsForm: ProjectSettingsFormValues = import.meta
+  .env.DEV
   ? { ...baseProjectSettingsForm, ...GREENMAIL_DEV_PROJECT_MAIL }
   : baseProjectSettingsForm;
 
@@ -136,7 +143,10 @@ export function applySupportEmailAutoconfig(
   };
 }
 
-export function applyProjectName(form: ProjectSettingsFormValues, name: string): ProjectSettingsFormValues {
+export function applyProjectName(
+  form: ProjectSettingsFormValues,
+  name: string,
+): ProjectSettingsFormValues {
   return {
     ...form,
     name,
@@ -155,7 +165,11 @@ export function applyProviderHosting(
   } else if (wasCloud) {
     providerBaseUrl = "";
   }
-  const next: ProjectSettingsFormValues = { ...form, providerHosting: hosting, providerBaseUrl };
+  const next: ProjectSettingsFormValues = {
+    ...form,
+    providerHosting: hosting,
+    providerBaseUrl,
+  };
   if (form.provider === "gitlab" && hosting !== "self-hosted") {
     next.providerTlsInsecure = false;
     next.providerCaCert = "";
@@ -199,7 +213,10 @@ export function applyIssueRepositoryUrl(
     const withProvider = applyProvider(form, detected.provider);
     return {
       ...withProvider,
-      providerHosting: inferProviderHosting(detected.provider, detected.providerBaseUrl),
+      providerHosting: inferProviderHosting(
+        detected.provider,
+        detected.providerBaseUrl,
+      ),
       providerBaseUrl: detected.providerBaseUrl,
       providerProjectId: detected.providerProjectId,
     };
@@ -274,15 +291,22 @@ export function applyProvider(
   };
 }
 
-export function projectToSettingsForm(project: Project): ProjectSettingsFormValues {
+export function projectToSettingsForm(
+  project: Project,
+): ProjectSettingsFormValues {
   return {
     name: project.name,
     slug: project.slug,
     provider: project.provider,
-    providerHosting: inferProviderHosting(project.provider, project.providerBaseUrl),
+    providerHosting: inferProviderHosting(
+      project.provider,
+      project.providerBaseUrl,
+    ),
     providerBaseUrl: project.providerBaseUrl,
     providerProjectId: project.providerProjectId,
-    providerGithubAuthType: project.providerGithubInstallationId ? "github_app" : "pat",
+    providerGithubAuthType: project.providerGithubInstallationId
+      ? "github_app"
+      : "pat",
     providerGithubInstallationId: project.providerGithubInstallationId ?? "",
     providerToken: "",
     providerTlsInsecure: project.providerTlsInsecure,
@@ -385,11 +409,13 @@ export function formToUpdateInput(
   if (form.providerToken) input.providerToken = form.providerToken;
   if (form.provider === "github") {
     const usesGithubApp =
-      (options?.githubAppEnabled ?? false) || form.providerGithubInstallationId.trim().length > 0;
+      (options?.githubAppEnabled ?? false) ||
+      form.providerGithubInstallationId.trim().length > 0;
     if (usesGithubApp) {
       input.providerGithubAuthType = "github_app";
       if (form.providerGithubInstallationId.trim()) {
-        input.providerGithubInstallationId = form.providerGithubInstallationId.trim();
+        input.providerGithubInstallationId =
+          form.providerGithubInstallationId.trim();
       }
     } else {
       input.providerGithubAuthType = "pat";
@@ -397,7 +423,8 @@ export function formToUpdateInput(
   }
   if (form.imapPassword) input.imapPassword = form.imapPassword;
   if (form.smtpPassword) input.smtpPassword = form.smtpPassword;
-  if (form.providerCaCert.trim()) input.providerCaCert = form.providerCaCert.trim();
+  if (form.providerCaCert.trim())
+    input.providerCaCert = form.providerCaCert.trim();
 
   return input;
 }

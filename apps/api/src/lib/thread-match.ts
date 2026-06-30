@@ -1,7 +1,7 @@
 import { emailMessages, getDb, issueThreads } from "@servicebeard/db";
 import {
-    buildThreadMatchIndex,
-    type ThreadMatchIndex,
+  buildThreadMatchIndex,
+  type ThreadMatchIndex,
 } from "@servicebeard/shared";
 import { eq } from "drizzle-orm";
 

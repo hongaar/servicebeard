@@ -2,7 +2,9 @@ import { recordProjectStatusEvent } from "@servicebeard/db";
 import { providerErrorDetails } from "@servicebeard/providers";
 import { logger } from "./logger";
 
-function projectIdFromContext(context?: Record<string, unknown>): string | undefined {
+function projectIdFromContext(
+  context?: Record<string, unknown>,
+): string | undefined {
   return typeof context?.projectId === "string" ? context.projectId : undefined;
 }
 
@@ -22,12 +24,17 @@ function persistProjectSyncError(
     projectId,
     service,
     operation,
-    message: providerError?.message ?? (err instanceof Error ? err.message : String(err)),
+    message:
+      providerError?.message ??
+      (err instanceof Error ? err.message : String(err)),
     status: providerError?.status,
     responseBody: providerError?.responseBody,
     metadata: context,
   }).catch((persistErr) => {
-    logger.warn({ persistErr, projectId, service, operation }, "failed to record project sync error");
+    logger.warn(
+      { persistErr, projectId, service, operation },
+      "failed to record project sync error",
+    );
   });
 }
 

@@ -1,21 +1,28 @@
-import type { LoginProviderPublicConfig, LoginProviderType } from "@servicebeard/shared/login";
+import type {
+  LoginProviderPublicConfig,
+  LoginProviderType,
+} from "@servicebeard/shared/login";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
-    ArrowLeft,
-    Fingerprint,
-    Github,
-    Gitlab,
-    KeyRound,
-    Lock,
-    LogIn,
-    Mail,
+  ArrowLeft,
+  Fingerprint,
+  Github,
+  Gitlab,
+  KeyRound,
+  Lock,
+  LogIn,
+  Mail,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { api, ApiError } from "../lib/api";
 import { ssoIconProps as baseSsoIconProps, iconMd, iconSm } from "../lib/icons";
-import { authenticateWithPasskey, isPasskeySupported, registerPasskey } from "../lib/passkey";
+import {
+  authenticateWithPasskey,
+  isPasskeySupported,
+  registerPasskey,
+} from "../lib/passkey";
 import { normalizeRedirectPath } from "../lib/redirect";
 import styles from "../styles/pages.module.css";
 
@@ -151,10 +158,14 @@ function CredentialAuthForm({
       {(error || info || (onResendVerification && resendEmail)) && (
         <div className={styles.credentialAuthMessages}>
           {error && (
-            <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>
+            <div className={[styles.alert, styles.alertError].join(" ")}>
+              {error}
+            </div>
           )}
           {info && (
-            <div className={[styles.alert, styles.alertSuccess].join(" ")}>{info}</div>
+            <div className={[styles.alert, styles.alertSuccess].join(" ")}>
+              {info}
+            </div>
           )}
           {onResendVerification && resendEmail && (
             <p className={styles.formHint}>
@@ -257,14 +268,19 @@ function CredentialAuthForm({
                     required
                     autoComplete="new-password"
                   />
-                  <Button type="submit" disabled={loading} className={styles.fullWidth}>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className={styles.fullWidth}
+                  >
                     {loading ? "Creating account…" : "Create account"}
                   </Button>
                 </form>
               ) : (
                 <div className={styles.form}>
                   <p className={styles.formHint}>
-                    Your device will create a passkey linked to this email — no password needed.
+                    Your device will create a passkey linked to this email — no
+                    password needed.
                   </p>
                   <Button
                     type="button"
@@ -273,7 +289,9 @@ function CredentialAuthForm({
                     className={styles.fullWidth}
                   >
                     <Fingerprint {...iconMd} />
-                    {loading ? "Creating account…" : "Create account with passkey"}
+                    {loading
+                      ? "Creating account…"
+                      : "Create account with passkey"}
                   </Button>
                 </div>
               )}
@@ -294,7 +312,11 @@ function CredentialAuthForm({
                 required
                 autoComplete="new-password"
               />
-              <Button type="submit" disabled={loading} className={styles.fullWidth}>
+              <Button
+                type="submit"
+                disabled={loading}
+                className={styles.fullWidth}
+              >
                 {loading ? "Creating account…" : "Create account"}
               </Button>
             </form>
@@ -331,10 +353,7 @@ function CredentialAuthForm({
             <Link to="/forgot-password">Forgot password?</Link>
           </p>
           {passkeySupported && (
-            <PasskeyLoginButton
-              loading={loading}
-              onClick={onPasskeyLogin}
-            />
+            <PasskeyLoginButton loading={loading} onClick={onPasskeyLogin} />
           )}
         </form>
       )}
@@ -378,7 +397,9 @@ export function LoginPage() {
   useEffect(() => {
     api.getAuthConfig().then((config) => {
       setProviders(config.providers);
-      const hasSso = config.providers.some((provider) => provider.type !== "local");
+      const hasSso = config.providers.some(
+        (provider) => provider.type !== "local",
+      );
       setShowEmailLogin(!hasSso);
     });
 
@@ -406,7 +427,11 @@ export function LoginPage() {
       const result = await api.resendVerification(pendingVerificationEmail);
       setInfo(result.message);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend verification email");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not resend verification email",
+      );
     } finally {
       setLoading(false);
     }
@@ -483,21 +508,29 @@ export function LoginPage() {
     }
   };
 
-  const redirectProviders = providers.filter((provider) => provider.type !== "local");
-  const credentialProviders = providers.filter((provider) => provider.type === "local");
+  const redirectProviders = providers.filter(
+    (provider) => provider.type !== "local",
+  );
+  const credentialProviders = providers.filter(
+    (provider) => provider.type === "local",
+  );
   const localProvider = credentialProviders[0];
   const hasSso = redirectProviders.length > 0;
   const hasLocal = credentialProviders.length > 0;
   const passkeyQuickLogin =
-    hasLocal &&
-    localProvider?.passkeyEnabled &&
-    isPasskeySupported();
+    hasLocal && localProvider?.passkeyEnabled && isPasskeySupported();
   const ssoBusy = redirectingProvider !== null || loading;
 
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <img src="/favicon.png" alt="" className={styles.loginLogo} width={56} height={56} />
+        <img
+          src="/favicon.png"
+          alt=""
+          className={styles.loginLogo}
+          width={56}
+          height={56}
+        />
         <h1 className={styles.title}>
           Service<span className={styles.titleAccent}>Beard</span>
         </h1>
@@ -508,7 +541,9 @@ export function LoginPage() {
         {hasSso && !showEmailLogin && (
           <>
             {error && (
-              <div className={[styles.alert, styles.alertError].join(" ")}>{error}</div>
+              <div className={[styles.alert, styles.alertError].join(" ")}>
+                {error}
+              </div>
             )}
             <div className={styles.ssoList}>
               {redirectProviders.map((provider) => (
@@ -530,7 +565,9 @@ export function LoginPage() {
               {hasLocal && (
                 <button
                   type="button"
-                  className={[styles.ssoButton, styles.ssoButton_email].join(" ")}
+                  className={[styles.ssoButton, styles.ssoButton_email].join(
+                    " ",
+                  )}
                   onClick={() => {
                     setError("");
                     setShowEmailLogin(true);
@@ -545,7 +582,8 @@ export function LoginPage() {
           </>
         )}
 
-        {hasLocal && showEmailLogin && (
+        {hasLocal &&
+          showEmailLogin &&
           credentialProviders.map((provider) => (
             <CredentialAuthForm
               key={provider.type}
@@ -569,10 +607,11 @@ export function LoginPage() {
                 handleCredentialLogin(provider.type, credentials)
               }
               onPasskeyLogin={() => handlePasskeyLogin(provider.type)}
-              onPasskeySignup={(input) => handlePasskeySignup(provider.type, input)}
+              onPasskeySignup={(input) =>
+                handlePasskeySignup(provider.type, input)
+              }
             />
-          ))
-        )}
+          ))}
       </div>
     </div>
   );

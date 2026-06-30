@@ -4,10 +4,10 @@ import { isLocalLoginEnabled } from "../env";
 import { logger } from "../logger";
 import { shouldRequireEmailVerification } from "../transactional-mail";
 import {
-    DEV_ACCOUNT_EMAIL,
-    DEV_ACCOUNT_NAME,
-    DEV_ACCOUNT_PASSWORD,
-    localAccountExternalSub,
+  DEV_ACCOUNT_EMAIL,
+  DEV_ACCOUNT_NAME,
+  DEV_ACCOUNT_PASSWORD,
+  localAccountExternalSub,
 } from "./dev-account";
 import { hashPassword, verifyPassword } from "./password";
 import type { CredentialLoginAdapter } from "./types";
@@ -89,7 +89,9 @@ export class LocalLoginAdapter implements CredentialLoginAdapter {
 
       const name = credentials.name?.trim() || DEV_ACCOUNT_NAME;
       const passwordHash = await hashPassword(password);
-      const emailVerifiedAt = shouldRequireEmailVerification() ? null : new Date();
+      const emailVerifiedAt = shouldRequireEmailVerification()
+        ? null
+        : new Date();
 
       if (existing) {
         await db
@@ -109,7 +111,13 @@ export class LocalLoginAdapter implements CredentialLoginAdapter {
 
       const [created] = await db
         .insert(users)
-        .values({ email, name, oidcSub: externalSub, passwordHash, emailVerifiedAt })
+        .values({
+          email,
+          name,
+          oidcSub: externalSub,
+          passwordHash,
+          emailVerifiedAt,
+        })
         .returning();
 
       logger.warn({ email }, "local signup");

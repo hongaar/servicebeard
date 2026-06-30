@@ -36,18 +36,21 @@ export function GithubAppInstallCompletePage() {
   }, [search.githubAppError, search.githubInstallationId]);
 
   const errorMessage = search.githubAppError
-    ? (ERROR_MESSAGES[search.githubAppError] ?? "GitHub App installation failed.")
+    ? (ERROR_MESSAGES[search.githubAppError] ??
+      "GitHub App installation failed.")
     : null;
 
   return (
     <div className={styles.authPage}>
       <Card title="GitHub App">
         {errorMessage ? (
-          <p className={[styles.alert, styles.alertError].join(" ")}>{errorMessage}</p>
+          <p className={[styles.alert, styles.alertError].join(" ")}>
+            {errorMessage}
+          </p>
         ) : search.githubInstallationId ? (
           <p className={styles.formHint}>
-            GitHub App connected. Return to ServiceBeard to continue — this window should close
-            automatically.
+            GitHub App connected. Return to ServiceBeard to continue — this
+            window should close automatically.
           </p>
         ) : (
           <p className={styles.formHint}>Finishing GitHub App setup…</p>

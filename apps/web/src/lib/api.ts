@@ -1,11 +1,17 @@
 import type { MailDiscoverResult } from "@servicebeard/shared";
-import type { TeamEntitlementUsage, TeamListingMeta } from "@servicebeard/shared/entitlements";
-import type { AuthConfigResponse, LoginProviderType } from "@servicebeard/shared/login";
 import type {
-    AuthenticationResponseJSON,
-    PublicKeyCredentialCreationOptionsJSON,
-    PublicKeyCredentialRequestOptionsJSON,
-    RegistrationResponseJSON,
+  TeamEntitlementUsage,
+  TeamListingMeta,
+} from "@servicebeard/shared/entitlements";
+import type {
+  AuthConfigResponse,
+  LoginProviderType,
+} from "@servicebeard/shared/login";
+import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
 } from "@simplewebauthn/browser";
 import { redirect } from "@tanstack/react-router";
 
@@ -63,10 +69,7 @@ export type AccountResponse = {
   hasLocalSignIn: boolean;
 };
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     credentials: "include",
@@ -88,7 +91,9 @@ async function request<T>(
         body.code,
       );
       const { handleApiError } = await import("@extensions");
-      const entitlementRedirect = handleApiError(entitlementError, { requestPath: path });
+      const entitlementRedirect = handleApiError(entitlementError, {
+        requestPath: path,
+      });
       if (entitlementRedirect) {
         throw redirect(entitlementRedirect);
       }
@@ -107,7 +112,12 @@ async function request<T>(
 
 export interface GlobalSearchResponse {
   teams: Array<{ id: string; name: string }>;
-  projects: Array<{ id: string; name: string; teamId: string; teamName: string }>;
+  projects: Array<{
+    id: string;
+    name: string;
+    teamId: string;
+    teamName: string;
+  }>;
   members: Array<{
     id: string;
     name: string | null;
@@ -149,7 +159,8 @@ export const api = {
         emailVerified: boolean;
       } | null;
     }>("/auth/me"),
-  getAdminStatus: () => request<{ status: AdminStatusResponse | null }>("/admin/status"),
+  getAdminStatus: () =>
+    request<{ status: AdminStatusResponse | null }>("/admin/status"),
   runAdminStatusChecks: () =>
     request<AdminStatusResponse>("/admin/status/run", { method: "POST" }),
   listAuditLog: (params?: {
@@ -189,7 +200,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  passkeyRegisterOptions: (provider: string, data: { email: string; name: string }) =>
+  passkeyRegisterOptions: (
+    provider: string,
+    data: { email: string; name: string },
+  ) =>
     request<PublicKeyCredentialCreationOptionsJSON>(
       `/auth/login/${provider}/passkey/register/options`,
       { method: "POST", body: JSON.stringify(data) },
@@ -259,10 +273,11 @@ export const api = {
     }>("/teams/invites/pending"),
 
   acceptPendingInvite: (inviteId: string) =>
-    request<unknown>(`/teams/invites/pending/${inviteId}/accept`, { method: "POST" }),
+    request<unknown>(`/teams/invites/pending/${inviteId}/accept`, {
+      method: "POST",
+    }),
 
-  getAccount: () =>
-    request<AccountResponse>("/auth/account"),
+  getAccount: () => request<AccountResponse>("/auth/account"),
 
   unlinkProvider: (provider: string) =>
     request<{ ok: boolean }>(`/auth/account/providers/${provider}`, {
@@ -292,7 +307,9 @@ export const api = {
     }),
 
   getTeam: (teamId: string) =>
-    request<{ id: string; name: string; slug: string; members: unknown[] }>(`/teams/${teamId}`),
+    request<{ id: string; name: string; slug: string; members: unknown[] }>(
+      `/teams/${teamId}`,
+    ),
 
   updateTeam: (teamId: string, data: { name?: string; slug?: string }) =>
     request<{ id: string; name: string; slug: string }>(`/teams/${teamId}`, {
@@ -309,9 +326,9 @@ export const api = {
     ),
 
   getProject: (teamId: string, projectId: string) =>
-    request<Project & { rules: Rule[]; entitlements: TeamEntitlementUsage | null }>(
-      `/teams/${teamId}/projects/${projectId}`,
-    ),
+    request<
+      Project & { rules: Rule[]; entitlements: TeamEntitlementUsage | null }
+    >(`/teams/${teamId}/projects/${projectId}`),
 
   createProject: (teamId: string, data: CreateProjectInput) =>
     request<Project>(`/teams/${teamId}/projects`, {
@@ -319,7 +336,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  updateProject: (teamId: string, projectId: string, data: UpdateProjectInput) =>
+  updateProject: (
+    teamId: string,
+    projectId: string,
+    data: UpdateProjectInput,
+  ) =>
     request(`/teams/${teamId}/projects/${projectId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -359,16 +380,12 @@ export const api = {
     ),
 
   testProviderForTeam: (teamId: string, data: ProviderConfig) =>
-    request<ConnectionTestResult>(
-      `/teams/${teamId}/test-provider`,
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      },
-    ),
+    request<ConnectionTestResult>(`/teams/${teamId}/test-provider`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-  getGithubAppConfig: () =>
-    request<GithubAppConfig>("/github-app/config"),
+  getGithubAppConfig: () => request<GithubAppConfig>("/github-app/config"),
 
   githubAppInstallPath(
     teamId: string,
@@ -401,7 +418,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  updateRule: (teamId: string, projectId: string, ruleId: string, data: Partial<CreateRuleInput>) =>
+  updateRule: (
+    teamId: string,
+    projectId: string,
+    ruleId: string,
+    data: Partial<CreateRuleInput>,
+  ) =>
     request(`/teams/${teamId}/projects/${projectId}/rules/${ruleId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -413,10 +435,14 @@ export const api = {
     }),
 
   getProviderOptions: (teamId: string, projectId: string) =>
-    request<ProviderOptions>(`/teams/${teamId}/projects/${projectId}/provider-options`),
+    request<ProviderOptions>(
+      `/teams/${teamId}/projects/${projectId}/provider-options`,
+    ),
 
   getMailboxSnapshot: (teamId: string, projectId: string, limit = 20) =>
-    request<MailboxSnapshot>(`/teams/${teamId}/projects/${projectId}/mailbox-snapshot?limit=${limit}`),
+    request<MailboxSnapshot>(
+      `/teams/${teamId}/projects/${projectId}/mailbox-snapshot?limit=${limit}`,
+    ),
 
   testRule: (
     teamId: string,
@@ -430,7 +456,9 @@ export const api = {
     ),
 
   getThreads: (teamId: string, projectId: string) =>
-    request<{ threads: Thread[] }>(`/teams/${teamId}/projects/${projectId}/threads`),
+    request<{ threads: Thread[] }>(
+      `/teams/${teamId}/projects/${projectId}/threads`,
+    ),
 
   getStatusEvents: (teamId: string, projectId: string) =>
     request<{ events: ProjectStatusEvent[] }>(
@@ -467,7 +495,10 @@ export const api = {
       invited?: boolean;
       emailSent?: boolean;
       token?: string;
-    }>(`/teams/${teamId}/members`, { method: "POST", body: JSON.stringify(data) }),
+    }>(`/teams/${teamId}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   removeMember: (teamId: string, memberId: string) =>
     request(`/teams/${teamId}/members/${memberId}`, { method: "DELETE" }),

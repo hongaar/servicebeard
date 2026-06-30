@@ -6,7 +6,9 @@ test.describe("Account settings UI", () => {
     await authenticateAs(page, "ownerA");
     await page.goto("/account");
 
-    await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Account", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Connected accounts")).toBeVisible();
     await expect(
       page.getByText(

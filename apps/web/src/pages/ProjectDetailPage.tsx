@@ -2,8 +2,19 @@ import { LimitReachedDialog } from "@extensions";
 import { providerIssuesWebUrl } from "@servicebeard/shared";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useLoaderData, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Activity, MessagesSquare, Settings, SlidersHorizontal } from "lucide-react";
+import {
+  Link,
+  useLoaderData,
+  useNavigate,
+  useParams,
+  useSearch,
+} from "@tanstack/react-router";
+import {
+  Activity,
+  MessagesSquare,
+  Settings,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -18,21 +29,26 @@ import { RuleActionsCell } from "../components/RuleActionsCell";
 import { RuleForm } from "../components/RuleForm";
 import { TableRowAction } from "../components/TableRowAction";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
-import { api, type CreateRuleInput, type ProjectStatusEvent, type Rule } from "../lib/api";
+import {
+  api,
+  type CreateRuleInput,
+  type ProjectStatusEvent,
+  type Rule,
+} from "../lib/api";
 import { isResourceCreateBlocked } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import { iconMd } from "../lib/icons";
 import type { ProjectDetailLoaderData } from "../lib/loaderTypes";
 import { PROJECT_SECTION_LABELS, type ProjectSection } from "../lib/navigation";
 import {
-    formToUpdateInput,
-    projectToSettingsForm,
-    type ProjectSettingsFormValues,
+  formToUpdateInput,
+  projectToSettingsForm,
+  type ProjectSettingsFormValues,
 } from "../lib/projectForm";
 import {
-    formToTemplatesUpdateInput,
-    projectToTemplatesForm,
-    type ProjectTemplatesFormValues,
+  formToTemplatesUpdateInput,
+  projectToTemplatesForm,
+  type ProjectTemplatesFormValues,
 } from "../lib/projectTemplatesForm";
 import { formatRuleMatch } from "../lib/ruleDisplay";
 import styles from "../styles/pages.module.css";
@@ -42,7 +58,8 @@ const SECTION_INFO: Record<ProjectSection, { description: string }> = {
     description: "Key metrics and configuration for this project.",
   },
   rules: {
-    description: "Define how incoming emails are matched and what happens on your issue board.",
+    description:
+      "Define how incoming emails are matched and what happens on your issue board.",
   },
   status: {
     description: "Mailbox and issue provider events for this project.",
@@ -51,7 +68,8 @@ const SECTION_INFO: Record<ProjectSection, { description: string }> = {
     description: "Email threads linked to issues for this project.",
   },
   templates: {
-    description: "Email and issue tracker templates for customer-facing messages.",
+    description:
+      "Email and issue tracker templates for customer-facing messages.",
   },
   settings: {
     description: "Mailbox credentials, provider config, and project options.",
@@ -74,11 +92,20 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
 }
 
 export function ProjectDetailPage() {
-  const { user, project, entitlements, threads, statusEvents, teamName, section } =
-    useLoaderData({
-      from: "/teams/$teamId/projects/$projectId/$section",
-    }) as ProjectDetailLoaderData;
-  const { teamId, projectId } = useParams({ from: "/teams/$teamId/projects/$projectId/$section" });
+  const {
+    user,
+    project,
+    entitlements,
+    threads,
+    statusEvents,
+    teamName,
+    section,
+  } = useLoaderData({
+    from: "/teams/$teamId/projects/$projectId/$section",
+  }) as ProjectDetailLoaderData;
+  const { teamId, projectId } = useParams({
+    from: "/teams/$teamId/projects/$projectId/$section",
+  });
   const search = useSearch({ strict: false }) as {
     githubInstallationId?: string;
     githubAppError?: string;
@@ -99,21 +126,28 @@ export function ProjectDetailPage() {
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [settingsForm, setSettingsForm] = useState<ProjectSettingsFormValues>(() =>
-    projectToSettingsForm(project),
+  const [settingsForm, setSettingsForm] = useState<ProjectSettingsFormValues>(
+    () => projectToSettingsForm(project),
   );
-  const [templatesForm, setTemplatesForm] = useState<ProjectTemplatesFormValues>(() =>
-    projectToTemplatesForm(project),
-  );
+  const [templatesForm, setTemplatesForm] =
+    useState<ProjectTemplatesFormValues>(() => projectToTemplatesForm(project));
   const [settingsError, setSettingsError] = useState("");
   const [templatesError, setTemplatesError] = useState("");
-  const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
-  const [templatesFieldErrors, setTemplatesFieldErrors] = useState<Record<string, string>>({});
+  const [settingsFieldErrors, setSettingsFieldErrors] = useState<
+    Record<string, string>
+  >({});
+  const [templatesFieldErrors, setTemplatesFieldErrors] = useState<
+    Record<string, string>
+  >({});
   const [ruleFormError, setRuleFormError] = useState("");
-  const [ruleFieldErrors, setRuleFieldErrors] = useState<Record<string, string>>({});
+  const [ruleFieldErrors, setRuleFieldErrors] = useState<
+    Record<string, string>
+  >({});
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedThreadLabel, setSelectedThreadLabel] = useState("");
-  const [selectedStatusEventId, setSelectedStatusEventId] = useState<string | null>(null);
+  const [selectedStatusEventId, setSelectedStatusEventId] = useState<
+    string | null
+  >(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const atRuleLimit = isResourceCreateBlocked("rule", entitlements);
 
@@ -189,7 +223,9 @@ export function ProjectDetailPage() {
         invalid_callback: "GitHub App installation callback was invalid.",
         state_mismatch: "GitHub App installation state did not match.",
       };
-      setSettingsError(messages[search.githubAppError] ?? "GitHub App installation failed.");
+      setSettingsError(
+        messages[search.githubAppError] ?? "GitHub App installation failed.",
+      );
     }
 
     window.history.replaceState({}, "", window.location.pathname);
@@ -206,14 +242,16 @@ export function ProjectDetailPage() {
     mutationFn: (data: Parameters<typeof api.createRule>[2]) =>
       api.createRule(teamId, project.id, data),
     onSuccess: () => window.location.reload(),
-    onError: (err) => handleMutationError(err, setRuleFormError, setRuleFieldErrors),
+    onError: (err) =>
+      handleMutationError(err, setRuleFormError, setRuleFieldErrors),
   });
 
   const updateRule = useMutation({
     mutationFn: ({ ruleId, data }: { ruleId: string; data: CreateRuleInput }) =>
       api.updateRule(teamId, project.id, ruleId, data),
     onSuccess: () => window.location.reload(),
-    onError: (err) => handleMutationError(err, setRuleFormError, setRuleFieldErrors),
+    onError: (err) =>
+      handleMutationError(err, setRuleFormError, setRuleFieldErrors),
   });
 
   const deleteRule = useMutation({
@@ -226,16 +264,25 @@ export function ProjectDetailPage() {
       api.updateProject(
         teamId,
         project.id,
-        formToUpdateInput(settingsForm, { githubAppEnabled: githubApp?.enabled }),
+        formToUpdateInput(settingsForm, {
+          githubAppEnabled: githubApp?.enabled,
+        }),
       ),
     onSuccess: () => window.location.reload(),
-    onError: (err) => handleMutationError(err, setSettingsError, setSettingsFieldErrors),
+    onError: (err) =>
+      handleMutationError(err, setSettingsError, setSettingsFieldErrors),
   });
 
   const saveTemplates = useMutation({
-    mutationFn: () => api.updateProject(teamId, project.id, formToTemplatesUpdateInput(templatesForm)),
+    mutationFn: () =>
+      api.updateProject(
+        teamId,
+        project.id,
+        formToTemplatesUpdateInput(templatesForm),
+      ),
     onSuccess: () => window.location.reload(),
-    onError: (err) => handleMutationError(err, setTemplatesError, setTemplatesFieldErrors),
+    onError: (err) =>
+      handleMutationError(err, setTemplatesError, setTemplatesFieldErrors),
   });
 
   const deleteProject = useMutation({
@@ -256,7 +303,8 @@ export function ProjectDetailPage() {
   });
 
   const dismissStatusEvent = useMutation({
-    mutationFn: (eventId: string) => api.dismissStatusEvent(teamId, project.id, eventId),
+    mutationFn: (eventId: string) =>
+      api.dismissStatusEvent(teamId, project.id, eventId),
     onSuccess: () => window.location.reload(),
   });
 
@@ -307,14 +355,19 @@ export function ProjectDetailPage() {
     return styles.statusSeverityError;
   };
 
-  const errorStatusCount = statusEvents.filter((event) => event.severity === "error").length;
+  const errorStatusCount = statusEvents.filter(
+    (event) => event.severity === "error",
+  ).length;
 
   const editingRule = editingRuleId
     ? project.rules.find((rule) => rule.id === editingRuleId)
     : undefined;
 
   const enabledRules = project.rules.filter((rule) => rule.isEnabled).length;
-  const totalMessages = threads.reduce((sum, thread) => sum + thread.messages.length, 0);
+  const totalMessages = threads.reduce(
+    (sum, thread) => sum + thread.messages.length,
+    0,
+  );
 
   return (
     <Layout
@@ -326,7 +379,11 @@ export function ProjectDetailPage() {
       projectId={projectId}
       projectName={project.name}
       section={section}
-      inboxEmail={section === "overview" ? parseMailFromAddress(project.smtpFrom) : undefined}
+      inboxEmail={
+        section === "overview"
+          ? parseMailFromAddress(project.smtpFrom)
+          : undefined
+      }
       issueLink={
         section === "overview"
           ? {
@@ -353,7 +410,9 @@ export function ProjectDetailPage() {
                 <span className={styles.metricIcon} aria-hidden>
                   <SlidersHorizontal {...iconMd} />
                 </span>
-                <span className={styles.metricValue}>{project.rules.length}</span>
+                <span className={styles.metricValue}>
+                  {project.rules.length}
+                </span>
               </div>
               <span className={styles.metricLabel}>Rules</span>
               <span className={styles.metricHint}>{enabledRules} enabled</span>
@@ -383,11 +442,15 @@ export function ProjectDetailPage() {
                 <span className={styles.metricIcon} aria-hidden>
                   <Activity {...iconMd} />
                 </span>
-                <span className={styles.metricValue}>{statusEvents.length}</span>
+                <span className={styles.metricValue}>
+                  {statusEvents.length}
+                </span>
               </div>
               <span className={styles.metricLabel}>Status</span>
               <span className={styles.metricHint}>
-                {errorStatusCount === 0 ? "All clear" : `${errorStatusCount} need attention`}
+                {errorStatusCount === 0
+                  ? "All clear"
+                  : `${errorStatusCount} need attention`}
               </span>
             </Link>
             <Link
@@ -465,7 +528,9 @@ export function ProjectDetailPage() {
               onCancel={() => setEditingRuleId(null)}
               onDelete={() => deleteRule.mutate(editingRule.id)}
               isDeleting={deleteRule.isPending}
-              onSubmit={(data) => updateRule.mutate({ ruleId: editingRule.id, data })}
+              onSubmit={(data) =>
+                updateRule.mutate({ ruleId: editingRule.id, data })
+              }
             />
           )}
 
@@ -474,10 +539,13 @@ export function ProjectDetailPage() {
               <EmptyIcon icon={SlidersHorizontal} />
               <p className={styles.emptyTitle}>No rules yet</p>
               <p className={styles.emptyHint}>
-                Add a rule to tell Servicebeard how to handle incoming emails — for example,
-                create an issue when mail arrives from a VIP sender.
+                Add a rule to tell Servicebeard how to handle incoming emails —
+                for example, create an issue when mail arrives from a VIP
+                sender.
               </p>
-              <Button onClick={() => setShowRuleForm(true)}>Add your first rule</Button>
+              <Button onClick={() => setShowRuleForm(true)}>
+                Add your first rule
+              </Button>
             </div>
           ) : project.rules.length > 0 ? (
             <div className={styles.tableWrap}>
@@ -508,13 +576,18 @@ export function ProjectDetailPage() {
                         tabIndex={0}
                         role="link"
                         aria-label={`Edit rule ${rule.name}`}
-                        aria-current={editingRuleId === rule.id ? "true" : undefined}
+                        aria-current={
+                          editingRuleId === rule.id ? "true" : undefined
+                        }
                       >
                         <td>
                           <strong>{rule.name}</strong>
                           {!rule.isEnabled && (
                             <span
-                              className={[styles.badge, styles.badgeInactive].join(" ")}
+                              className={[
+                                styles.badge,
+                                styles.badgeInactive,
+                              ].join(" ")}
                               style={{ marginLeft: "0.5rem" }}
                             >
                               Disabled
@@ -522,7 +595,9 @@ export function ProjectDetailPage() {
                           )}
                         </td>
                         <td>{rule.priority}</td>
-                        <td className={styles.ruleMeta}>{formatRuleMatch(rule)}</td>
+                        <td className={styles.ruleMeta}>
+                          {formatRuleMatch(rule)}
+                        </td>
                         <td>
                           <RuleActionsCell
                             rule={rule}
@@ -555,7 +630,8 @@ export function ProjectDetailPage() {
               <EmptyIcon icon={MessagesSquare} />
               <p className={styles.emptyTitle}>No conversations yet</p>
               <p className={styles.emptyHint}>
-                Once mail starts flowing and rules match, conversations will appear here.
+                Once mail starts flowing and rules match, conversations will
+                appear here.
               </p>
             </div>
           ) : (
@@ -612,7 +688,9 @@ export function ProjectDetailPage() {
                             t.originalSenderEmail
                           )}
                         </td>
-                        <td className={styles.tableCellTruncate}>{t.subjectNormalized}</td>
+                        <td className={styles.tableCellTruncate}>
+                          {t.subjectNormalized}
+                        </td>
                         <td>{t.messages.length}</td>
                         <td>
                           {t.matchedRuleName ? (
@@ -658,7 +736,9 @@ export function ProjectDetailPage() {
       {section === "status" && (
         <>
           {statusEvents.length === 0 ? (
-            <p className={styles.formHint}>No active status events for this project.</p>
+            <p className={styles.formHint}>
+              No active status events for this project.
+            </p>
           ) : (
             <>
               <div className={styles.statusEventActions}>
@@ -700,20 +780,34 @@ export function ProjectDetailPage() {
                         aria-label={`View status event: ${event.operation}`}
                       >
                         <td>
-                          <span className={[styles.badge, statusSeverityClass(event.severity)].join(" ")}>
+                          <span
+                            className={[
+                              styles.badge,
+                              statusSeverityClass(event.severity),
+                            ].join(" ")}
+                          >
                             {event.severity}
                           </span>
                         </td>
                         <td>
-                          <span className={[styles.badge, styles.badgeInactive].join(" ")}>
+                          <span
+                            className={[
+                              styles.badge,
+                              styles.badgeInactive,
+                            ].join(" ")}
+                          >
                             {statusCategoryLabel(event.category)}
                           </span>
                         </td>
                         <td>
                           {event.operation}
-                          {event.status != null ? ` · HTTP ${event.status}` : ""}
+                          {event.status != null
+                            ? ` · HTTP ${event.status}`
+                            : ""}
                         </td>
-                        <td className={styles.tableCellTruncate}>{event.message}</td>
+                        <td className={styles.tableCellTruncate}>
+                          {event.message}
+                        </td>
                         <td>{new Date(event.createdAt).toLocaleString()}</td>
                         <td className={styles.tableActions}>
                           <TableRowAction
@@ -743,7 +837,9 @@ export function ProjectDetailPage() {
       {section === "templates" && (
         <Card title="Templates">
           {templatesError && (
-            <div className={[styles.alert, styles.alertError].join(" ")}>{templatesError}</div>
+            <div className={[styles.alert, styles.alertError].join(" ")}>
+              {templatesError}
+            </div>
           )}
           <ProjectTemplatesForm
             values={templatesForm}
@@ -763,7 +859,9 @@ export function ProjectDetailPage() {
         <>
           <Card title="Project settings">
             {settingsError && (
-              <div className={[styles.alert, styles.alertError].join(" ")}>{settingsError}</div>
+              <div className={[styles.alert, styles.alertError].join(" ")}>
+                {settingsError}
+              </div>
             )}
             <ProjectSettingsForm
               key={projectId}
@@ -782,19 +880,32 @@ export function ProjectDetailPage() {
             />
           </Card>
 
-          <Card title="Danger zone" subtitle="Irreversible actions" className={[styles.section, styles.dangerZone].join(" ")}>
+          <Card
+            title="Danger zone"
+            subtitle="Irreversible actions"
+            className={[styles.section, styles.dangerZone].join(" ")}
+          >
             <div className={styles.dangerZoneBody}>
               <p className={styles.dangerZoneText}>
-                Permanently delete this project, including all rules, synced threads, and message
-                history. This cannot be undone.
+                Permanently delete this project, including all rules, synced
+                threads, and message history. This cannot be undone.
               </p>
               {deleteError && (
-                <div className={[styles.alert, styles.alertError, styles.dangerZoneAlert].join(" ")}>
+                <div
+                  className={[
+                    styles.alert,
+                    styles.alertError,
+                    styles.dangerZoneAlert,
+                  ].join(" ")}
+                >
                   {deleteError}
                 </div>
               )}
               <div className={styles.dangerZoneActions}>
-                <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
                   Delete project
                 </Button>
               </div>

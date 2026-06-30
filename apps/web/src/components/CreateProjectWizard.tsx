@@ -1,17 +1,24 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import type { ProjectSettingsFormValues } from "../lib/projectForm";
-import { githubProviderCredentialsReady, normalizeProviderStepValues } from "../lib/projectForm";
+import {
+  githubProviderCredentialsReady,
+  normalizeProviderStepValues,
+} from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
 import {
-    ProjectMailSection,
-    ProjectNameSection,
-    ProjectProviderSection,
+  ProjectMailSection,
+  ProjectNameSection,
+  ProjectProviderSection,
 } from "./ProjectFormSections";
 
 const STEPS = [
-  { id: "name", title: "Name", description: "What should we call this project?" },
+  {
+    id: "name",
+    title: "Name",
+    description: "What should we call this project?",
+  },
   { id: "mail", title: "Mailbox", description: "Connect your support inbox" },
   { id: "provider", title: "Issues", description: "Link your issue board" },
 ] as const;
@@ -21,7 +28,10 @@ type StepId = (typeof STEPS)[number]["id"];
 interface CreateProjectWizardProps {
   teamId: string;
   values: ProjectSettingsFormValues;
-  onChange: (field: keyof ProjectSettingsFormValues, value: string | number | boolean) => void;
+  onChange: (
+    field: keyof ProjectSettingsFormValues,
+    value: string | number | boolean,
+  ) => void;
   onSubmit: () => void;
   onCancel: () => void;
   submitLabel: string;
@@ -37,7 +47,8 @@ function canAdvance(
   values: ProjectSettingsFormValues,
   githubAppEnabled = false,
 ): boolean {
-  const providerValues = step === "provider" ? normalizeProviderStepValues(values) : values;
+  const providerValues =
+    step === "provider" ? normalizeProviderStepValues(values) : values;
   switch (step) {
     case "name":
       return values.name.trim().length > 0;
@@ -80,7 +91,8 @@ export function CreateProjectWizard({
   const [maxReached, setMaxReached] = useState(initialStepIndex);
   const step = STEPS[stepIndex]!;
   const isLast = stepIndex === STEPS.length - 1;
-  const valuesForStep = step.id === "provider" ? normalizeProviderStepValues(values) : values;
+  const valuesForStep =
+    step.id === "provider" ? normalizeProviderStepValues(values) : values;
   const canContinue = canAdvance(step.id, valuesForStep, githubAppEnabled);
 
   const goBack = () => {
@@ -104,7 +116,8 @@ export function CreateProjectWizard({
         }
       }
     }
-    if (!canAdvance(step.id, valuesForStep, githubAppEnabled) || isPending) return;
+    if (!canAdvance(step.id, valuesForStep, githubAppEnabled) || isPending)
+      return;
     if (isLast) {
       onSubmit();
       return;
@@ -138,10 +151,14 @@ export function CreateProjectWizard({
               disabled={!open || isPending}
               aria-current={current ? "step" : undefined}
             >
-              <span className={styles.wizardStepNumber}>{done ? "✓" : i + 1}</span>
+              <span className={styles.wizardStepNumber}>
+                {done ? "✓" : i + 1}
+              </span>
               <span className={styles.wizardStepText}>
                 <span className={styles.wizardStepTitle}>{s.title}</span>
-                <span className={styles.wizardStepDescription}>{s.description}</span>
+                <span className={styles.wizardStepDescription}>
+                  {s.description}
+                </span>
               </span>
             </button>
           );
@@ -182,11 +199,21 @@ export function CreateProjectWizard({
 
       <div className={styles.formActions}>
         {stepIndex > 0 ? (
-          <Button type="button" variant="secondary" onClick={goBack} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={goBack}
+            disabled={isPending}
+          >
             <ArrowLeft size={16} /> Back
           </Button>
         ) : (
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            disabled={isPending}
+          >
             Cancel
           </Button>
         )}

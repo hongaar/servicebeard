@@ -20,9 +20,9 @@ services:
   greenmail:
     image: greenmail/standalone:2.1.9
     ports:
-      - "3025:3025"   # SMTP
-      - "3143:3143"   # IMAP
-      - "8080:8080"   # API + message browser
+      - "3025:3025" # SMTP
+      - "3143:3143" # IMAP
+      - "8080:8080" # API + message browser
     volumes:
       - ./deploy/dev-mail/greenmail-preload:/preload:ro
     environment:

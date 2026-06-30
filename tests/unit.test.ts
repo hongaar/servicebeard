@@ -1,22 +1,27 @@
 import type { ParsedEmail, Rule } from "@servicebeard/shared";
 import {
-    buildThreadMatchIndex,
-    DEFAULT_CATCH_ALL_RULE, DEFAULT_INBOUND_COMMENT_TEMPLATE,
-    DEFAULT_INBOUND_ISSUE_TEMPLATE,
-    emailMatchesExistingThread,
-    evaluateRules,
-    isEligibleForInboundRuleEvaluation, isEligibleForInboundRulePreview,
-    isEmailEligibleForInboundSync,
-    normalizeSubject,
-    resolveInboundSender,
+  buildThreadMatchIndex,
+  DEFAULT_CATCH_ALL_RULE,
+  DEFAULT_INBOUND_COMMENT_TEMPLATE,
+  DEFAULT_INBOUND_ISSUE_TEMPLATE,
+  emailMatchesExistingThread,
+  evaluateRules,
+  isEligibleForInboundRuleEvaluation,
+  isEligibleForInboundRulePreview,
+  isEmailEligibleForInboundSync,
+  normalizeSubject,
+  resolveInboundSender,
 } from "@servicebeard/shared";
 import { beforeAll, describe, expect, test } from "bun:test";
 import {
-    advanceImapIngestedThrough,
-    computeImapPollSince,
-    IMAP_POLL_OVERLAP_MS,
+  advanceImapIngestedThrough,
+  computeImapPollSince,
+  IMAP_POLL_OVERLAP_MS,
 } from "../apps/worker/src/services/inbound";
-import { formatCommentBody, formatIssueDescription } from "../apps/worker/src/services/rules";
+import {
+  formatCommentBody,
+  formatIssueDescription,
+} from "../apps/worker/src/services/rules";
 
 const testEmailDate = new Date("2026-01-15T12:00:00Z");
 
@@ -31,7 +36,12 @@ function testEmail(
   const fromName = overrides.fromName ?? null;
   const replyToEmail = overrides.replyToEmail ?? null;
   const replyToName = overrides.replyToName ?? null;
-  const sender = resolveInboundSender(fromEmail, fromName, replyToEmail, replyToName);
+  const sender = resolveInboundSender(
+    fromEmail,
+    fromName,
+    replyToEmail,
+    replyToName,
+  );
 
   return {
     bodyMarkdown: overrides.bodyMarkdown ?? overrides.body,
@@ -64,74 +74,97 @@ const baseRule: Rule = {
 
 describe("rules engine", () => {
   test("matches sender pattern", () => {
-    const result = evaluateRules([baseRule], testEmail({
-      messageId: "m1",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "support@example.com",
-      fromName: "Support",
-      subject: "Help needed",
-      body: "Please help",
-      date: testEmailDate,
-    }));
+    const result = evaluateRules(
+      [baseRule],
+      testEmail({
+        messageId: "m1",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "support@example.com",
+        fromName: "Support",
+        subject: "Help needed",
+        body: "Please help",
+        date: testEmailDate,
+      }),
+    );
     expect(result.matched).toBe(true);
     expect(result.rule?.name).toBe("Support");
   });
 
   test("does not match wrong sender", () => {
-    const result = evaluateRules([baseRule], testEmail({
-      messageId: "m2",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "other@example.com",
-      fromName: null,
-      subject: "Help",
-      body: "body",
-      date: testEmailDate,
-    }));
+    const result = evaluateRules(
+      [baseRule],
+      testEmail({
+        messageId: "m2",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "other@example.com",
+        fromName: null,
+        subject: "Help",
+        body: "body",
+        date: testEmailDate,
+      }),
+    );
     expect(result.matched).toBe(false);
   });
 
   test("subject regex match", () => {
-    const rule = { ...baseRule, matchSender: null, matchSubject: "urgent", matchBody: null };
-    const result = evaluateRules([rule], testEmail({
-      messageId: "m3",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "a@b.com",
-      fromName: null,
-      subject: "URGENT: server down",
-      body: "help",
-      date: testEmailDate,
-    }));
+    const rule = {
+      ...baseRule,
+      matchSender: null,
+      matchSubject: "urgent",
+      matchBody: null,
+    };
+    const result = evaluateRules(
+      [rule],
+      testEmail({
+        messageId: "m3",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "a@b.com",
+        fromName: null,
+        subject: "URGENT: server down",
+        body: "help",
+        date: testEmailDate,
+      }),
+    );
     expect(result.matched).toBe(true);
   });
 
   test("first matching rule wins by priority", () => {
     const low = { ...baseRule, name: "Low", priority: 10, matchSender: null };
-    const high = { ...baseRule, id: "2", name: "High", priority: 0, matchSender: null };
-    const result = evaluateRules([low, high], testEmail({
-      messageId: "m4",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "a@b.com",
-      fromName: null,
-      subject: "test",
-      body: "test",
-      date: testEmailDate,
-    }));
+    const high = {
+      ...baseRule,
+      id: "2",
+      name: "High",
+      priority: 0,
+      matchSender: null,
+    };
+    const result = evaluateRules(
+      [low, high],
+      testEmail({
+        messageId: "m4",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "a@b.com",
+        fromName: null,
+        subject: "test",
+        body: "test",
+        date: testEmailDate,
+      }),
+    );
     expect(result.rule?.name).toBe("High");
   });
 
@@ -146,7 +179,13 @@ describe("rules engine", () => {
       matchBody: DEFAULT_CATCH_ALL_RULE.matchBody,
       actionLabels: DEFAULT_CATCH_ALL_RULE.actionLabels,
     };
-    const specific = { ...baseRule, id: "2", name: "VIP", priority: 0, matchSender: "vip@example.com" };
+    const specific = {
+      ...baseRule,
+      id: "2",
+      name: "VIP",
+      priority: 0,
+      matchSender: "vip@example.com",
+    };
     const email = testEmail({
       messageId: "m-catch",
       inReplyTo: null,
@@ -162,7 +201,9 @@ describe("rules engine", () => {
     });
 
     expect(evaluateRules([catchAll], email).rule?.name).toBe("Catch-all");
-    expect(evaluateRules([specific, catchAll], email).rule?.name).toBe("Catch-all");
+    expect(evaluateRules([specific, catchAll], email).rule?.name).toBe(
+      "Catch-all",
+    );
     expect(
       evaluateRules([specific, catchAll], {
         ...email,
@@ -173,39 +214,45 @@ describe("rules engine", () => {
   });
 
   test("matches Reply-To sender for relayed mail", () => {
-    const result = evaluateRules([baseRule], testEmail({
-      messageId: "m-relay",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "noreply@servicebeard.app",
-      fromName: "ServiceBeard",
-      replyToEmail: "support@example.com",
-      replyToName: "Support",
-      subject: "Contact",
-      body: "Help",
-      date: testEmailDate,
-    }));
+    const result = evaluateRules(
+      [baseRule],
+      testEmail({
+        messageId: "m-relay",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "noreply@servicebeard.app",
+        fromName: "ServiceBeard",
+        replyToEmail: "support@example.com",
+        replyToName: "Support",
+        subject: "Contact",
+        body: "Help",
+        date: testEmailDate,
+      }),
+    );
     expect(result.matched).toBe(true);
   });
 
   test("skips disabled rules", () => {
     const disabled = { ...baseRule, isEnabled: false, matchSender: null };
-    const result = evaluateRules([disabled], testEmail({
-      messageId: "m5",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "a@b.com",
-      fromName: null,
-      subject: "test",
-      body: "test",
-      date: testEmailDate,
-    }));
+    const result = evaluateRules(
+      [disabled],
+      testEmail({
+        messageId: "m5",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "a@b.com",
+        fromName: null,
+        subject: "test",
+        body: "test",
+        date: testEmailDate,
+      }),
+    );
     expect(result.matched).toBe(false);
   });
 });
@@ -248,19 +295,22 @@ On 2026-06-23 22:02, support@mail.test wrote:
 > Reply from USERNAME on issue #4
 > https://gitlab/support/-/work_items/4`;
 
-    const comment = formatCommentBody(testEmail({
-      messageId: "<reply@mail.test>",
-      inReplyTo: "<parent@servicebeard.local>",
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "customer@mail.test",
-      fromName: "customer",
-      subject: "Re: problem",
-      body,
-      date: testEmailDate,
-    }), DEFAULT_INBOUND_COMMENT_TEMPLATE);
+    const comment = formatCommentBody(
+      testEmail({
+        messageId: "<reply@mail.test>",
+        inReplyTo: "<parent@servicebeard.local>",
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "customer@mail.test",
+        fromName: "customer",
+        subject: "Re: problem",
+        body,
+        date: testEmailDate,
+      }),
+      DEFAULT_INBOUND_COMMENT_TEMPLATE,
+    );
 
     expect(comment).toContain("**Reply from customer <customer@mail.test>**");
     expect(comment).toContain("dat is mooi!");
@@ -270,40 +320,46 @@ On 2026-06-23 22:02, support@mail.test wrote:
   });
 
   test("keeps full body when there is no quote marker", () => {
-    const comment = formatCommentBody(testEmail({
-      messageId: "<m@mail.test>",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "customer@mail.test",
-      fromName: null,
-      subject: "Help",
-      body: "First message with no quotes",
-      date: testEmailDate,
-    }), DEFAULT_INBOUND_COMMENT_TEMPLATE);
+    const comment = formatCommentBody(
+      testEmail({
+        messageId: "<m@mail.test>",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "customer@mail.test",
+        fromName: null,
+        subject: "Help",
+        body: "First message with no quotes",
+        date: testEmailDate,
+      }),
+      DEFAULT_INBOUND_COMMENT_TEMPLATE,
+    );
 
     expect(comment).toContain("First message with no quotes");
     expect(comment).toContain("<!-- servicebeard-sync:email:<m@mail.test>-->");
   });
 
   test("uses Reply-To as the customer sender", () => {
-    const comment = formatCommentBody(testEmail({
-      messageId: "<contact@mail.test>",
-      inReplyTo: null,
-      references: [],
-      toAddresses: [],
-      ccAddresses: [],
-      bccAddresses: [],
-      fromEmail: "noreply@servicebeard.app",
-      fromName: "ServiceBeard",
-      replyToEmail: "jane@example.com",
-      replyToName: "Jane",
-      subject: "Contact",
-      body: "Please help",
-      date: testEmailDate,
-    }), DEFAULT_INBOUND_COMMENT_TEMPLATE);
+    const comment = formatCommentBody(
+      testEmail({
+        messageId: "<contact@mail.test>",
+        inReplyTo: null,
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "noreply@servicebeard.app",
+        fromName: "ServiceBeard",
+        replyToEmail: "jane@example.com",
+        replyToName: "Jane",
+        subject: "Contact",
+        body: "Please help",
+        date: testEmailDate,
+      }),
+      DEFAULT_INBOUND_COMMENT_TEMPLATE,
+    );
 
     expect(comment).toContain("**Reply from Jane <jane@example.com>**");
     expect(comment).not.toContain("noreply@servicebeard.app");
@@ -312,35 +368,48 @@ On 2026-06-23 22:02, support@mail.test wrote:
 
 describe("loop prevention markers", () => {
   test("detects servicebeard-sync content", async () => {
-    const { buildSyncMarker, isServicebeardSyncedContent } = await import(
-      "@servicebeard/shared"
-    );
+    const { buildSyncMarker, isServicebeardSyncedContent } =
+      await import("@servicebeard/shared");
     const marker = buildSyncMarker("email:<m@mail.test>");
     expect(isServicebeardSyncedContent(`Reply text\n\n${marker}`)).toBe(true);
     expect(isServicebeardSyncedContent("Regular agent reply")).toBe(false);
 
     const linearMarker = buildSyncMarker("thread-1", "linear");
     expect(linearMarker).toContain("[//]: # (servicebeard-sync:thread-1)");
-    expect(isServicebeardSyncedContent(`Reply text\n\n${linearMarker}`)).toBe(true);
+    expect(isServicebeardSyncedContent(`Reply text\n\n${linearMarker}`)).toBe(
+      true,
+    );
   });
 });
 
 describe("internal comment marker", () => {
   test("detects [internal] at start or end only", async () => {
-    const { isServicebeardInternalContent } = await import("@servicebeard/shared");
+    const { isServicebeardInternalContent } =
+      await import("@servicebeard/shared");
 
-    expect(isServicebeardInternalContent("[internal] Checking with billing")).toBe(true);
-    expect(isServicebeardInternalContent("[INTERNAL] Checking with billing")).toBe(true);
-    expect(isServicebeardInternalContent("Need another look [internal]")).toBe(true);
+    expect(
+      isServicebeardInternalContent("[internal] Checking with billing"),
+    ).toBe(true);
+    expect(
+      isServicebeardInternalContent("[INTERNAL] Checking with billing"),
+    ).toBe(true);
+    expect(isServicebeardInternalContent("Need another look [internal]")).toBe(
+      true,
+    );
     expect(isServicebeardInternalContent("  [internal]  ")).toBe(true);
-    expect(isServicebeardInternalContent("See [internal] docs for details")).toBe(false);
-    expect(isServicebeardInternalContent("Regular customer-facing reply")).toBe(false);
+    expect(
+      isServicebeardInternalContent("See [internal] docs for details"),
+    ).toBe(false);
+    expect(isServicebeardInternalContent("Regular customer-facing reply")).toBe(
+      false,
+    );
   });
 });
 
 describe("issue support details footer", () => {
   test("builds collapsible footer with project link", async () => {
-    const { buildIssueSupportDetailsFooter } = await import("@servicebeard/shared");
+    const { buildIssueSupportDetailsFooter } =
+      await import("@servicebeard/shared");
 
     const footer = buildIssueSupportDetailsFooter({
       webUrl: "https://app.example.com",
@@ -358,7 +427,8 @@ describe("issue support details footer", () => {
   });
 
   test("mentions GitLab internal notes in footer for GitLab projects", async () => {
-    const { buildIssueSupportDetailsFooter } = await import("@servicebeard/shared");
+    const { buildIssueSupportDetailsFooter } =
+      await import("@servicebeard/shared");
 
     const footer = buildIssueSupportDetailsFooter({
       webUrl: "https://app.example.com",
@@ -372,7 +442,8 @@ describe("issue support details footer", () => {
   });
 
   test("uses markdown footer for Linear projects", async () => {
-    const { buildIssueSupportDetailsFooter } = await import("@servicebeard/shared");
+    const { buildIssueSupportDetailsFooter } =
+      await import("@servicebeard/shared");
 
     const footer = buildIssueSupportDetailsFooter({
       webUrl: "https://app.example.com",
@@ -451,9 +522,8 @@ describe("issue support details footer", () => {
 
 describe("email content conversion", () => {
   test("converts html email bodies to markdown", async () => {
-    const { htmlToMarkdown, buildParsedEmailContent } = await import(
-      "@servicebeard/shared/email-content"
-    );
+    const { htmlToMarkdown, buildParsedEmailContent } =
+      await import("@servicebeard/shared/email-content");
     expect(htmlToMarkdown("<p>Hello <strong>world</strong></p>")).toContain(
       "**world**",
     );
@@ -468,9 +538,8 @@ describe("email content conversion", () => {
   });
 
   test("replaces cid image refs in markdown", async () => {
-    const { replaceCidImagesInMarkdown } = await import(
-      "@servicebeard/shared/email-content"
-    );
+    const { replaceCidImagesInMarkdown } =
+      await import("@servicebeard/shared/email-content");
     const map = new Map([["img001@mail.test", "![logo](/uploads/logo.png)"]]);
     const result = replaceCidImagesInMarkdown(
       "See this: ![logo](cid:img001@mail.test)",
@@ -480,9 +549,8 @@ describe("email content conversion", () => {
   });
 
   test("converts markdown to html for outbound email", async () => {
-    const { markdownToHtml, markdownToPlainText } = await import(
-      "@servicebeard/shared/email-content"
-    );
+    const { markdownToHtml, markdownToPlainText } =
+      await import("@servicebeard/shared/email-content");
     const markdown = "Hello **team**\n\n![shot](https://example.com/a.png)";
     expect(markdownToHtml(markdown)).toContain("<strong>team</strong>");
     expect(markdownToPlainText(markdown)).toContain("Hello team");
@@ -529,20 +597,22 @@ describe("email content conversion", () => {
       content.bodyMarkdown.indexOf("kennen jullie"),
     );
 
-    const resolved = replaceImagePlaceholdersInMarkdown(content.bodyMarkdown, new Map([
-      [imagePlaceholder(0), "![photo](/uploads/abc/photo.png)"],
-    ]));
+    const resolved = replaceImagePlaceholdersInMarkdown(
+      content.bodyMarkdown,
+      new Map([[imagePlaceholder(0), "![photo](/uploads/abc/photo.png)"]]),
+    );
     expect(resolved).toContain("![photo](/uploads/abc/photo.png)");
-    expect(resolved.indexOf("![photo]")).toBeGreaterThan(resolved.indexOf("hallo,"));
+    expect(resolved.indexOf("![photo]")).toBeGreaterThan(
+      resolved.indexOf("hallo,"),
+    );
     expect(resolved.indexOf("![photo]")).toBeLessThan(
       resolved.indexOf("kennen jullie"),
     );
   });
 
   test("strips data-uri images from html before markdown conversion", async () => {
-    const { buildParsedEmailContent, imagePlaceholder } = await import(
-      "@servicebeard/shared/email-content"
-    );
+    const { buildParsedEmailContent, imagePlaceholder } =
+      await import("@servicebeard/shared/email-content");
     const tinyPng =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
     const content = buildParsedEmailContent(
@@ -570,27 +640,26 @@ describe("email content conversion", () => {
         "https://gitlab.example.com",
       ),
     ).toBe("https://gitlab.example.com/uploads/abc123/photo.jpg");
-    expect(isResolvableImageUrl("/uploads/abc123/photo.jpg", "https://gitlab.example.com")).toBe(
-      true,
-    );
+    expect(
+      isResolvableImageUrl(
+        "/uploads/abc123/photo.jpg",
+        "https://gitlab.example.com",
+      ),
+    ).toBe(true);
     expect(isResolvableImageUrl("/uploads/abc123/photo.jpg")).toBe(false);
 
     const note =
-      'oh nice\n\n![Screenshot](/uploads/06a8c6da28f76281b6f75d59bad2859c/Screenshot_2026-06-24_at_15.07.36.png){width=328 height=321}\n\ncan you see it?';
+      "oh nice\n\n![Screenshot](/uploads/06a8c6da28f76281b6f75d59bad2859c/Screenshot_2026-06-24_at_15.07.36.png){width=328 height=321}\n\ncan you see it?";
     const prepared = prepareGitLabNoteForOutboundEmail(note);
     expect(prepared).not.toContain("{width=328");
-    const images = collectOutboundImageRefs(
-      note,
-      "https://gitlab.example.com",
-    );
+    const images = collectOutboundImageRefs(note, "https://gitlab.example.com");
     expect(images).toHaveLength(1);
     expect(images[0]?.url).toContain("/uploads/");
   });
 
   test("parses gitlab upload paths into secret and filename", async () => {
-    const { parseGitLabUploadPath } = await import(
-      "@servicebeard/shared/email-content"
-    );
+    const { parseGitLabUploadPath } =
+      await import("@servicebeard/shared/email-content");
     expect(
       parseGitLabUploadPath(
         "/uploads/297cf8e52cbd85a440cd6f299ad200c2/emojis.com_toucan-_nose-bird_-emoji.png",
@@ -744,7 +813,12 @@ describe("inbound thread matching", () => {
       { messageId: "<parent@mail.test>", inReplyTo: null },
       { messageId: "<other@mail.test>", inReplyTo: "<root@mail.test>" },
     ],
-    [{ subjectNormalized: "help needed", originalSenderEmail: "customer@mail.test" }],
+    [
+      {
+        subjectNormalized: "help needed",
+        originalSenderEmail: "customer@mail.test",
+      },
+    ],
   );
 
   test("matches by In-Reply-To against stored message IDs", () => {
@@ -856,7 +930,9 @@ describe("imap poll watermark", () => {
   const projectCreatedAt = new Date("2026-06-01T10:00:00Z");
 
   test("starts from project creation when no watermark exists", () => {
-    expect(computeImapPollSince(projectCreatedAt, null)).toEqual(projectCreatedAt);
+    expect(computeImapPollSince(projectCreatedAt, null)).toEqual(
+      projectCreatedAt,
+    );
   });
 
   test("searches from watermark minus overlap", () => {
@@ -868,7 +944,9 @@ describe("imap poll watermark", () => {
 
   test("never searches before project creation", () => {
     const watermark = new Date("2026-06-02T08:00:00Z");
-    expect(computeImapPollSince(projectCreatedAt, watermark)).toEqual(projectCreatedAt);
+    expect(computeImapPollSince(projectCreatedAt, watermark)).toEqual(
+      projectCreatedAt,
+    );
   });
 
   test("advances watermark to latest scanned internal date", () => {
@@ -905,7 +983,8 @@ describe("mail from validation", () => {
   });
 
   test("parses and formats display name", async () => {
-    const { formatMailFrom, parseMailFromName } = await import("@servicebeard/shared");
+    const { formatMailFrom, parseMailFromName } =
+      await import("@servicebeard/shared");
     expect(parseMailFromName("Support <support@mail.test>")).toBe("Support");
     expect(parseMailFromName("support@mail.test")).toBeNull();
     expect(formatMailFrom("support@mail.test", "Support")).toBe(
@@ -924,16 +1003,22 @@ describe("email threading helpers", () => {
 
   test("builds references chain with parent message", async () => {
     const { buildReferencesChain } = await import("@servicebeard/shared");
-    expect(
-      buildReferencesChain(["<a@x>"], "<b@x>"),
-    ).toEqual(["<a@x>", "<b@x>"]);
+    expect(buildReferencesChain(["<a@x>"], "<b@x>")).toEqual([
+      "<a@x>",
+      "<b@x>",
+    ]);
     expect(buildReferencesChain(["<b@x>"], "<b@x>")).toEqual(["<b@x>"]);
   });
 
   test("resolves inbound sender from Reply-To", async () => {
     const { resolveInboundSender } = await import("@servicebeard/shared");
     expect(
-      resolveInboundSender("noreply@servicebeard.app", "ServiceBeard", "jane@example.com", "Jane"),
+      resolveInboundSender(
+        "noreply@servicebeard.app",
+        "ServiceBeard",
+        "jane@example.com",
+        "Jane",
+      ),
     ).toEqual({ email: "jane@example.com", name: "Jane" });
     expect(
       resolveInboundSender("customer@mail.test", "Customer", null, null),
@@ -958,7 +1043,9 @@ describe("email threading helpers", () => {
     expect(supportMailboxCc("support@mail.test", "customer@mail.test")).toBe(
       "support@mail.test",
     );
-    expect(supportMailboxCc("support@mail.test", "support@mail.test")).toBeUndefined();
+    expect(
+      supportMailboxCc("support@mail.test", "support@mail.test"),
+    ).toBeUndefined();
   });
 });
 
@@ -996,7 +1083,8 @@ describe("inbound ack template", () => {
 
 describe("outbound comment template", () => {
   test("replaces placeholders", async () => {
-    const { renderOutboundCommentTemplate } = await import("@servicebeard/shared");
+    const { renderOutboundCommentTemplate } =
+      await import("@servicebeard/shared");
     const result = renderOutboundCommentTemplate(
       "{{commentBody}}\n\nFrom {{authorName}} on #{{issueNumber}}: {{issueUrl}}",
       {
@@ -1022,7 +1110,9 @@ describe("normalizeSubject", () => {
 describe("detectIssueProviderFromUrl", () => {
   test("detects GitHub cloud repository URLs", async () => {
     const { detectIssueProviderFromUrl } = await import("@servicebeard/shared");
-    expect(detectIssueProviderFromUrl("https://github.com/acme/support")).toEqual({
+    expect(
+      detectIssueProviderFromUrl("https://github.com/acme/support"),
+    ).toEqual({
       provider: "github",
       providerBaseUrl: "https://github.com",
       providerProjectId: "acme/support",
@@ -1038,7 +1128,9 @@ describe("detectIssueProviderFromUrl", () => {
 
   test("detects GitLab cloud project URLs", async () => {
     const { detectIssueProviderFromUrl } = await import("@servicebeard/shared");
-    expect(detectIssueProviderFromUrl("https://gitlab.com/acme/website")).toEqual({
+    expect(
+      detectIssueProviderFromUrl("https://gitlab.com/acme/website"),
+    ).toEqual({
       provider: "gitlab",
       providerBaseUrl: "https://gitlab.com",
       providerProjectId: "acme/website",
@@ -1084,7 +1176,9 @@ describe("parseGitlabProject", () => {
     expect(parseGitlabProject("https://gitlab.com/acme/nested/website")).toBe(
       "acme/nested/website",
     );
-    expect(parseGitlabProject("git@gitlab.com:acme/website.git")).toBe("acme/website");
+    expect(parseGitlabProject("git@gitlab.com:acme/website.git")).toBe(
+      "acme/website",
+    );
   });
 });
 
@@ -1097,13 +1191,17 @@ describe("parseGithubRepository", () => {
 
   test("parses repository and issue URLs", async () => {
     const { parseGithubRepository } = await import("@servicebeard/shared");
-    expect(parseGithubRepository("https://github.com/hongaar/servicebeard-support")).toBe(
-      "hongaar/servicebeard-support",
-    );
     expect(
-      parseGithubRepository("https://github.com/hongaar/servicebeard-support/issues/1"),
+      parseGithubRepository("https://github.com/hongaar/servicebeard-support"),
     ).toBe("hongaar/servicebeard-support");
-    expect(parseGithubRepository("github.com/acme/support/pull/12")).toBe("acme/support");
+    expect(
+      parseGithubRepository(
+        "https://github.com/hongaar/servicebeard-support/issues/1",
+      ),
+    ).toBe("hongaar/servicebeard-support");
+    expect(parseGithubRepository("github.com/acme/support/pull/12")).toBe(
+      "acme/support",
+    );
   });
 
   test("normalizes on create when provider is github", async () => {
@@ -1129,9 +1227,8 @@ describe("parseGithubRepository", () => {
 
 describe("github app install cookie", () => {
   test("roundtrips returnTo with query string", async () => {
-    const { encodeGithubAppInstallCookie, decodeGithubAppInstallCookie } = await import(
-      "../apps/api/src/lib/github-app-install"
-    );
+    const { encodeGithubAppInstallCookie, decodeGithubAppInstallCookie } =
+      await import("../apps/api/src/lib/github-app-install");
     const payload = {
       state: "abc123",
       teamId: "team-1",
@@ -1338,12 +1435,20 @@ describe("GitHub webhook parsing", () => {
     const signature =
       "sha256=" + createHmac("sha256", secret).update(body).digest("hex");
 
-    expect(provider.verifyWebhook({ "x-hub-signature-256": signature }, body, secret)).toBe(
-      true,
-    );
-    expect(provider.verifyWebhook({ "x-hub-signature-256": "sha256=bad" }, body, secret)).toBe(
-      false,
-    );
+    expect(
+      provider.verifyWebhook(
+        { "x-hub-signature-256": signature },
+        body,
+        secret,
+      ),
+    ).toBe(true);
+    expect(
+      provider.verifyWebhook(
+        { "x-hub-signature-256": "sha256=bad" },
+        body,
+        secret,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -1432,16 +1537,23 @@ describe("linear provider", () => {
     const secret = "test-secret";
     const signature = createHmac("sha256", secret).update(body).digest("hex");
 
-    expect(provider.verifyWebhook({ "linear-signature": signature }, body, secret)).toBe(true);
-    expect(provider.verifyWebhook({ "linear-signature": "bad" }, body, secret)).toBe(false);
+    expect(
+      provider.verifyWebhook({ "linear-signature": signature }, body, secret),
+    ).toBe(true);
+    expect(
+      provider.verifyWebhook({ "linear-signature": "bad" }, body, secret),
+    ).toBe(false);
   });
 });
 
 describe("linear team parsing", () => {
   test("detects linear team and project URLs", async () => {
-    const { detectIssueProviderFromUrl, parseLinearTeam } = await import("@servicebeard/shared");
+    const { detectIssueProviderFromUrl, parseLinearTeam } =
+      await import("@servicebeard/shared");
 
-    expect(detectIssueProviderFromUrl("https://linear.app/acme/team/ENG/active")).toEqual({
+    expect(
+      detectIssueProviderFromUrl("https://linear.app/acme/team/ENG/active"),
+    ).toEqual({
       provider: "linear",
       providerBaseUrl: "https://linear.app",
       providerProjectId: "ENG",
@@ -1460,7 +1572,9 @@ describe("linear team parsing", () => {
     expect(parseLinearTeam("72b2a2dc-6f4f-4423-9d34-24b5bd10634a")).toBe(
       "72b2a2dc-6f4f-4423-9d34-24b5bd10634a",
     );
-    expect(parseLinearTeam("https://linear.app/acme/issue/ENG-12/some-title")).toBe("ENG");
+    expect(
+      parseLinearTeam("https://linear.app/acme/issue/ENG-12/some-title"),
+    ).toBe("ENG");
   });
 });
 
@@ -1520,70 +1634,73 @@ describe("login provider env", () => {
       isOidcLoginEnabled,
     } = await import("../apps/api/src/lib/env");
 
-    withEnv({
-      ...oidcEnv,
-      ...githubEnv,
-      ...gitlabEnv,
-      OIDC_LOGIN: undefined,
-      GITHUB_LOGIN: undefined,
-      GITLAB_LOGIN: undefined,
-      LOCAL_LOGIN: undefined,
-    }, () => {
-      expect(isOidcLoginEnabled()).toBe(false);
-      expect(isGithubLoginEnabled()).toBe(false);
-      expect(isGitlabLoginEnabled()).toBe(false);
-      expect(isLocalLoginEnabled()).toBe(false);
-    });
+    withEnv(
+      {
+        ...oidcEnv,
+        ...githubEnv,
+        ...gitlabEnv,
+        OIDC_LOGIN: undefined,
+        GITHUB_LOGIN: undefined,
+        GITLAB_LOGIN: undefined,
+        LOCAL_LOGIN: undefined,
+      },
+      () => {
+        expect(isOidcLoginEnabled()).toBe(false);
+        expect(isGithubLoginEnabled()).toBe(false);
+        expect(isGitlabLoginEnabled()).toBe(false);
+        expect(isLocalLoginEnabled()).toBe(false);
+      },
+    );
   });
 
   test("oauth providers require config even when *_LOGIN=true", async () => {
-    const {
-      isGithubLoginEnabled,
-      isGitlabLoginEnabled,
-      isOidcLoginEnabled,
-    } = await import("../apps/api/src/lib/env");
+    const { isGithubLoginEnabled, isGitlabLoginEnabled, isOidcLoginEnabled } =
+      await import("../apps/api/src/lib/env");
 
-    withEnv({
-      OIDC_LOGIN: "true",
-      GITHUB_LOGIN: "true",
-      GITLAB_LOGIN: "true",
-      OIDC_ISSUER: undefined,
-      OIDC_CLIENT_ID: undefined,
-      OIDC_CLIENT_SECRET: undefined,
-      GITHUB_CLIENT_ID: undefined,
-      GITHUB_CLIENT_SECRET: undefined,
-      GITLAB_CLIENT_ID: undefined,
-      GITLAB_CLIENT_SECRET: undefined,
-    }, () => {
-      expect(isOidcLoginEnabled()).toBe(false);
-      expect(isGithubLoginEnabled()).toBe(false);
-      expect(isGitlabLoginEnabled()).toBe(false);
-    });
+    withEnv(
+      {
+        OIDC_LOGIN: "true",
+        GITHUB_LOGIN: "true",
+        GITLAB_LOGIN: "true",
+        OIDC_ISSUER: undefined,
+        OIDC_CLIENT_ID: undefined,
+        OIDC_CLIENT_SECRET: undefined,
+        GITHUB_CLIENT_ID: undefined,
+        GITHUB_CLIENT_SECRET: undefined,
+        GITLAB_CLIENT_ID: undefined,
+        GITLAB_CLIENT_SECRET: undefined,
+      },
+      () => {
+        expect(isOidcLoginEnabled()).toBe(false);
+        expect(isGithubLoginEnabled()).toBe(false);
+        expect(isGitlabLoginEnabled()).toBe(false);
+      },
+    );
   });
 
   test("oauth providers enable only with *_LOGIN=true and full config", async () => {
-    const {
-      isGithubLoginEnabled,
-      isGitlabLoginEnabled,
-      isOidcLoginEnabled,
-    } = await import("../apps/api/src/lib/env");
+    const { isGithubLoginEnabled, isGitlabLoginEnabled, isOidcLoginEnabled } =
+      await import("../apps/api/src/lib/env");
 
-    withEnv({
-      OIDC_ISSUER: oidcEnv.OIDC_ISSUER,
-      OIDC_CLIENT_ID: oidcEnv.OIDC_CLIENT_ID,
-      OIDC_CLIENT_SECRET: oidcEnv.OIDC_CLIENT_SECRET,
-      GITHUB_CLIENT_ID: githubEnv.GITHUB_CLIENT_ID,
-      GITHUB_CLIENT_SECRET: githubEnv.GITHUB_CLIENT_SECRET,
-      GITLAB_CLIENT_ID: gitlabEnv.GITLAB_CLIENT_ID,
-      GITLAB_CLIENT_SECRET: gitlabEnv.GITLAB_CLIENT_SECRET,
-      OIDC_LOGIN: "true",
-      GITHUB_LOGIN: "true",
-      GITLAB_LOGIN: "true",
-    }, () => {
-      expect(isOidcLoginEnabled()).toBe(true);
-      expect(isGithubLoginEnabled()).toBe(true);
-      expect(isGitlabLoginEnabled()).toBe(true);
-    });
+    withEnv(
+      {
+        OIDC_ISSUER: oidcEnv.OIDC_ISSUER,
+        OIDC_CLIENT_ID: oidcEnv.OIDC_CLIENT_ID,
+        OIDC_CLIENT_SECRET: oidcEnv.OIDC_CLIENT_SECRET,
+        GITHUB_CLIENT_ID: githubEnv.GITHUB_CLIENT_ID,
+        GITHUB_CLIENT_SECRET: githubEnv.GITHUB_CLIENT_SECRET,
+        GITLAB_CLIENT_ID: gitlabEnv.GITLAB_CLIENT_ID,
+        GITLAB_CLIENT_SECRET: gitlabEnv.GITLAB_CLIENT_SECRET,
+        OIDC_LOGIN: "true",
+        GITHUB_LOGIN: "true",
+        GITLAB_LOGIN: "true",
+      },
+      () => {
+        expect(isOidcLoginEnabled()).toBe(true);
+        expect(isGithubLoginEnabled()).toBe(true);
+        expect(isGitlabLoginEnabled()).toBe(true);
+      },
+    );
   });
 
   test("oauth callback URL prefers WEB_URL for browser cookie flow", async () => {
@@ -1596,7 +1713,9 @@ describe("login provider env", () => {
         API_URL: "http://localhost:3000",
       },
       () => {
-        expect(getOAuthCallbackUrl()).toBe("http://localhost:5173/api/auth/callback");
+        expect(getOAuthCallbackUrl()).toBe(
+          "http://localhost:5173/api/auth/callback",
+        );
       },
     );
   });
@@ -1616,13 +1735,14 @@ describe("login provider env", () => {
 
 describe("auth providers", () => {
   test("infers provider type from external subject", async () => {
-    const { inferProviderFromExternalSub, isRedirectProvider } = await import(
-      "../apps/api/src/lib/login/providers"
-    );
+    const { inferProviderFromExternalSub, isRedirectProvider } =
+      await import("../apps/api/src/lib/login/providers");
 
     expect(inferProviderFromExternalSub("github:123")).toBe("github");
     expect(inferProviderFromExternalSub("gitlab:456")).toBe("gitlab");
-    expect(inferProviderFromExternalSub("local:user@example.com")).toBe("local");
+    expect(inferProviderFromExternalSub("local:user@example.com")).toBe(
+      "local",
+    );
     expect(inferProviderFromExternalSub("auth0|abc")).toBe("oidc");
 
     expect(isRedirectProvider("github")).toBe(true);
@@ -1632,14 +1752,21 @@ describe("auth providers", () => {
 
 describe("mail autoconfig", () => {
   test("mail.test resolves to local GreenMail settings", async () => {
-    const { lookupMailAutoconfig, usesLocalPartMailAuth } = await import(
-      "@servicebeard/shared/mail-autoconfig"
-    );
+    const { lookupMailAutoconfig, usesLocalPartMailAuth } =
+      await import("@servicebeard/shared/mail-autoconfig");
 
     const config = lookupMailAutoconfig("support@mail.test");
     expect(config?.providerName).toBe("GreenMail (local dev)");
-    expect(config?.imap).toEqual({ host: "localhost", port: 3143, secure: false });
-    expect(config?.smtp).toEqual({ host: "localhost", port: 3025, secure: false });
+    expect(config?.imap).toEqual({
+      host: "localhost",
+      port: 3143,
+      secure: false,
+    });
+    expect(config?.smtp).toEqual({
+      host: "localhost",
+      port: 3025,
+      secure: false,
+    });
     expect(usesLocalPartMailAuth("support@mail.test")).toBe(true);
     expect(usesLocalPartMailAuth("support@gmail.com")).toBe(false);
   });
@@ -1647,7 +1774,8 @@ describe("mail autoconfig", () => {
 
 describe("mail discovery parsers", () => {
   test("parses Mozilla autoconfig XML", async () => {
-    const { parseMozillaAutoconfigXml } = await import("@servicebeard/shared/mail-discover");
+    const { parseMozillaAutoconfigXml } =
+      await import("@servicebeard/shared/mail-discover");
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <clientConfig version="1.1">
   <emailProvider id="migadu.com">
@@ -1673,7 +1801,8 @@ describe("mail discovery parsers", () => {
   });
 
   test("parses Microsoft autodiscover XML", async () => {
-    const { parseMicrosoftAutodiscoverXml } = await import("@servicebeard/shared/mail-discover");
+    const { parseMicrosoftAutodiscoverXml } =
+      await import("@servicebeard/shared/mail-discover");
     const xml = `<?xml version="1.0" encoding="utf-8" ?>
 <Autodiscover xmlns="http://schemas.microsoft.com/exchange/autodiscover/responseschema/2006">
   <Response xmlns="http://schemas.microsoft.com/exchange/autodiscover/outlook/responseschema/2006a">
@@ -1702,7 +1831,8 @@ describe("mail discovery parsers", () => {
   });
 
   test("builds config from DNS SRV targets", async () => {
-    const { mailAutoconfigFromSrvRecords } = await import("@servicebeard/shared/mail-discover");
+    const { mailAutoconfigFromSrvRecords } =
+      await import("@servicebeard/shared/mail-discover");
 
     expect(
       mailAutoconfigFromSrvRecords(
@@ -1720,20 +1850,24 @@ describe("mail discovery parsers", () => {
 
 describe("mail connection errors", () => {
   test("maps SMTP connection closed on port 465 to actionable guidance", async () => {
-    const { formatMailConnectionError } = await import("../apps/api/src/lib/mail-connection-error");
+    const { formatMailConnectionError } =
+      await import("../apps/api/src/lib/mail-connection-error");
 
     const err = formatMailConnectionError(
       { protocol: "SMTP", host: "smtp.migadu.com", port: 465, secure: true },
       new Error("Connection closed"),
     );
 
-    expect(err.message).toContain("SMTP connection to smtp.migadu.com:465 (TLS)");
+    expect(err.message).toContain(
+      "SMTP connection to smtp.migadu.com:465 (TLS)",
+    );
     expect(err.message).toContain("Port 465 is often blocked");
     expect(err.message).toContain("587");
   });
 
   test("maps SMTP timeout on port 465 to actionable guidance", async () => {
-    const { formatMailConnectionError } = await import("../apps/api/src/lib/mail-connection-error");
+    const { formatMailConnectionError } =
+      await import("../apps/api/src/lib/mail-connection-error");
 
     const err = formatMailConnectionError(
       { protocol: "SMTP", host: "smtp.migadu.com", port: 465, secure: true },
@@ -1745,7 +1879,8 @@ describe("mail connection errors", () => {
   });
 
   test("maps authentication failures clearly", async () => {
-    const { formatMailConnectionError } = await import("../apps/api/src/lib/mail-connection-error");
+    const { formatMailConnectionError } =
+      await import("../apps/api/src/lib/mail-connection-error");
 
     const err = formatMailConnectionError(
       { protocol: "IMAP", host: "imap.migadu.com", port: 993, secure: true },
@@ -1779,28 +1914,32 @@ describe("provider project URLs", () => {
         "https://linear.app",
         "project:hongaar/servicebeard-support-f0a3393752bf",
       ),
-    ).toBe("https://linear.app/hongaar/project/servicebeard-support-f0a3393752bf/issues");
+    ).toBe(
+      "https://linear.app/hongaar/project/servicebeard-support-f0a3393752bf/issues",
+    );
   });
 });
 
 describe("entitlements", () => {
   test("default provider allows unlimited projects and team access", async () => {
-    const { getEntitlements } = await import("../apps/api/src/lib/entitlements");
+    const { getEntitlements } =
+      await import("../apps/api/src/lib/entitlements");
 
     await expect(
       getEntitlements().assertCanCreateProject("team-1", 999),
     ).resolves.toBeUndefined();
     await expect(
-      getEntitlements().assertTeamAccess("team-1", { path: "/api/teams/team-1/projects" }),
+      getEntitlements().assertTeamAccess("team-1", {
+        path: "/api/teams/team-1/projects",
+      }),
     ).resolves.toBeUndefined();
   });
 });
 
 describe("global search", () => {
   test("filterSearchActions matches labels and keywords", async () => {
-    const { buildSearchActions, filterSearchActions } = await import(
-      "../apps/web/src/lib/globalSearch"
-    );
+    const { buildSearchActions, filterSearchActions } =
+      await import("../apps/web/src/lib/globalSearch");
 
     const actions = buildSearchActions({
       teamId: "team-1",
@@ -1808,17 +1947,24 @@ describe("global search", () => {
       isAdmin: true,
     });
 
-    expect(filterSearchActions(actions, "templates").some((a) => a.label === "Templates")).toBe(
-      true,
-    );
-    expect(filterSearchActions(actions, "help").some((a) => a.group === "Help")).toBe(true);
-    expect(filterSearchActions(actions, "status").some((a) => a.label === "System status")).toBe(
-      true,
-    );
+    expect(
+      filterSearchActions(actions, "templates").some(
+        (a) => a.label === "Templates",
+      ),
+    ).toBe(true);
+    expect(
+      filterSearchActions(actions, "help").some((a) => a.group === "Help"),
+    ).toBe(true);
+    expect(
+      filterSearchActions(actions, "status").some(
+        (a) => a.label === "System status",
+      ),
+    ).toBe(true);
   });
 
   test("groupSearchResults preserves group order", async () => {
-    const { groupSearchResults } = await import("../apps/web/src/lib/globalSearchResults");
+    const { groupSearchResults } =
+      await import("../apps/web/src/lib/globalSearchResults");
 
     const groups = groupSearchResults([
       {

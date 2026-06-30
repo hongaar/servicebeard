@@ -53,7 +53,9 @@ export async function recordProjectStatusEvent(
 
   if (stale.length > 0) {
     for (const row of stale) {
-      await db.delete(projectStatusEvents).where(eq(projectStatusEvents.id, row.id));
+      await db
+        .delete(projectStatusEvents)
+        .where(eq(projectStatusEvents.id, row.id));
     }
   }
 }
@@ -99,7 +101,9 @@ export async function dismissProjectStatusEvent(
 /** @deprecated Use dismissProjectStatusEvent */
 export const dismissProjectSyncError = dismissProjectStatusEvent;
 
-export async function dismissAllProjectStatusEvents(projectId: string): Promise<number> {
+export async function dismissAllProjectStatusEvents(
+  projectId: string,
+): Promise<number> {
   const db = getDb();
   const rows = await db
     .update(projectStatusEvents)

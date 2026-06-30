@@ -11,10 +11,14 @@ export default async function globalSetup(): Promise<void> {
       "postgres://servicebeard:servicebeard@localhost:5432/servicebeard";
   }
 
-  const result = spawnSync("bun", [join(import.meta.dirname, "fixtures/seed.ts")], {
-    stdio: "inherit",
-    env: process.env,
-  });
+  const result = spawnSync(
+    "bun",
+    [join(import.meta.dirname, "fixtures/seed.ts")],
+    {
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
 
   if (result.status !== 0) {
     throw new Error("Failed to seed e2e test data");

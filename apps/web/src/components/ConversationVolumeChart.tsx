@@ -12,7 +12,10 @@ const RANGE_OPTIONS = [
 
 type RangeDays = (typeof RANGE_OPTIONS)[number]["value"];
 
-function buildDailySeries(points: MessageVolumePoint[], days: number): MessageVolumePoint[] {
+function buildDailySeries(
+  points: MessageVolumePoint[],
+  days: number,
+): MessageVolumePoint[] {
   const byDate = new Map(points.map((point) => [point.date, point]));
   const series: MessageVolumePoint[] = [];
   const cursor = new Date();
@@ -34,7 +37,10 @@ function formatAxisDate(date: string, days: number): string {
     return parsed.toLocaleDateString(undefined, { weekday: "short" });
   }
   if (days <= 30) {
-    return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return parsed.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
   }
   return parsed.toLocaleDateString(undefined, { month: "short" });
 }
@@ -44,7 +50,10 @@ interface ConversationVolumeChartProps {
   projectId: string;
 }
 
-export function ConversationVolumeChart({ teamId, projectId }: ConversationVolumeChartProps) {
+export function ConversationVolumeChart({
+  teamId,
+  projectId,
+}: ConversationVolumeChartProps) {
   const [range, setRange] = useState<RangeDays>("30");
   const days = Number(range) as 7 | 30 | 365;
 
@@ -54,7 +63,10 @@ export function ConversationVolumeChart({ teamId, projectId }: ConversationVolum
   });
 
   const series = buildDailySeries(volumeQuery.data?.points ?? [], days);
-  const maxTotal = Math.max(...series.map((point) => point.inbound + point.outbound), 1);
+  const maxTotal = Math.max(
+    ...series.map((point) => point.inbound + point.outbound),
+    1,
+  );
   const labelStride = days <= 7 ? 1 : days <= 30 ? 5 : 30;
 
   return (
@@ -78,11 +90,19 @@ export function ConversationVolumeChart({ teamId, projectId }: ConversationVolum
 
       <div className={styles.volumeLegend}>
         <span className={styles.volumeLegendItem}>
-          <span className={[styles.volumeLegendSwatch, styles.volumeInbound].join(" ")} />
+          <span
+            className={[styles.volumeLegendSwatch, styles.volumeInbound].join(
+              " ",
+            )}
+          />
           Incoming
         </span>
         <span className={styles.volumeLegendItem}>
-          <span className={[styles.volumeLegendSwatch, styles.volumeOutbound].join(" ")} />
+          <span
+            className={[styles.volumeLegendSwatch, styles.volumeOutbound].join(
+              " ",
+            )}
+          />
           Outgoing
         </span>
       </div>
@@ -92,12 +112,17 @@ export function ConversationVolumeChart({ teamId, projectId }: ConversationVolum
       ) : volumeQuery.isError ? (
         <p className={styles.testError}>Could not load conversation volume.</p>
       ) : (
-        <div className={styles.volumePlot} role="img" aria-label="Conversation volume chart">
+        <div
+          className={styles.volumePlot}
+          role="img"
+          aria-label="Conversation volume chart"
+        >
           <div className={styles.volumeBars}>
             {series.map((point) => {
               const total = point.inbound + point.outbound;
               const heightPct = total === 0 ? 0 : (total / maxTotal) * 100;
-              const inboundPct = total === 0 ? 0 : (point.inbound / total) * 100;
+              const inboundPct =
+                total === 0 ? 0 : (point.inbound / total) * 100;
               return (
                 <div key={point.date} className={styles.volumeBarGroup}>
                   <div

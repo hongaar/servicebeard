@@ -5,7 +5,8 @@
   padding: var(--space-4);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  border: 1px solid
+    color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
   color: var(--color-text);
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);

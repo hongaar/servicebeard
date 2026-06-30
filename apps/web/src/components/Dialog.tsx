@@ -11,7 +11,13 @@ interface DialogProps {
   children: React.ReactNode;
 }
 
-export function Dialog({ open, onOpenChange, title, wide, children }: DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  wide,
+  children,
+}: DialogProps) {
   return (
     <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
       <BaseDialog.Portal>
@@ -24,7 +30,9 @@ export function Dialog({ open, onOpenChange, title, wide, children }: DialogProp
           <BaseDialog.Close className={styles.dialogClose} aria-label="Close">
             <X {...iconMd} />
           </BaseDialog.Close>
-          <BaseDialog.Title className={styles.dialogTitle}>{title}</BaseDialog.Title>
+          <BaseDialog.Title className={styles.dialogTitle}>
+            {title}
+          </BaseDialog.Title>
           {children}
         </BaseDialog.Popup>
       </BaseDialog.Portal>

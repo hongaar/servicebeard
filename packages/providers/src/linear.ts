@@ -1,25 +1,25 @@
 import {
-    isLinearProjectId,
-    isServicebeardInternalContent,
-    LINEAR_PROJECT_PREFIX,
-    parseLinearIssueNumberFromUrl,
-    parseLinearProjectSlugId,
+  isLinearProjectId,
+  isServicebeardInternalContent,
+  LINEAR_PROJECT_PREFIX,
+  parseLinearIssueNumberFromUrl,
+  parseLinearProjectSlugId,
 } from "@servicebeard/shared";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ProviderApiError } from "./errors";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {
-    AddCommentResult,
-    CreateIssueInput,
-    CreateIssueResult,
-    DownloadedFile,
-    IssueProvider,
-    NormalizedWebhookEvent,
-    ProviderConfig,
-    ProviderNote,
-    ProviderOptions,
-    UploadFileResult,
+  AddCommentResult,
+  CreateIssueInput,
+  CreateIssueResult,
+  DownloadedFile,
+  IssueProvider,
+  NormalizedWebhookEvent,
+  ProviderConfig,
+  ProviderNote,
+  ProviderOptions,
+  UploadFileResult,
 } from "./types";
 
 const LINEAR_API_URL = "https://api.linear.app/graphql";
@@ -130,10 +130,14 @@ export class LinearProvider implements IssueProvider {
     const text = await response.text();
     if (!response.ok) {
       if (!(options?.quiet404 && response.status === 404)) {
-        logProvider(response.status === 404 ? "debug" : "error", "Linear API request failed", {
-          status: response.status,
-          bodyPreview: text.slice(0, 500),
-        });
+        logProvider(
+          response.status === 404 ? "debug" : "error",
+          "Linear API request failed",
+          {
+            status: response.status,
+            bodyPreview: text.slice(0, 500),
+          },
+        );
       }
       throw new LinearApiError(
         response.status,
@@ -148,12 +152,19 @@ export class LinearProvider implements IssueProvider {
     };
 
     if (payload.errors?.length) {
-      const message = payload.errors.map((e) => e.message).filter(Boolean).join("; ");
+      const message = payload.errors
+        .map((e) => e.message)
+        .filter(Boolean)
+        .join("; ");
       throw new LinearApiError(400, message || "Linear GraphQL error", text);
     }
 
     if (!payload.data) {
-      throw new LinearApiError(500, "Linear GraphQL response missing data", text);
+      throw new LinearApiError(
+        500,
+        "Linear GraphQL response missing data",
+        text,
+      );
     }
 
     return payload.data;
@@ -163,7 +174,10 @@ export class LinearProvider implements IssueProvider {
     return UUID_RE.test(value);
   }
 
-  private async resolveScope(): Promise<{ teamId: string; projectId?: string }> {
+  private async resolveScope(): Promise<{
+    teamId: string;
+    projectId?: string;
+  }> {
     if (this.resolvedScope) return this.resolvedScope;
 
     const projectId = this.config.projectId.trim();
@@ -192,19 +206,26 @@ export class LinearProvider implements IssueProvider {
 
     const team = data.teams.nodes[0];
     if (!team) {
-      const projectScope = await this.resolveProjectScope(projectId).catch(() => null);
+      const projectScope = await this.resolveProjectScope(projectId).catch(
+        () => null,
+      );
       if (projectScope) {
         this.resolvedScope = projectScope;
         return projectScope;
       }
-      throw new LinearApiError(404, `Linear team not found for key "${projectId}"`);
+      throw new LinearApiError(
+        404,
+        `Linear team not found for key "${projectId}"`,
+      );
     }
 
     this.resolvedScope = { teamId: team.id };
     return this.resolvedScope;
   }
 
-  private async resolveProjectScope(ref: string): Promise<{ teamId: string; projectId: string }> {
+  private async resolveProjectScope(
+    ref: string,
+  ): Promise<{ teamId: string; projectId: string }> {
     const slug = ref.includes("/") ? (ref.split("/").pop() ?? ref) : ref;
     const slugId = parseLinearProjectSlugId(slug);
 
@@ -257,7 +278,9 @@ export class LinearProvider implements IssueProvider {
     return scope.teamId;
   }
 
-  private async issueByNumber(issueNumber: number): Promise<LinearIssue | null> {
+  private async issueByNumber(
+    issueNumber: number,
+  ): Promise<LinearIssue | null> {
     const scope = await this.resolveScope();
     const filter: Record<string, unknown> = {
       number: { eq: issueNumber },
@@ -528,8 +551,11 @@ export class LinearProvider implements IssueProvider {
     }
 
     const headerType =
-      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ??
-      "application/octet-stream";
+      response.headers
+        .get("content-type")
+        ?.split(";")[0]
+        ?.trim()
+        .toLowerCase() ?? "application/octet-stream";
     const content = Buffer.from(await response.arrayBuffer());
 
     if (headerType.includes("text/html") || content.length === 0) {
@@ -556,7 +582,11 @@ export class LinearProvider implements IssueProvider {
     return { content, contentType };
   }
 
-  async addReaction(_issueIid: number, noteId: string, emoji: string): Promise<void> {
+  async addReaction(
+    _issueIid: number,
+    noteId: string,
+    emoji: string,
+  ): Promise<void> {
     if (emoji !== "e-mail" && emoji !== "rocket") return;
 
     try {
@@ -621,8 +651,10 @@ export class LinearProvider implements IssueProvider {
       id: comment.id,
       body: comment.body,
       authorId: comment.user?.id ?? "",
-      authorName: comment.user?.displayName?.trim() || comment.user?.name || null,
-      authorUsername: comment.user?.displayName?.trim() || comment.user?.name || "unknown",
+      authorName:
+        comment.user?.displayName?.trim() || comment.user?.name || null,
+      authorUsername:
+        comment.user?.displayName?.trim() || comment.user?.name || "unknown",
       internal: isServicebeardInternalContent(comment.body),
       system: false,
       createdAt: new Date(comment.createdAt),
@@ -683,7 +715,9 @@ export class LinearProvider implements IssueProvider {
         authorUsername: data.actor?.name ?? "unknown",
         internal: true,
         system: false,
-        createdAt: new Date(data.data.createdAt ?? data.createdAt ?? Date.now()),
+        createdAt: new Date(
+          data.data.createdAt ?? data.createdAt ?? Date.now(),
+        ),
       };
     }
 
@@ -719,7 +753,9 @@ export class LinearProvider implements IssueProvider {
       { teamId },
     );
 
-    const match = existing.team?.webhooks.nodes.find((hook) => hook.url === config.webhookUrl);
+    const match = existing.team?.webhooks.nodes.find(
+      (hook) => hook.url === config.webhookUrl,
+    );
     if (match) {
       await this.graphql(
         `mutation WebhookUpdate($id: String!, $input: WebhookUpdateInput!) {

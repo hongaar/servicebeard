@@ -19,7 +19,9 @@ export function zodErrorToFieldErrors(error: ZodError): Record<string, string> {
   return fieldErrors;
 }
 
-export function formatValidationError(error: ZodError): ValidationErrorResponse {
+export function formatValidationError(
+  error: ZodError,
+): ValidationErrorResponse {
   const fieldErrors = zodErrorToFieldErrors(error);
   const first = error.issues[0]?.message;
   return {
@@ -33,7 +35,5 @@ export function stripEmptyStrings(value: unknown): unknown {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return value;
   }
-  return Object.fromEntries(
-    Object.entries(value).filter(([, v]) => v !== ""),
-  );
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== ""));
 }

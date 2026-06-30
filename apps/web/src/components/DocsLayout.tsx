@@ -91,7 +91,10 @@ export function DocsLayout({
       {!isLoggedIn && <DocsGuestHeader />}
 
       <div
-        className={[styles.shell, !isLoggedIn ? styles.shellAfterPublicHeader : ""]
+        className={[
+          styles.shell,
+          !isLoggedIn ? styles.shellAfterPublicHeader : "",
+        ]
           .filter(Boolean)
           .join(" ")}
       >
@@ -122,7 +125,9 @@ export function DocsLayout({
                             to={child.path}
                             className={[
                               styles.navLink,
-                              isActive(pathname, child.path) ? styles.navLinkActive : "",
+                              isActive(pathname, child.path)
+                                ? styles.navLinkActive
+                                : "",
                             ]
                               .filter(Boolean)
                               .join(" ")}

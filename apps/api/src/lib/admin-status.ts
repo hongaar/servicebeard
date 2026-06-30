@@ -39,7 +39,11 @@ function testTcp(
     const start = Date.now();
     const socket = connect({ host, port, timeout: timeoutMs });
 
-    const finish = (result: { ok: boolean; latencyMs?: number; error?: string }) => {
+    const finish = (result: {
+      ok: boolean;
+      latencyMs?: number;
+      error?: string;
+    }) => {
       socket.removeAllListeners();
       if (!socket.destroyed) socket.destroy();
       resolve(result);
@@ -60,7 +64,12 @@ function testTcp(
 async function testHttp(
   url: string,
   timeoutMs = CHECK_TIMEOUT_MS,
-): Promise<{ ok: boolean; latencyMs?: number; detail?: string; error?: string }> {
+): Promise<{
+  ok: boolean;
+  latencyMs?: number;
+  detail?: string;
+  error?: string;
+}> {
   const start = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);

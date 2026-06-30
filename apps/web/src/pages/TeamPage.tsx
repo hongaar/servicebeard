@@ -22,7 +22,9 @@ interface TeamDetail {
 }
 
 export function TeamPage() {
-  const { user, team, role } = useLoaderData({ from: "/teams/$teamId/members" }) as {
+  const { user, team, role } = useLoaderData({
+    from: "/teams/$teamId/members",
+  }) as {
     user: { email: string; name: string | null };
     team: TeamDetail;
     role: string;
@@ -44,14 +46,20 @@ export function TeamPage() {
       await router.invalidate();
       if ("added" in result && result.added) {
         if (result.emailSent) {
-          setMessage(`${target} was added to the team. A notification was sent to their inbox.`);
+          setMessage(
+            `${target} was added to the team. A notification was sent to their inbox.`,
+          );
         } else {
-          setMessage(`${target} was added to the team. System mail is not configured, so no email was sent.`);
+          setMessage(
+            `${target} was added to the team. System mail is not configured, so no email was sent.`,
+          );
         }
       } else if (result.emailSent) {
         setMessage(`Invite sent to ${target}`);
       } else {
-        setMessage(`Invite created for ${target}. System mail is not configured — share the invite link manually.`);
+        setMessage(
+          `Invite created for ${target}. System mail is not configured — share the invite link manually.`,
+        );
       }
       setIsError(false);
       setFieldErrors({});
@@ -82,13 +90,19 @@ export function TeamPage() {
     >
       {message && (
         <div
-          className={[styles.alert, isError ? styles.alertError : styles.alertSuccess].join(" ")}
+          className={[
+            styles.alert,
+            isError ? styles.alertError : styles.alertSuccess,
+          ].join(" ")}
         >
           {message}
         </div>
       )}
 
-      <Card title="Members" subtitle={`${team.members.length} people on this team`}>
+      <Card
+        title="Members"
+        subtitle={`${team.members.length} people on this team`}
+      >
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -124,7 +138,11 @@ export function TeamPage() {
       </Card>
 
       {isAdmin && (
-        <Card title="Invite someone" subtitle="They'll receive an email to join this team" className={styles.section}>
+        <Card
+          title="Invite someone"
+          subtitle="They'll receive an email to join this team"
+          className={styles.section}
+        >
           <form
             className={styles.form}
             onSubmit={(e) => {
@@ -150,8 +168,14 @@ export function TeamPage() {
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
                 options={[
-                  { value: "member", label: "Member — can view and manage projects" },
-                  { value: "admin", label: "Admin — can invite and remove members" },
+                  {
+                    value: "member",
+                    label: "Member — can view and manage projects",
+                  },
+                  {
+                    value: "admin",
+                    label: "Admin — can invite and remove members",
+                  },
                 ]}
               />
             </div>

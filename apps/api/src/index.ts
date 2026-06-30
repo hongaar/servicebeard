@@ -36,7 +36,9 @@ setProviderLog((level, message, context) => {
   logger[level](context ?? {}, message);
 });
 
-app.use("*", cors({
+app.use(
+  "*",
+  cors({
     origin: process.env.WEB_URL ?? "http://localhost:5173",
     credentials: true,
   }),
@@ -70,19 +72,31 @@ app.onError((err, c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
   if (err.message === "PROJECT_LIMIT_REACHED") {
-    return c.json({ error: "Project limit reached", code: "PROJECT_LIMIT_REACHED" }, 402);
+    return c.json(
+      { error: "Project limit reached", code: "PROJECT_LIMIT_REACHED" },
+      402,
+    );
   }
   if (err.message === "RULE_LIMIT_REACHED") {
-    return c.json({ error: "Rule limit reached", code: "RULE_LIMIT_REACHED" }, 402);
+    return c.json(
+      { error: "Rule limit reached", code: "RULE_LIMIT_REACHED" },
+      402,
+    );
   }
   if (err.message === "CONVERSATION_LIMIT_REACHED") {
     return c.json(
-      { error: "Monthly conversation limit reached", code: "CONVERSATION_LIMIT_REACHED" },
+      {
+        error: "Monthly conversation limit reached",
+        code: "CONVERSATION_LIMIT_REACHED",
+      },
       402,
     );
   }
   if (err.message === "SUBSCRIPTION_REQUIRED") {
-    return c.json({ error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" }, 402);
+    return c.json(
+      { error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" },
+      402,
+    );
   }
   if (err.message === "LOGIN_PROVIDER_DISABLED") {
     return c.json({ error: "Not available" }, 404);
@@ -143,7 +157,12 @@ app.route("/api/teams", teamRoutes);
 app.route("/api/teams", projectRoutes);
 app.route("/webhooks", webhookRoutes);
 
-await loadExtensions({ app, setEntitlementsProvider, requireTeamMember, requirePlatformAdmin });
+await loadExtensions({
+  app,
+  setEntitlementsProvider,
+  requireTeamMember,
+  requirePlatformAdmin,
+});
 
 const port = Number(process.env.PORT ?? 3000);
 
