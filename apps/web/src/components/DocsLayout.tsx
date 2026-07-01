@@ -1,4 +1,7 @@
-import { ExtensionDocsPublicHeader } from "@extensions";
+import {
+  ExtensionDocsContentFooter,
+  ExtensionDocsPublicHeader,
+} from "@extensions";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { api } from "../lib/api";
@@ -143,11 +146,16 @@ export function DocsLayout({
             </ul>
           </nav>
 
-          <article className={styles.content}>
-            <h1 className={styles.title}>{title}</h1>
-            {lead && <p className={styles.lead}>{lead}</p>}
-            <div className={styles.prose}>{children}</div>
-          </article>
+          <div className={styles.main}>
+            <article className={styles.content}>
+              <h1 className={styles.title}>{title}</h1>
+              {lead && <p className={styles.lead}>{lead}</p>}
+              <div className={styles.prose}>{children}</div>
+            </article>
+            {!isLoggedIn && ExtensionDocsContentFooter ? (
+              <ExtensionDocsContentFooter />
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

@@ -63,7 +63,7 @@ RUN SB_EXTENSION_MANIFEST=; \
     if [ -f /extension/extension.config.ts ]; then SB_EXTENSION_MANIFEST=/extension/extension.config.ts; \
     elif [ -f /extension/extension.config.js ]; then SB_EXTENSION_MANIFEST=/extension/extension.config.js; fi; \
     if [ -n "$SB_EXTENSION_MANIFEST" ]; then \
-      (cd /app && SB_EXTENSION_MANIFEST="$SB_EXTENSION_MANIFEST" bun run scripts/copy-extension-public.ts /app/apps/web/public); \
+      (cd /app && SB_EXTENSION_MANIFEST="$SB_EXTENSION_MANIFEST" bun run scripts/copy-extension-public.ts /app/apps/web/public/cloud); \
     fi; \
     export SB_EXTENSION_MANIFEST; \
     bunx vite build

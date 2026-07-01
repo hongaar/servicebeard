@@ -9,5 +9,5 @@ test-results/
 *.tsbuildinfo
 packages/db/drizzle/
 bun.lock
-apps/web/public/marketing/
+apps/web/public/cloud/
 deploy/helm/templates/
