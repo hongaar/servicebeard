@@ -66,6 +66,29 @@ export function PasskeyLoginButton({
   );
 }
 
+export function SignInLastUsedMarker() {
+  return (
+    <div className={styles.signInLastUsedMarker} aria-hidden="true">
+      Last used
+    </div>
+  );
+}
+
+export function SignInOptionShell({
+  lastUsed,
+  children,
+}: {
+  lastUsed?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={styles.signInOption}>
+      {children}
+      {lastUsed && <SignInLastUsedMarker />}
+    </div>
+  );
+}
+
 export function SsoLoginButton({
   provider,
   redirectingProvider,
@@ -98,7 +121,7 @@ export function SsoLoginButton({
 export function AuthPageShell({ children }: { children?: ReactNode }) {
   return (
     <div className={styles.container}>
-      <div className={styles.card}>
+      <div className={[styles.card, styles.loginCard].join(" ")}>
         <img
           src="/favicon.png"
           alt=""
@@ -166,6 +189,7 @@ export function LoginEmailForm({
   loading,
   expanded,
   inset,
+  lastUsed,
   onSubmit,
   error,
   info,
@@ -176,6 +200,7 @@ export function LoginEmailForm({
   loading: boolean;
   expanded: boolean;
   inset?: boolean;
+  lastUsed?: boolean;
   onSubmit: (credentials: { email: string; password: string }) => void;
   error?: string;
   info?: string;
@@ -214,36 +239,44 @@ export function LoginEmailForm({
         resendEmail={resendEmail}
       />
 
-      <form
-        className={styles.form}
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit({ email, password });
-        }}
-      >
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-        />
-        <Button type="submit" disabled={loading} className={styles.fullWidth}>
-          <LogIn {...iconMd} />
-          {loading ? "Signing in…" : "Sign in"}
-        </Button>
-        <p className={styles.formHint}>
-          <Link to="/forgot-password">Forgot password?</Link>
-        </p>
-      </form>
+      <SignInOptionShell lastUsed={lastUsed}>
+        <div className={styles.signInFormBody}>
+          <form
+            className={styles.form}
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit({ email, password });
+            }}
+          >
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+            <Button
+              type="submit"
+              disabled={loading}
+              className={styles.fullWidth}
+            >
+              <LogIn {...iconMd} />
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+            <p className={styles.formHint}>
+              <Link to="/forgot-password">Forgot password?</Link>
+            </p>
+          </form>
+        </div>
+      </SignInOptionShell>
     </div>
   );
 }

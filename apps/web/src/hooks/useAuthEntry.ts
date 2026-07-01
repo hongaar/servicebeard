@@ -3,6 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../lib/api";
+import {
+  getLastUsedSignInMethod,
+  setLastUsedSignInMethod,
+} from "../lib/lastSignInMethod";
 import { authenticateWithPasskey, registerPasskey } from "../lib/passkey";
 import { normalizeRedirectPath } from "../lib/redirect";
 
@@ -19,6 +23,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [lastUsedSignInMethod] = useState(() => getLastUsedSignInMethod());
 
   const providers = authConfig?.providers ?? [];
   const configLoaded = !configLoading;
@@ -68,6 +73,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
   };
 
   const handleRedirectLogin = (type: LoginProviderType) => {
+    setLastUsedSignInMethod(type);
     setRedirectingProvider(type);
     window.location.href = `/api/auth/login/${type}`;
   };
@@ -80,6 +86,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     setError("");
     setInfo("");
     setPendingVerificationEmail("");
+    setLastUsedSignInMethod("email");
     try {
       const result = await api.loginWithProvider(type, {
         ...credentials,
@@ -105,6 +112,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     type: string,
     credentials: { email: string; password: string; name: string },
   ) => {
+    setLastUsedSignInMethod("email");
     setLoading(true);
     setError("");
     setInfo("");
@@ -128,6 +136,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
   };
 
   const handlePasskeyLogin = async (type: string) => {
+    setLastUsedSignInMethod("passkey");
     setLoading(true);
     setError("");
     try {
@@ -143,6 +152,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     type: string,
     input: { email: string; name: string },
   ) => {
+    setLastUsedSignInMethod("passkey");
     setLoading(true);
     setError("");
     setInfo("");
@@ -178,6 +188,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     error,
     info,
     pendingVerificationEmail,
+    lastUsedSignInMethod,
     redirectProviders,
     localProvider,
     hasSso,
