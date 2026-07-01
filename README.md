@@ -209,6 +209,20 @@ Works with GitLab.com or self-hosted GitLab.
 | `GITLAB_CLIENT_ID`     | Application ID                                                           |
 | `GITLAB_CLIENT_SECRET` | Application secret                                                       |
 
+#### Linear OAuth
+
+1. Create an OAuth2 application at [Linear → Settings → API → Applications](https://linear.app/settings/api/applications/new)
+2. Set **Redirect URI** to `{WEB_URL}/api/auth/callback` (local dev: `http://localhost:5173/api/auth/callback`)
+3. Enable the `read` scope (included by default)
+4. Copy Client ID and Client Secret into `.env`:
+
+| Variable               | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `LINEAR_LOGIN`         | `true` to enable (requires LINEAR_* config), `false` or unset to disable |
+| `LINEAR_SIGNUP`        | Allow new users on first sign-in (default: `true`)                       |
+| `LINEAR_CLIENT_ID`     | OAuth application client ID                                              |
+| `LINEAR_CLIENT_SECRET` | OAuth application client secret                                          |
+
 For production, register `{WEB_URL}/api/auth/callback` in each OAuth app (same host users sign in from).
 
 ### Database UI

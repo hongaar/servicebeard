@@ -29,6 +29,14 @@ function ProviderIcon({ type }: { type: LoginProviderType }) {
       return <Github {...props} />;
     case "gitlab":
       return <Gitlab {...props} />;
+    case "linear":
+      return (
+        <img
+          src="/linear-icon.svg"
+          alt=""
+          className={styles.accountProviderIcon}
+        />
+      );
     case "oidc":
       return <KeyRound {...props} />;
     default:
@@ -42,6 +50,8 @@ function providerLabel(type: LoginProviderType): string {
       return "GitHub";
     case "gitlab":
       return "GitLab";
+    case "linear":
+      return "Linear";
     case "oidc":
       return "SSO";
     default:

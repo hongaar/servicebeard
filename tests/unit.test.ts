@@ -1604,6 +1604,10 @@ describe("login provider env", () => {
     GITLAB_CLIENT_ID: "client",
     GITLAB_CLIENT_SECRET: "secret",
   };
+  const linearEnv = {
+    LINEAR_CLIENT_ID: "client",
+    LINEAR_CLIENT_SECRET: "secret",
+  };
 
   function withEnv(
     values: Record<string, string | undefined>,
@@ -1630,6 +1634,7 @@ describe("login provider env", () => {
     const {
       isGithubLoginEnabled,
       isGitlabLoginEnabled,
+      isLinearLoginEnabled,
       isLocalLoginEnabled,
       isOidcLoginEnabled,
     } = await import("../apps/api/src/lib/env");
@@ -1639,29 +1644,37 @@ describe("login provider env", () => {
         ...oidcEnv,
         ...githubEnv,
         ...gitlabEnv,
+        ...linearEnv,
         OIDC_LOGIN: undefined,
         GITHUB_LOGIN: undefined,
         GITLAB_LOGIN: undefined,
+        LINEAR_LOGIN: undefined,
         LOCAL_LOGIN: undefined,
       },
       () => {
         expect(isOidcLoginEnabled()).toBe(false);
         expect(isGithubLoginEnabled()).toBe(false);
         expect(isGitlabLoginEnabled()).toBe(false);
+        expect(isLinearLoginEnabled()).toBe(false);
         expect(isLocalLoginEnabled()).toBe(false);
       },
     );
   });
 
   test("oauth providers require config even when *_LOGIN=true", async () => {
-    const { isGithubLoginEnabled, isGitlabLoginEnabled, isOidcLoginEnabled } =
-      await import("../apps/api/src/lib/env");
+    const {
+      isGithubLoginEnabled,
+      isGitlabLoginEnabled,
+      isLinearLoginEnabled,
+      isOidcLoginEnabled,
+    } = await import("../apps/api/src/lib/env");
 
     withEnv(
       {
         OIDC_LOGIN: "true",
         GITHUB_LOGIN: "true",
         GITLAB_LOGIN: "true",
+        LINEAR_LOGIN: "true",
         OIDC_ISSUER: undefined,
         OIDC_CLIENT_ID: undefined,
         OIDC_CLIENT_SECRET: undefined,
@@ -1669,18 +1682,25 @@ describe("login provider env", () => {
         GITHUB_CLIENT_SECRET: undefined,
         GITLAB_CLIENT_ID: undefined,
         GITLAB_CLIENT_SECRET: undefined,
+        LINEAR_CLIENT_ID: undefined,
+        LINEAR_CLIENT_SECRET: undefined,
       },
       () => {
         expect(isOidcLoginEnabled()).toBe(false);
         expect(isGithubLoginEnabled()).toBe(false);
         expect(isGitlabLoginEnabled()).toBe(false);
+        expect(isLinearLoginEnabled()).toBe(false);
       },
     );
   });
 
   test("oauth providers enable only with *_LOGIN=true and full config", async () => {
-    const { isGithubLoginEnabled, isGitlabLoginEnabled, isOidcLoginEnabled } =
-      await import("../apps/api/src/lib/env");
+    const {
+      isGithubLoginEnabled,
+      isGitlabLoginEnabled,
+      isLinearLoginEnabled,
+      isOidcLoginEnabled,
+    } = await import("../apps/api/src/lib/env");
 
     withEnv(
       {
@@ -1691,14 +1711,18 @@ describe("login provider env", () => {
         GITHUB_CLIENT_SECRET: githubEnv.GITHUB_CLIENT_SECRET,
         GITLAB_CLIENT_ID: gitlabEnv.GITLAB_CLIENT_ID,
         GITLAB_CLIENT_SECRET: gitlabEnv.GITLAB_CLIENT_SECRET,
+        LINEAR_CLIENT_ID: linearEnv.LINEAR_CLIENT_ID,
+        LINEAR_CLIENT_SECRET: linearEnv.LINEAR_CLIENT_SECRET,
         OIDC_LOGIN: "true",
         GITHUB_LOGIN: "true",
         GITLAB_LOGIN: "true",
+        LINEAR_LOGIN: "true",
       },
       () => {
         expect(isOidcLoginEnabled()).toBe(true);
         expect(isGithubLoginEnabled()).toBe(true);
         expect(isGitlabLoginEnabled()).toBe(true);
+        expect(isLinearLoginEnabled()).toBe(true);
       },
     );
   });
@@ -1740,6 +1764,7 @@ describe("auth providers", () => {
 
     expect(inferProviderFromExternalSub("github:123")).toBe("github");
     expect(inferProviderFromExternalSub("gitlab:456")).toBe("gitlab");
+    expect(inferProviderFromExternalSub("linear:789")).toBe("linear");
     expect(inferProviderFromExternalSub("local:user@example.com")).toBe(
       "local",
     );

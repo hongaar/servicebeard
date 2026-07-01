@@ -15,6 +15,8 @@ data:
   GITHUB_SIGNUP: {{ .Values.env.GITHUB_SIGNUP | quote }}
   GITLAB_LOGIN: {{ .Values.env.GITLAB_LOGIN | quote }}
   GITLAB_SIGNUP: {{ .Values.env.GITLAB_SIGNUP | quote }}
+  LINEAR_LOGIN: {{ .Values.env.LINEAR_LOGIN | quote }}
+  LINEAR_SIGNUP: {{ .Values.env.LINEAR_SIGNUP | quote }}
   LOCAL_LOGIN: {{ .Values.env.LOCAL_LOGIN | quote }}
   LOCAL_LOGIN_SIGNUP: {{ .Values.env.LOCAL_LOGIN_SIGNUP | quote }}
   OIDC_ISSUER: {{ .Values.env.OIDC_ISSUER | quote }}
@@ -23,6 +25,7 @@ data:
   GITHUB_APP_ID: {{ .Values.env.GITHUB_APP_ID | quote }}
   GITLAB_BASE_URL: {{ .Values.env.GITLAB_BASE_URL | quote }}
   GITLAB_CLIENT_ID: {{ .Values.env.GITLAB_CLIENT_ID | quote }}
+  LINEAR_CLIENT_ID: {{ .Values.env.LINEAR_CLIENT_ID | quote }}
   API_URL: {{ .Values.env.API_URL | quote }}
   WEB_URL: {{ .Values.env.WEB_URL | quote }}
   WEBHOOK_BASE_URL: {{ .Values.env.WEBHOOK_BASE_URL | quote }}

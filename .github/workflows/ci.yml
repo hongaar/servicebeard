@@ -87,6 +87,7 @@ jobs:
       LOCAL_LOGIN_SIGNUP: "true"
       GITHUB_LOGIN: "false"
       GITLAB_LOGIN: "false"
+      LINEAR_LOGIN: "false"
       OIDC_LOGIN: "false"
       API_URL: http://localhost:3000
       WEB_URL: http://127.0.0.1:5173

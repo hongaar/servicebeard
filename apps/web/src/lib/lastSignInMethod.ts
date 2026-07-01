@@ -8,6 +8,7 @@ const SIGN_IN_METHODS = new Set<string>([
   "oidc",
   "github",
   "gitlab",
+  "linear",
   "local",
   "passkey",
   "email",

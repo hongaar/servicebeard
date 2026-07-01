@@ -56,3 +56,14 @@ export function isGitlabLoginEnabled(): boolean {
   if (parseEnvFlag(process.env.GITLAB_LOGIN) !== true) return false;
   return isGitlabConfigured();
 }
+
+function isLinearConfigured(): boolean {
+  return Boolean(
+    process.env.LINEAR_CLIENT_ID && process.env.LINEAR_CLIENT_SECRET,
+  );
+}
+
+export function isLinearLoginEnabled(): boolean {
+  if (parseEnvFlag(process.env.LINEAR_LOGIN) !== true) return false;
+  return isLinearConfigured();
+}

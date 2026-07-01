@@ -22,6 +22,7 @@ const E2E_ENV: Record<string, string> = {
   LOCAL_LOGIN_SIGNUP: "true",
   GITHUB_LOGIN: "false",
   GITLAB_LOGIN: "false",
+  LINEAR_LOGIN: "false",
   OIDC_LOGIN: "false",
   DATABASE_URL:
     process.env.DATABASE_URL ??

@@ -33,6 +33,14 @@ export function SsoIcon({ type }: { type: LoginProviderType }) {
       return <Github {...ssoIconProps} />;
     case "gitlab":
       return <Gitlab {...ssoIconProps} />;
+    case "linear":
+      return (
+        <img
+          src="/linear-icon-white.svg"
+          alt=""
+          className={styles.ssoButtonIcon}
+        />
+      );
     case "oidc":
       return <KeyRound {...ssoIconProps} />;
     default:

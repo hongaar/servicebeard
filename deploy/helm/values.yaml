@@ -65,6 +65,8 @@ env:
   GITHUB_SIGNUP: "true"
   GITLAB_LOGIN: "false"
   GITLAB_SIGNUP: "true"
+  LINEAR_LOGIN: "false"
+  LINEAR_SIGNUP: "true"
   LOCAL_LOGIN: "true"
   LOCAL_LOGIN_SIGNUP: "true"
   OIDC_ISSUER: https://your-idp.example.com
@@ -73,6 +75,7 @@ env:
   GITHUB_APP_ID: ""
   GITLAB_BASE_URL: https://gitlab.com
   GITLAB_CLIENT_ID: ""
+  LINEAR_CLIENT_ID: ""
   API_URL: https://servicebeard.example.com
   WEB_URL: https://servicebeard.example.com
   WEBHOOK_BASE_URL: https://servicebeard.example.com
@@ -89,6 +92,7 @@ secrets:
   githubClientSecret: changeme
   githubAppPrivateKey: ""
   gitlabClientSecret: changeme
+  linearClientSecret: changeme
   sessionSecret: changeme
   encryptionKey: "0000000000000000000000000000000000000000000000000000000000000000"
   mollieApiKey: ""

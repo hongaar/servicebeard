@@ -2,6 +2,7 @@ export const LOGIN_PROVIDER_TYPES = [
   "oidc",
   "github",
   "gitlab",
+  "linear",
   "local",
 ] as const;
 export type LoginProviderType = (typeof LOGIN_PROVIDER_TYPES)[number];

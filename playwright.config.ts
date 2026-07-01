@@ -13,6 +13,7 @@ const e2eEnv = {
   LOCAL_LOGIN_SIGNUP: "true",
   GITHUB_LOGIN: "false",
   GITLAB_LOGIN: "false",
+  LINEAR_LOGIN: "false",
   OIDC_LOGIN: "false",
   DATABASE_URL:
     process.env.DATABASE_URL ??

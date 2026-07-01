@@ -10,6 +10,7 @@ import { and, eq } from "drizzle-orm";
 const REDIRECT_PROVIDERS = new Set<LoginProviderType>([
   "github",
   "gitlab",
+  "linear",
   "oidc",
 ]);
 
@@ -18,6 +19,7 @@ export function inferProviderFromExternalSub(
 ): LoginProviderType {
   if (externalSub.startsWith("github:")) return "github";
   if (externalSub.startsWith("gitlab:")) return "gitlab";
+  if (externalSub.startsWith("linear:")) return "linear";
   if (externalSub.startsWith("local:")) return "local";
   return "oidc";
 }

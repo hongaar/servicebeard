@@ -179,6 +179,11 @@
   border-color: #e24329;
 }
 
+.ssoButton_linear {
+  background: #5e6ad2;
+  border-color: #4e59b8;
+}
+
 .ssoButton_oidc {
   background: var(--color-primary-deep);
   border-color: var(--color-primary-deep);
