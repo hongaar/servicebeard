@@ -1744,7 +1744,27 @@
 
 .accountProviderIcon {
   flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
   color: var(--color-text-muted);
+}
+
+.accountProviderLinearLight {
+  display: block;
+}
+
+.accountProviderLinearDark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .accountProviderLinearLight {
+    display: none;
+  }
+
+  .accountProviderLinearDark {
+    display: block;
+  }
 }
 
 .accountProviderName {

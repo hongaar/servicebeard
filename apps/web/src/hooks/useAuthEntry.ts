@@ -48,6 +48,9 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     } else if (authError === "login_failed") {
       setError("Login failed. Please try again.");
       window.history.replaceState({}, "", window.location.pathname);
+    } else if (authError === "oauth_cancelled") {
+      setError("Sign-in was cancelled.");
+      window.history.replaceState({}, "", window.location.pathname);
     } else if (authError) {
       setError("Sign-in failed. Please try again.");
       window.history.replaceState({}, "", window.location.pathname);

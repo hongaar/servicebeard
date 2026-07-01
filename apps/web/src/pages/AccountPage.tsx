@@ -20,6 +20,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   last_auth_method: "Cannot remove your only sign-in method.",
   provider_not_linked: "This provider is not linked to your account.",
   login_failed: "Sign-in failed. Please try again.",
+  oauth_cancelled: "Provider linking was cancelled.",
 };
 
 function ProviderIcon({ type }: { type: LoginProviderType }) {
@@ -31,11 +32,18 @@ function ProviderIcon({ type }: { type: LoginProviderType }) {
       return <Gitlab {...props} />;
     case "linear":
       return (
-        <img
-          src="/linear-icon.svg"
-          alt=""
-          className={styles.accountProviderIcon}
-        />
+        <>
+          <img
+            src="/linear-icon.svg"
+            alt=""
+            className={`${styles.accountProviderIcon} ${styles.accountProviderLinearLight}`}
+          />
+          <img
+            src="/linear-icon-white.svg"
+            alt=""
+            className={`${styles.accountProviderIcon} ${styles.accountProviderLinearDark}`}
+          />
+        </>
       );
     case "oidc":
       return <KeyRound {...props} />;

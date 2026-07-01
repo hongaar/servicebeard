@@ -235,7 +235,17 @@ authRoutes.get("/link/:provider", async (c) => {
 authRoutes.get("/callback", async (c) => {
   const code = c.req.query("code");
   const state = c.req.query("state");
+  const oauthError = c.req.query("error");
   const oauthCookie = getCookie(c, "sd_oauth_state");
+
+  if (oauthError) {
+    const parsed = oauthCookie ? parseOAuthStateCookie(oauthCookie) : null;
+    const isLink = Boolean(parsed?.linkUserId);
+    deleteCookie(c, "sd_oauth_state");
+    const errorCode =
+      oauthError === "access_denied" ? "oauth_cancelled" : "login_failed";
+    return redirectWithAuthError(c, errorCode, isLink);
+  }
 
   if (!code || !state || !oauthCookie) {
     return c.json({ error: "Invalid callback" }, 400);
