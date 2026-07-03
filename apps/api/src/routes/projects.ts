@@ -247,7 +247,16 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
   if (body.smtpPassword)
     updates.smtpPasswordEncrypted = encrypt(body.smtpPassword);
   if (body.smtpFrom) updates.smtpFrom = body.smtpFrom;
-  if (body.isActive !== undefined) updates.isActive = body.isActive;
+  if (body.isActive !== undefined) {
+    if (body.isActive && !existing.isActive) {
+      const [{ value: activeCount }] = await db
+        .select({ value: count() })
+        .from(projects)
+        .where(and(eq(projects.teamId, teamId), eq(projects.isActive, true)));
+      await getEntitlements().assertCanActivateProject?.(teamId, activeCount);
+    }
+    updates.isActive = body.isActive;
+  }
   if (body.inboundAckEnabled !== undefined)
     updates.inboundAckEnabled = body.inboundAckEnabled;
   if (body.inboundAckCcMailbox !== undefined)
@@ -427,6 +436,20 @@ projectRoutes.patch("/:teamId/projects/:projectId/rules/:ruleId", async (c) => {
     where: and(eq(projects.id, projectId), eq(projects.teamId, teamId)),
   });
   if (!project) return c.json({ error: "Not found" }, 404);
+
+  const existingRule = await db.query.rules.findFirst({
+    where: and(eq(rules.id, ruleId), eq(rules.projectId, projectId)),
+  });
+  if (!existingRule) return c.json({ error: "Not found" }, 404);
+
+  if (body.isEnabled === true && !existingRule.isEnabled) {
+    const [{ value: enabledCount }] = await db
+      .select({ value: count() })
+      .from(rules)
+      .innerJoin(projects, eq(rules.projectId, projects.id))
+      .where(and(eq(projects.teamId, teamId), eq(rules.isEnabled, true)));
+    await getEntitlements().assertCanEnableRule?.(teamId, enabledCount);
+  }
 
   const [updated] = await db
     .update(rules)

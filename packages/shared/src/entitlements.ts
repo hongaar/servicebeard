@@ -15,8 +15,16 @@ export interface TeamListingMeta {
 
 export interface EntitlementsProvider {
   assertCanCreateProject(teamId: string, currentCount: number): Promise<void>;
+  assertCanActivateProject?(
+    teamId: string,
+    currentActiveCount: number,
+  ): Promise<void>;
   assertTeamAccess(teamId: string, ctx: TeamAccessContext): Promise<void>;
   assertCanCreateRule?(teamId: string, currentRuleCount: number): Promise<void>;
+  assertCanEnableRule?(
+    teamId: string,
+    currentEnabledCount: number,
+  ): Promise<void>;
   assertCanCreateConversation?(
     teamId: string,
     conversationsThisMonth: number,
