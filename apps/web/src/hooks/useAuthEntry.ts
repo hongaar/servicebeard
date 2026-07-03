@@ -7,7 +7,11 @@ import {
   getLastUsedSignInMethod,
   setLastUsedSignInMethod,
 } from "../lib/lastSignInMethod";
-import { authenticateWithPasskey, registerPasskey } from "../lib/passkey";
+import {
+  authenticateWithPasskey,
+  passkeyErrorMessage,
+  registerPasskey,
+} from "../lib/passkey";
 import { normalizeRedirectPath } from "../lib/redirect";
 
 export function useAuthEntry(search: { redirect?: string; error?: string }) {
@@ -49,7 +53,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
       setError("Login failed. Please try again.");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (authError === "oauth_cancelled") {
-      setError("Sign-in was cancelled.");
+      setError("Sign-in was cancelled. Please try again.");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (authError) {
       setError("Sign-in failed. Please try again.");
@@ -146,7 +150,13 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
       await authenticateWithPasskey(type);
       redirectAfterAuth();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Passkey sign-in failed");
+      setError(
+        passkeyErrorMessage(
+          err,
+          "Sign-in was cancelled. Please try again.",
+          "Passkey sign-in failed",
+        ),
+      );
       setLoading(false);
     }
   };
@@ -170,7 +180,13 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
       }
       redirectAfterAuth();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Passkey sign-up failed");
+      setError(
+        passkeyErrorMessage(
+          err,
+          "Sign-up was cancelled. Please try again.",
+          "Passkey sign-up failed",
+        ),
+      );
       setLoading(false);
     }
   };

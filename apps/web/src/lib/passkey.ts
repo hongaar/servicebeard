@@ -26,3 +26,27 @@ export function isPasskeySupported(): boolean {
     typeof window.PublicKeyCredential !== "undefined"
   );
 }
+
+function isPasskeyCancelled(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "NotAllowedError") {
+    return true;
+  }
+  if (err instanceof Error) {
+    return (
+      err.name === "NotAllowedError" ||
+      err.message.includes("timed out or was not allowed")
+    );
+  }
+  return false;
+}
+
+export function passkeyErrorMessage(
+  err: unknown,
+  cancelled: string,
+  fallback: string,
+): string {
+  if (isPasskeyCancelled(err)) {
+    return cancelled;
+  }
+  return err instanceof Error ? err.message : fallback;
+}
