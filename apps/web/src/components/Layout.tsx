@@ -44,6 +44,7 @@ interface LayoutProps {
     provider: string;
     label: string;
     href: string;
+    kind?: "team" | "project";
   };
 }
 
@@ -502,6 +503,15 @@ export function Layout({
                         rel="noreferrer"
                       >
                         <ProviderLogo provider={issueLink.provider} />
+                        {issueLink.provider.toLowerCase() === "linear" &&
+                        issueLink.kind ? (
+                          <span
+                            className={styles.pageIssueKind}
+                            data-kind={issueLink.kind}
+                          >
+                            {issueLink.kind === "team" ? "Team" : "Project"}
+                          </span>
+                        ) : null}
                         <span>{issueLink.label}</span>
                       </a>
                     </>

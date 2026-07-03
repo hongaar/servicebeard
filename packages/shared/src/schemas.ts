@@ -60,6 +60,18 @@ function refineLinearTeamId(
     return;
   }
 
+  if (
+    projectId.startsWith("team:") &&
+    !projectId.slice("team:".length).trim()
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Linear team reference is required",
+      path: ["providerProjectId"],
+    });
+    return;
+  }
+
   try {
     parseLinearTeam(projectId);
   } catch (err) {

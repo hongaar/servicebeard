@@ -525,6 +525,8 @@ export interface Project {
   provider: string;
   providerBaseUrl: string;
   providerProjectId: string;
+  providerProjectLabel?: string;
+  providerProjectKind?: "team" | "project";
   providerGithubInstallationId?: string | null;
   providerTlsInsecure: boolean;
   imapHost: string;

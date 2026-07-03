@@ -35,7 +35,11 @@ import {
 import { getEntitlements } from "../lib/entitlements";
 import { providerFailureResponse } from "../lib/external-error";
 import { fetchRecentMessages, parseEmail } from "../lib/mail";
-import { createProjectProvider, projectMailCredentials } from "../lib/provider";
+import {
+  createProjectProvider,
+  enrichProviderProjectLabel,
+  projectMailCredentials,
+} from "../lib/provider";
 import { getBoss, QUEUE_NAMES } from "../lib/queue";
 import { loadProjectThreadMatchIndex } from "../lib/thread-match";
 import type { AppVariables } from "../middleware/auth";
@@ -77,7 +81,11 @@ projectRoutes.get("/:teamId/projects", async (c) => {
     await getEntitlements().getTeamEntitlementUsage?.(teamId);
 
   return c.json({
-    projects: list.map(sanitizeProject),
+    projects: await Promise.all(
+      list.map((project) =>
+        enrichProviderProjectLabel(project, sanitizeProject(project)),
+      ),
+    ),
     entitlements: entitlements ?? null,
   });
 });
@@ -171,7 +179,10 @@ projectRoutes.post("/:teamId/projects", async (c) => {
     resourceId: project!.id,
   });
 
-  return c.json(sanitizeProject(project!), 201);
+  return c.json(
+    await enrichProviderProjectLabel(project!, sanitizeProject(project!)),
+    201,
+  );
 });
 
 projectRoutes.get("/:teamId/projects/:projectId", async (c) => {
@@ -186,8 +197,12 @@ projectRoutes.get("/:teamId/projects/:projectId", async (c) => {
   });
 
   if (!project) return c.json({ error: "Not found" }, 404);
+  const enriched = await enrichProviderProjectLabel(
+    project,
+    sanitizeProject(project),
+  );
   return c.json({
-    ...sanitizeProject(project),
+    ...enriched,
     rules: project.rules,
     entitlements:
       (await getEntitlements().getTeamEntitlementUsage?.(teamId)) ?? null,
@@ -295,7 +310,9 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
     resourceId: projectId,
   });
 
-  return c.json(sanitizeProject(updated));
+  return c.json(
+    await enrichProviderProjectLabel(updated, sanitizeProject(updated)),
+  );
 });
 
 projectRoutes.delete("/:teamId/projects/:projectId", async (c) => {

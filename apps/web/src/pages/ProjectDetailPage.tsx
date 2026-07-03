@@ -388,7 +388,8 @@ export function ProjectDetailPage() {
         section === "overview"
           ? {
               provider: project.provider,
-              label: project.providerProjectId,
+              label: project.providerProjectLabel ?? project.providerProjectId,
+              kind: project.providerProjectKind,
               href: providerIssuesWebUrl(
                 project.provider,
                 project.providerBaseUrl,

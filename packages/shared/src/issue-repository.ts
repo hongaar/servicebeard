@@ -1,7 +1,9 @@
 import { parseGithubRepository } from "./github-repository";
 import {
   isLinearProjectId,
+  isLinearTeamId,
   LINEAR_PROJECT_PREFIX,
+  LINEAR_TEAM_PREFIX,
   parseLinearTeam,
 } from "./linear-team";
 
@@ -106,6 +108,14 @@ export function providerIssuesWebUrl(
         return `https://linear.app/${workspace}/project/${slug}/issues`;
       }
       return `https://linear.app/project/${ref}/issues`;
+    }
+    if (isLinearTeamId(projectId)) {
+      const ref = projectId.slice(LINEAR_TEAM_PREFIX.length);
+      if (ref.includes("/")) {
+        const [workspace, teamRef] = ref.split("/", 2);
+        return `https://linear.app/${workspace}/team/${encodeURIComponent(teamRef)}/active`;
+      }
+      return `https://linear.app/team/${encodeURIComponent(ref)}/active`;
     }
     return `https://linear.app/team/${encodeURIComponent(projectId)}/active`;
   }

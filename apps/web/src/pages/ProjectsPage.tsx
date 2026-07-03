@@ -20,7 +20,7 @@ import { Card } from "../components/Card";
 import { CreateProjectWizard } from "../components/CreateProjectWizard";
 import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
-import { ProviderLogo } from "../components/ProviderLogo";
+import { ProviderProjectLabel } from "../components/ProviderProjectLabel";
 import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
 import {
@@ -291,12 +291,13 @@ export function ProjectsPage() {
                     </span>
                   </td>
                   <td>
-                    <span className={styles.issuesCell}>
-                      <ProviderLogo provider={p.provider} />
-                      <span className={styles.issuesRepo}>
-                        {p.providerProjectId}
-                      </span>
-                    </span>
+                    <ProviderProjectLabel
+                      provider={p.provider}
+                      providerProjectId={p.providerProjectId}
+                      providerProjectLabel={p.providerProjectLabel}
+                      providerProjectKind={p.providerProjectKind}
+                      className={styles.issuesCell}
+                    />
                   </td>
                   <td>
                     <span

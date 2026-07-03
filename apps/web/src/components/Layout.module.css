@@ -355,6 +355,15 @@
   text-decoration: underline;
 }
 
+.pageIssueKind {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
 @media (prefers-color-scheme: dark) {
   .pageInboxEmail {
     color: var(--color-primary);

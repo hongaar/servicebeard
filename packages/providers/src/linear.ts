@@ -1,9 +1,14 @@
 import {
   isLinearProjectId,
+  isLinearTeamId,
   isServicebeardInternalContent,
   LINEAR_PROJECT_PREFIX,
+  LINEAR_TEAM_PREFIX,
+  linearSlugDisplayName,
+  linearWorkspaceFromUrl,
   parseLinearIssueNumberFromUrl,
   parseLinearProjectSlugId,
+  type ProviderProjectLabel,
 } from "@servicebeard/shared";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ProviderApiError } from "./errors";
@@ -188,9 +193,27 @@ export class LinearProvider implements IssueProvider {
       return this.resolvedScope;
     }
 
+    if (isLinearTeamId(projectId)) {
+      const ref = projectId.slice(LINEAR_TEAM_PREFIX.length).trim();
+      const teamRef = ref.includes("/") ? (ref.split("/").pop() ?? ref) : ref;
+      this.resolvedScope = await this.resolveTeamScope(teamRef);
+      return this.resolvedScope;
+    }
+
     if (this.isTeamUuid(projectId)) {
       this.resolvedScope = { teamId: projectId };
       return this.resolvedScope;
+    }
+
+    this.resolvedScope = await this.resolveTeamScope(projectId);
+    return this.resolvedScope;
+  }
+
+  private async resolveTeamScope(
+    teamRef: string,
+  ): Promise<{ teamId: string; projectId?: string }> {
+    if (this.isTeamUuid(teamRef)) {
+      return { teamId: teamRef };
     }
 
     const data = await this.graphql<{
@@ -201,26 +224,24 @@ export class LinearProvider implements IssueProvider {
           nodes { id key }
         }
       }`,
-      { key: projectId },
+      { key: teamRef },
     );
 
     const team = data.teams.nodes[0];
     if (!team) {
-      const projectScope = await this.resolveProjectScope(projectId).catch(
+      const projectScope = await this.resolveProjectScope(teamRef).catch(
         () => null,
       );
       if (projectScope) {
-        this.resolvedScope = projectScope;
         return projectScope;
       }
       throw new LinearApiError(
         404,
-        `Linear team not found for key "${projectId}"`,
+        `Linear team not found for key "${teamRef}"`,
       );
     }
 
-    this.resolvedScope = { teamId: team.id };
-    return this.resolvedScope;
+    return { teamId: team.id };
   }
 
   private async resolveProjectScope(
@@ -316,6 +337,115 @@ export class LinearProvider implements IssueProvider {
       id: data.viewer.id,
       username: data.viewer.displayName?.trim() || data.viewer.name,
     };
+  }
+
+  async resolveProjectDisplayLabel(): Promise<ProviderProjectLabel> {
+    const projectId = this.config.projectId.trim();
+
+    if (isLinearProjectId(projectId)) {
+      const ref = projectId.slice(LINEAR_PROJECT_PREFIX.length).trim();
+      const slug = ref.includes("/") ? (ref.split("/").pop() ?? ref) : ref;
+      const slugId = parseLinearProjectSlugId(slug);
+
+      const data = await this.graphql<{
+        projects: {
+          nodes: Array<{
+            slugId: string;
+            url: string;
+          }>;
+        };
+      }>(
+        `query ProjectDisplay($slugId: String!) {
+          projects(filter: { slugId: { eq: $slugId } }, first: 1) {
+            nodes {
+              slugId
+              url
+            }
+          }
+        }`,
+        { slugId },
+      );
+
+      const project = data.projects.nodes[0];
+      if (project) {
+        const workspace =
+          linearWorkspaceFromUrl(project.url) ??
+          (ref.includes("/") ? ref.split("/", 2)[0] : undefined);
+        const name = linearSlugDisplayName(project.slugId);
+        return {
+          kind: "project",
+          workspace: workspace ?? undefined,
+          label: workspace ? `${workspace}/${name}` : name,
+        };
+      }
+    }
+
+    const teamRef = isLinearTeamId(projectId)
+      ? (projectId.slice(LINEAR_TEAM_PREFIX.length).trim().split("/").pop() ??
+        "")
+      : projectId;
+
+    if (!teamRef) {
+      return { kind: "team", label: projectId };
+    }
+
+    if (this.isTeamUuid(teamRef)) {
+      const data = await this.graphql<{
+        team: {
+          name: string;
+          organization: { urlKey: string } | null;
+        } | null;
+      }>(
+        `query TeamDisplayById($id: String!) {
+          team(id: $id) {
+            name
+            organization { urlKey }
+          }
+        }`,
+        { id: teamRef },
+        { quiet404: true },
+      );
+
+      if (data.team) {
+        const workspace = data.team.organization?.urlKey;
+        return {
+          kind: "team",
+          workspace: workspace ?? undefined,
+          label: workspace ? `${workspace}/${data.team.name}` : data.team.name,
+        };
+      }
+    } else {
+      const data = await this.graphql<{
+        teams: {
+          nodes: Array<{
+            name: string;
+            organization: { urlKey: string } | null;
+          }>;
+        };
+      }>(
+        `query TeamDisplayByKey($key: String!) {
+          teams(filter: { key: { eq: $key } }, first: 1) {
+            nodes {
+              name
+              organization { urlKey }
+            }
+          }
+        }`,
+        { key: teamRef },
+      );
+
+      const team = data.teams.nodes[0];
+      if (team) {
+        const workspace = team.organization?.urlKey;
+        return {
+          kind: "team",
+          workspace: workspace ?? undefined,
+          label: workspace ? `${workspace}/${team.name}` : team.name,
+        };
+      }
+    }
+
+    return { kind: "team", label: teamRef };
   }
 
   async createIssue(input: CreateIssueInput): Promise<CreateIssueResult> {
