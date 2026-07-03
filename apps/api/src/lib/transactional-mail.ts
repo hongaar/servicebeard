@@ -196,7 +196,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
     columns: { id: true, email: true, passwordHash: true },
   });
 
-  if (!user?.passwordHash) {
+  if (!user) {
     return;
   }
 
@@ -222,6 +222,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
 
   const content = passwordResetEmail({
     resetUrl: buildPasswordResetUrl(token),
+    hasExistingPassword: Boolean(user.passwordHash),
   });
   await sendMail(user.email, content);
 }
@@ -254,6 +255,7 @@ export async function resetPasswordWithToken(
   await db
     .delete(passwordResetTokens)
     .where(eq(passwordResetTokens.userId, row.userId));
+  await markEmailVerified(row.userId);
 }
 
 export async function purgeExpiredAuthTokens(): Promise<void> {

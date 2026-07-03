@@ -50,19 +50,30 @@ This invite expires in 7 days.`,
   return { subject, text, html };
 }
 
-export function passwordResetEmail(input: { resetUrl: string }) {
-  const subject = `Reset your ${appName()} password`;
-  const text = `We received a request to reset your password.
+export function passwordResetEmail(input: {
+  resetUrl: string;
+  hasExistingPassword?: boolean;
+}) {
+  const settingPassword = input.hasExistingPassword === false;
+  const subject = settingPassword
+    ? `Set a password for your ${appName()} account`
+    : `Reset your ${appName()} password`;
+  const intro = settingPassword
+    ? "We received a request to set a password on your account."
+    : "We received a request to reset your password.";
+  const action = settingPassword ? "Set password" : "Reset password";
 
-Reset your password:
+  const text = `${intro}
+
+${action}:
 ${input.resetUrl}
 
 If you did not request this, you can ignore this email. The link expires in 1 hour.`;
 
   const html = htmlLayout(
     subject,
-    `We received a request to reset your password.<br><br>
-<a href="${escapeHtml(input.resetUrl)}">Reset password</a><br><br>
+    `${intro}<br><br>
+<a href="${escapeHtml(input.resetUrl)}">${action}</a><br><br>
 If you did not request this, you can ignore this email. The link expires in 1 hour.`,
   );
 

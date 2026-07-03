@@ -145,7 +145,7 @@ export function LoginPage() {
     ) : null;
 
   return (
-    <AuthPageShell>
+    <AuthPageShell subtitle="Login to your account">
       {hasSso && (
         <>
           {error && !emailExpanded && (

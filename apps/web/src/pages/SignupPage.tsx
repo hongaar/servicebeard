@@ -54,7 +54,7 @@ export function SignupPage() {
   }
 
   return (
-    <AuthPageShell>
+    <AuthPageShell subtitle="Create a new account">
       {hasSsoSignup && (
         <>
           {error && !hasLocalSignup && (

@@ -126,7 +126,13 @@ export function SsoLoginButton({
   );
 }
 
-export function AuthPageShell({ children }: { children?: ReactNode }) {
+export function AuthPageShell({
+  children,
+  subtitle = "Turn mailboxes into issue boards.",
+}: {
+  children?: ReactNode;
+  subtitle?: string;
+}) {
   return (
     <div className={styles.container}>
       <div className={[styles.card, styles.loginCard].join(" ")}>
@@ -140,7 +146,7 @@ export function AuthPageShell({ children }: { children?: ReactNode }) {
         <h1 className={styles.title}>
           Service<span className={styles.titleAccent}>Beard</span>
         </h1>
-        <p className={styles.subtitle}>Turn mailboxes into issue boards.</p>
+        <p className={styles.subtitle}>{subtitle}</p>
         {children}
       </div>
     </div>

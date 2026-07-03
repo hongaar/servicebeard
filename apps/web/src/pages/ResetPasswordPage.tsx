@@ -45,7 +45,7 @@ export function ResetPasswordPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <h1 className={styles.title}>Choose a new password</h1>
+        <h1 className={styles.title}>Choose a password</h1>
 
         {error && (
           <div className={[styles.alert, styles.alertError].join(" ")}>

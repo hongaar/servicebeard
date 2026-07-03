@@ -31,8 +31,9 @@ export function ForgotPasswordPage() {
       <div className={styles.card}>
         <h1 className={styles.title}>Reset password</h1>
         <p className={styles.subtitle}>
-          Enter your email and we&apos;ll send you a link to choose a new
-          password.
+          Enter your email and we&apos;ll send you a link to set or reset your
+          password. This also works if you sign in with a passkey or social
+          account and need a password fallback.
         </p>
 
         {error && (
