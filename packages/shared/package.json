@@ -20,7 +20,8 @@
     "./env-watch": "./src/env-watch.ts",
     "./email-content": "./src/email-content.ts",
     "./entitlements": "./src/entitlements.ts",
-    "./extensions": "./src/extensions/index.ts"
+    "./extensions": "./src/extensions/index.ts",
+    "./testing/email-fixtures": "./src/testing/email-fixtures.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

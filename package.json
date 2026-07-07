@@ -19,7 +19,7 @@
     "format": "prettier --write .",
     "prepare": "husky",
     "test": "bun run test:unit",
-    "test:unit": "bun test tests/unit.test.ts",
+    "test:unit": "bun test apps packages",
     "test:integration": "bun run test:integration:security && bun run test:integration:security:report && bun run test:integration:ui",
     "test:integration:seed": "bun tests/e2e/fixtures/seed.ts",
     "test:integration:security": "mkdir -p reports/security && bun test tests/security --reporter=junit --reporter-outfile=reports/security/junit.xml",
