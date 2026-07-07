@@ -22,7 +22,10 @@ import {
 } from "@servicebeard/shared";
 import { getEntitlements } from "@servicebeard/shared/entitlements";
 import { and, count, desc, eq, gte, inArray, lt, or } from "drizzle-orm";
-import { logExternalError, recordSyncStatusEvent } from "../lib/external-error";
+import {
+  logExternalError,
+  recordProjectSyncEvent,
+} from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
 import {
@@ -266,7 +269,7 @@ export async function processInboundEmail(
       { threadId: thread.id, messageId: email.messageId },
       "added comment to existing thread",
     );
-    recordSyncStatusEvent({
+    recordProjectSyncEvent({
       projectId,
       service: project.provider,
       operation: "add-issue-comment",
@@ -407,7 +410,7 @@ export async function processInboundEmail(
     await sendInboundAckEmail(project, threadRecord!, email, issue);
   }
 
-  recordSyncStatusEvent({
+  recordProjectSyncEvent({
     projectId,
     service: project.provider,
     operation: "create-issue",
@@ -501,7 +504,7 @@ async function sendInboundAckEmail(
     "sent inbound acknowledgement email",
   );
 
-  recordSyncStatusEvent({
+  recordProjectSyncEvent({
     projectId: project.id,
     service: "smtp",
     operation: "send-ack",

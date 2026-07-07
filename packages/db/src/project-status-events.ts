@@ -83,9 +83,6 @@ export async function recordProjectStatusEvent(
   }
 }
 
-/** @deprecated Use recordProjectStatusEvent */
-export const recordProjectSyncError = recordProjectStatusEvent;
-
 export async function listProjectStatusEvents(projectId: string, limit = 50) {
   const db = getDb();
   return db.query.projectStatusEvents.findMany({
@@ -97,9 +94,6 @@ export async function listProjectStatusEvents(projectId: string, limit = 50) {
     limit,
   });
 }
-
-/** @deprecated Use listProjectStatusEvents */
-export const listProjectSyncErrors = listProjectStatusEvents;
 
 export async function dismissProjectStatusEvent(
   projectId: string,
@@ -121,9 +115,6 @@ export async function dismissProjectStatusEvent(
   return rows.length > 0;
 }
 
-/** @deprecated Use dismissProjectStatusEvent */
-export const dismissProjectSyncError = dismissProjectStatusEvent;
-
 export async function dismissAllProjectStatusEvents(
   projectId: string,
 ): Promise<number> {
@@ -141,9 +132,6 @@ export async function dismissAllProjectStatusEvents(
 
   return rows.length;
 }
-
-/** @deprecated Use dismissAllProjectStatusEvents */
-export const dismissAllProjectSyncErrors = dismissAllProjectStatusEvents;
 
 export type AdminStatusEvent = {
   id: string;

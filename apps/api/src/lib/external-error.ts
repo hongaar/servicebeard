@@ -9,7 +9,7 @@ const syncEvents = createSyncEventRecorder({
   providerErrorDetails,
 });
 
-export const { logExternalError, recordSyncStatusEvent } = syncEvents;
+export const { recordProjectSyncEvent, logExternalError } = syncEvents;
 
 export type { ExternalErrorOptions } from "@servicebeard/shared";
 

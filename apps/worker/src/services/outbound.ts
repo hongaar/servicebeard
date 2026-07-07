@@ -13,7 +13,10 @@ import {
   renderOutboundCommentTemplate,
 } from "@servicebeard/shared";
 import { and, eq, isNull } from "drizzle-orm";
-import { logExternalError, recordSyncStatusEvent } from "../lib/external-error";
+import {
+  logExternalError,
+  recordProjectSyncEvent,
+} from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import {
@@ -282,7 +285,7 @@ export async function processOutboundComment(
     "sent outbound email",
   );
 
-  recordSyncStatusEvent({
+  recordProjectSyncEvent({
     projectId,
     service: "smtp",
     operation: "send-outbound-email",

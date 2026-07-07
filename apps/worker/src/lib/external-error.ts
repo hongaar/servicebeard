@@ -1,9 +1,6 @@
 import { recordProjectStatusEvent } from "@servicebeard/db";
 import { providerErrorDetails } from "@servicebeard/providers";
-import {
-  createSyncEventRecorder,
-  type ExternalErrorOptions,
-} from "@servicebeard/shared";
+import { createSyncEventRecorder } from "@servicebeard/shared";
 import { captureBugsinkError } from "./bugsink";
 import { logger } from "./logger";
 
@@ -32,21 +29,4 @@ const syncEvents = createSyncEventRecorder({
   },
 });
 
-export const { logExternalError, recordSyncStatusEvent } = syncEvents;
-
-export type { ExternalErrorOptions };
-
-export async function withExternalErrorLogging<T>(
-  service: string,
-  operation: string,
-  context: Record<string, unknown>,
-  fn: () => Promise<T>,
-  options?: ExternalErrorOptions,
-): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    logExternalError(service, operation, err, context, options);
-    throw err;
-  }
-}
+export const { recordProjectSyncEvent, logExternalError } = syncEvents;

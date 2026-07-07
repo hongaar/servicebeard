@@ -6,13 +6,12 @@ export const PROJECT_STATUS_SEVERITIES = [
 ] as const;
 export type ProjectStatusSeverity = (typeof PROJECT_STATUS_SEVERITIES)[number];
 
-export const SYNC_ERROR_CATEGORIES = ["mail", "provider"] as const;
-export type SyncErrorCategory = (typeof SYNC_ERROR_CATEGORIES)[number];
-export const PROJECT_STATUS_CATEGORIES = SYNC_ERROR_CATEGORIES;
-export type ProjectStatusCategory = SyncErrorCategory;
+export const PROJECT_STATUS_CATEGORIES = ["mail", "provider"] as const;
+export type ProjectStatusCategory = (typeof PROJECT_STATUS_CATEGORIES)[number];
 
 const MAIL_OPERATIONS = new Set([
   "test-mail",
+  "imap-poll",
   "imap-poll-project",
   "fetch-since",
   "poll",
@@ -27,6 +26,7 @@ const PROVIDER_OPERATIONS = new Set([
   "ensure-webhook",
   "process-message",
   "list-comments",
+  "comment-poll",
   "send-email",
   "comment-poll-project",
   "upload-inline-image",
@@ -41,7 +41,9 @@ const RETRIABLE_FAILURE_OPERATIONS = new Set([
   "list-comments",
   "fetch-since",
   "poll",
+  "imap-poll",
   "imap-poll-project",
+  "comment-poll",
   "comment-poll-project",
   "mark-seen",
   "send-email",
@@ -57,7 +59,7 @@ export function classifySyncFailureSeverity(
 export function classifySyncError(
   service: string,
   operation: string,
-): SyncErrorCategory | null {
+): ProjectStatusCategory | null {
   if (
     service === "imap" ||
     service === "smtp" ||
@@ -81,7 +83,11 @@ export function classifySyncError(
 }
 
 export function isQuietProvider404(operation: string): boolean {
-  return operation === "list-comments" || operation === "comment-poll-project";
+  return (
+    operation === "list-comments" ||
+    operation === "comment-poll" ||
+    operation === "comment-poll-project"
+  );
 }
 
 export const TEAM_ROLES = ["owner", "admin", "member"] as const;

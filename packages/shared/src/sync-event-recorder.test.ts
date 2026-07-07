@@ -38,11 +38,15 @@ function createTestRecorder() {
 }
 
 describe("createSyncEventRecorder", () => {
-  test("persists provider errors with project context", () => {
+  test("recordProjectSyncEvent persists provider errors with project context", () => {
     const { recorder, persisted, bugsink } = createTestRecorder();
     const err = new ProviderApiError(500, "GitHub API failed");
 
-    recorder.logExternalError("github", "create-issue", err, {
+    recorder.recordProjectSyncEvent({
+      service: "github",
+      operation: "create-issue",
+      severity: "error",
+      err,
       projectId: "proj-1",
     });
 
@@ -57,11 +61,30 @@ describe("createSyncEventRecorder", () => {
     expect(bugsink).toHaveLength(1);
   });
 
+  test("logExternalError delegates to recordProjectSyncEvent failure path", () => {
+    const { recorder, persisted } = createTestRecorder();
+    const err = new Error("mailbox timeout");
+
+    recorder.logExternalError("imap", "fetch-since", err, {
+      projectId: "proj-1",
+    });
+
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({
+      projectId: "proj-1",
+      severity: "warning",
+    });
+  });
+
   test("skips persistence for quiet provider 404s", () => {
     const { recorder, persisted, bugsink } = createTestRecorder();
     const err = new ProviderApiError(404, "Not found");
 
-    recorder.logExternalError("gitlab", "list-comments", err, {
+    recorder.recordProjectSyncEvent({
+      service: "gitlab",
+      operation: "list-comments",
+      severity: "warning",
+      err,
       projectId: "proj-1",
     });
 
@@ -69,10 +92,10 @@ describe("createSyncEventRecorder", () => {
     expect(bugsink).toHaveLength(0);
   });
 
-  test("records success status events fire-and-forget", async () => {
+  test("records success events fire-and-forget", async () => {
     const { recorder, persisted } = createTestRecorder();
 
-    recorder.recordSyncStatusEvent({
+    recorder.recordProjectSyncEvent({
       projectId: "proj-1",
       service: "github",
       operation: "create-issue",
@@ -86,5 +109,15 @@ describe("createSyncEventRecorder", () => {
       severity: "success",
       message: "Created issue #12",
     });
+  });
+
+  test("classifies queue poll aliases as mail and provider operations", async () => {
+    const { classifySyncError, classifySyncFailureSeverity } =
+      await import("./constants");
+
+    expect(classifySyncError("worker", "imap-poll")).toBe("mail");
+    expect(classifySyncError("worker", "comment-poll")).toBe("provider");
+    expect(classifySyncFailureSeverity("imap-poll")).toBe("warning");
+    expect(classifySyncFailureSeverity("comment-poll")).toBe("warning");
   });
 });

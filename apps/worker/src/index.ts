@@ -224,7 +224,7 @@ export async function startWorker(): Promise<PgBoss> {
     try {
       await runExclusive("imap-poll", runImapPollsForDueProjects);
     } catch (err) {
-      logExternalError("pg-boss", "imap-poll", err);
+      logExternalError("worker", "imap-poll-project", err);
       throw err;
     }
   });
@@ -233,7 +233,7 @@ export async function startWorker(): Promise<PgBoss> {
     try {
       await runExclusive("comment-poll", runCommentPollsForDueProjects);
     } catch (err) {
-      logExternalError("pg-boss", "comment-poll", err);
+      logExternalError("worker", "comment-poll-project", err);
       throw err;
     }
   });
@@ -248,7 +248,7 @@ export async function startWorker(): Promise<PgBoss> {
         processOutboundComment(job!.data.projectId, job!.data.event),
       );
     } catch (err) {
-      logExternalError("pg-boss", "send-email", err, {
+      logExternalError("worker", "send-email", err, {
         projectId: job!.data.projectId,
         noteId: job!.data.event.noteId,
       });
@@ -263,7 +263,7 @@ export async function startWorker(): Promise<PgBoss> {
       try {
         await ensureWebhookForProject(job!.data.projectId);
       } catch (err) {
-        logExternalError("pg-boss", "ensure-webhook", err, {
+        logExternalError("worker", "ensure-webhook", err, {
           projectId: job!.data.projectId,
         });
       }

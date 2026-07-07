@@ -46,6 +46,8 @@ describe("sync error classification", () => {
     expect(classifySyncError("linear", "list-comments")).toBe("provider");
     expect(classifySyncError("linear", "create-issue")).toBe("provider");
     expect(classifySyncError("inbound", "process-message")).toBe("provider");
+    expect(classifySyncError("worker", "imap-poll")).toBe("mail");
+    expect(classifySyncError("worker", "comment-poll")).toBe("provider");
     expect(classifySyncError("api", "unknown")).toBeNull();
   });
 
@@ -55,6 +57,8 @@ describe("sync error classification", () => {
     expect(classifySyncFailureSeverity("process-message")).toBe("warning");
     expect(classifySyncFailureSeverity("list-comments")).toBe("warning");
     expect(classifySyncFailureSeverity("fetch-since")).toBe("warning");
+    expect(classifySyncFailureSeverity("imap-poll")).toBe("warning");
+    expect(classifySyncFailureSeverity("comment-poll")).toBe("warning");
     expect(classifySyncFailureSeverity("test-provider")).toBe("error");
     expect(classifySyncFailureSeverity("ensure-webhook")).toBe("error");
   });

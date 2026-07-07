@@ -48,6 +48,26 @@ export interface SyncEventRecorderDeps {
   onExternalError?: (err: unknown, info: SyncEventRecorderContext) => void;
 }
 
+type ProjectSyncEventBase = {
+  service: string;
+  operation: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type RecordProjectSyncEventInput = ProjectSyncEventBase &
+  (
+    | {
+        severity: "error" | "warning";
+        err: unknown;
+        projectId?: string;
+      }
+    | {
+        severity: "info" | "success";
+        projectId: string;
+        message: string;
+      }
+  );
+
 function logLevelForSeverity(
   severity: Extract<ProjectStatusSeverity, "error" | "warning">,
 ): "error" | "warn" {
@@ -73,37 +93,47 @@ export function createSyncEventRecorder(deps: SyncEventRecorderDeps) {
     return humanizeSyncErrorMessage(service, operation, err);
   }
 
-  function persistProjectSyncError(
+  function persistEventFireAndForget(
+    input: RecordProjectStatusEventInput,
+    logContext: { service: string; operation: string },
+  ): void {
+    void persistEvent(input).catch((persistErr) => {
+      logger.warn(
+        {
+          persistErr,
+          projectId: input.projectId,
+          service: logContext.service,
+          operation: logContext.operation,
+        },
+        "failed to record project sync event",
+      );
+    });
+  }
+
+  function persistFailureEvent(
     service: string,
     operation: string,
     err: unknown,
-    context?: Record<string, unknown>,
-    options?: ExternalErrorOptions,
+    projectId: string,
+    severity: Extract<ProjectStatusSeverity, "error" | "warning">,
+    metadata?: Record<string, unknown>,
   ): void {
-    const projectId = projectIdFromContext(context);
-    if (!projectId) return;
-
     const providerError = providerErrorDetails(err);
     if (providerError?.status === 404 && isQuietProvider404(operation)) return;
 
-    const severity =
-      options?.severity ?? classifySyncFailureSeverity(operation);
-
-    void persistEvent({
-      projectId,
-      service,
-      operation,
-      message: syncErrorMessage(service, operation, err),
-      severity,
-      status: providerError?.status,
-      responseBody: providerError?.responseBody,
-      metadata: context,
-    }).catch((persistErr) => {
-      logger.warn(
-        { persistErr, projectId, service, operation },
-        "failed to record project sync error",
-      );
-    });
+    persistEventFireAndForget(
+      {
+        projectId,
+        service,
+        operation,
+        message: syncErrorMessage(service, operation, err),
+        severity,
+        status: providerError?.status,
+        responseBody: providerError?.responseBody,
+        metadata,
+      },
+      { service, operation },
+    );
   }
 
   function notifyExternalError(
@@ -113,22 +143,23 @@ export function createSyncEventRecorder(deps: SyncEventRecorderDeps) {
     onExternalError?.(err, info);
   }
 
-  function logExternalError(
-    service: string,
-    operation: string,
-    err: unknown,
-    context?: Record<string, unknown>,
-    options?: ExternalErrorOptions,
-  ): void {
+  function recordFailureEvent(input: {
+    service: string;
+    operation: string;
+    err: unknown;
+    projectId?: string;
+    metadata?: Record<string, unknown>;
+    severity?: Extract<ProjectStatusSeverity, "error" | "warning">;
+  }): void {
+    const { service, operation, err, metadata } = input;
     const providerError = providerErrorDetails(err);
-    const severity =
-      options?.severity ?? classifySyncFailureSeverity(operation);
+    const severity = input.severity ?? classifySyncFailureSeverity(operation);
     const recorderContext: SyncEventRecorderContext = {
       service,
       operation,
       severity,
       providerError,
-      context,
+      context: metadata,
     };
 
     if (providerError) {
@@ -145,12 +176,21 @@ export function createSyncEventRecorder(deps: SyncEventRecorderDeps) {
           message: providerError.message,
           responseBody: providerError.responseBody,
           severity,
-          ...context,
+          ...metadata,
         },
         "external service error",
       );
       if (providerError.status !== 404 || !isQuietProvider404(operation)) {
-        persistProjectSyncError(service, operation, err, context, options);
+        if (input.projectId) {
+          persistFailureEvent(
+            service,
+            operation,
+            err,
+            input.projectId,
+            severity,
+            metadata,
+          );
+        }
         notifyExternalError(err, recorderContext);
       }
       return;
@@ -163,45 +203,72 @@ export function createSyncEventRecorder(deps: SyncEventRecorderDeps) {
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
         severity,
-        ...context,
+        ...metadata,
       },
       "external service error",
     );
-    persistProjectSyncError(service, operation, err, context, options);
+    if (input.projectId) {
+      persistFailureEvent(
+        service,
+        operation,
+        err,
+        input.projectId,
+        severity,
+        metadata,
+      );
+    }
     notifyExternalError(err, recorderContext);
   }
 
-  function recordSyncStatusEvent(input: {
-    projectId: string;
-    service: string;
-    operation: string;
-    message: string;
-    severity: ProjectStatusSeverity;
-    metadata?: Record<string, unknown>;
-  }): void {
-    void persistEvent({
-      projectId: input.projectId,
-      service: input.service,
-      operation: input.operation,
-      message: input.message,
-      severity: input.severity,
-      metadata: input.metadata,
-    }).catch((persistErr) => {
-      logger.warn(
-        {
-          persistErr,
-          projectId: input.projectId,
-          service: input.service,
-          operation: input.operation,
-        },
-        "failed to record project sync status event",
-      );
+  function isFailureSyncEvent(
+    input: RecordProjectSyncEventInput,
+  ): input is ProjectSyncEventBase & {
+    severity: "error" | "warning";
+    err: unknown;
+    projectId?: string;
+  } {
+    return input.severity === "error" || input.severity === "warning";
+  }
+
+  function recordProjectSyncEvent(input: RecordProjectSyncEventInput): void {
+    if (isFailureSyncEvent(input)) {
+      recordFailureEvent(input);
+      return;
+    }
+
+    persistEventFireAndForget(
+      {
+        projectId: input.projectId,
+        service: input.service,
+        operation: input.operation,
+        message: input.message,
+        severity: input.severity,
+        metadata: input.metadata,
+      },
+      { service: input.service, operation: input.operation },
+    );
+  }
+
+  function logExternalError(
+    service: string,
+    operation: string,
+    err: unknown,
+    context?: Record<string, unknown>,
+    options?: ExternalErrorOptions,
+  ): void {
+    recordFailureEvent({
+      service,
+      operation,
+      err,
+      projectId: projectIdFromContext(context),
+      metadata: context,
+      severity: options?.severity,
     });
   }
 
   return {
+    recordProjectSyncEvent,
     logExternalError,
-    recordSyncStatusEvent,
     syncErrorMessage,
   };
 }
