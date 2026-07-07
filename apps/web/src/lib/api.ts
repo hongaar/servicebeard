@@ -183,6 +183,47 @@ export const api = {
       `/admin/audit-log${qs ? `?${qs}` : ""}`,
     );
   },
+  listAdminTeams: (params?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return request<{ teams: AdminTeamOverview[]; total: number }>(
+      `/admin/teams${qs ? `?${qs}` : ""}`,
+    );
+  },
+  listAdminProjects: (params?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return request<{ projects: AdminProjectOverview[]; total: number }>(
+      `/admin/projects${qs ? `?${qs}` : ""}`,
+    );
+  },
+  listAdminStatusEvents: (params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return request<{ events: AdminStatusEvent[]; total: number }>(
+      `/admin/status-events${qs ? `?${qs}` : ""}`,
+    );
+  },
+  dismissAdminStatusEvent: (eventId: string) =>
+    request<{ ok: boolean }>(`/admin/status-events/${eventId}/dismiss`, {
+      method: "POST",
+    }),
   getAuthConfig: () => request<AuthConfigResponse>("/auth/config"),
   loginWithProvider: (
     provider: string,
@@ -777,4 +818,35 @@ export interface AdminAuditLogEntry {
   userEmail: string | null;
   userName: string | null;
   teamName: string | null;
+}
+
+export interface AdminTeamOverview {
+  id: string;
+  name: string;
+  slug: string;
+  memberCount: number;
+  projectCount: number;
+  createdAt: string;
+}
+
+export interface AdminProjectOverview {
+  id: string;
+  name: string;
+  teamId: string;
+  teamName: string;
+  isActive: boolean;
+  ruleCount: number;
+  conversationCount: number;
+  statusEvents: {
+    error: number;
+    warning: number;
+    info: number;
+  };
+  createdAt: string;
+}
+
+export interface AdminStatusEvent extends ProjectStatusEvent {
+  projectName: string;
+  teamId: string;
+  teamName: string;
 }

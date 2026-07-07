@@ -79,4 +79,20 @@ describe("RBAC — role-based access control must enforce team roles", () => {
     const response = await client.platformAdmin.get("/api/admin/status");
     expect(response.status).toBe(200);
   });
+
+  test("Platform admin can read another team's projects without membership", async () => {
+    const { seed, client } = await getSecurityContext();
+    const response = await client.platformAdmin.get(
+      `/api/teams/${seed.teams.teamB.id}/projects`,
+    );
+    expect(response.status).toBe(200);
+  });
+
+  test("Outsider still cannot read another team's projects", async () => {
+    const { seed, client } = await getSecurityContext();
+    const response = await client.outsider.get(
+      `/api/teams/${seed.teams.teamA.id}/projects`,
+    );
+    expect(response.status).toBe(403);
+  });
 });

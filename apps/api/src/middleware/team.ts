@@ -9,7 +9,7 @@ export async function requireTeamMember(
   c: Context<{ Variables: AppVariables }>,
   teamId: string,
   minRole?: "member" | "admin" | "owner",
-): Promise<{ userId: string; role: string }> {
+): Promise<{ userId: string; role: string; platformAdminAccess?: boolean }> {
   const user = requireAuth(c);
   const db = getDb();
 
@@ -18,7 +18,14 @@ export async function requireTeamMember(
   });
 
   if (!member) {
-    throw new Error("FORBIDDEN");
+    if (!user.isAdmin) {
+      throw new Error("FORBIDDEN");
+    }
+    if (minRole === "owner") {
+      throw new Error("FORBIDDEN");
+    }
+    await getEntitlements().assertTeamAccess(teamId, { path: c.req.path });
+    return { userId: user.id, role: "admin", platformAdminAccess: true };
   }
 
   if (minRole) {

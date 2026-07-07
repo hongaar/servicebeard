@@ -1011,6 +1011,30 @@
   color: var(--color-success);
 }
 
+.alertWarning {
+  background: var(--color-warning-subtle);
+  border: 1px solid var(--color-warning);
+  color: var(--color-warning);
+}
+
+.platformAdminBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.platformAdminBannerTitle {
+  font-weight: 700;
+  margin: 0 0 var(--space-1);
+  color: var(--color-text);
+}
+
+.platformAdminBannerText {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
 .inviteBanner {
   margin-bottom: var(--space-6);
   padding: var(--space-4);
@@ -1592,6 +1616,18 @@
 .adminMuted {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+}
+
+.adminStatusCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.inlineBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .adminAuditLogJson {

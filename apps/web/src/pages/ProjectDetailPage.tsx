@@ -100,6 +100,7 @@ export function ProjectDetailPage() {
     statusEvents,
     teamName,
     section,
+    adminAccess,
   } = useLoaderData({
     from: "/teams/$teamId/projects/$projectId/$section",
   }) as ProjectDetailLoaderData;
@@ -379,6 +380,7 @@ export function ProjectDetailPage() {
       projectId={projectId}
       projectName={project.name}
       section={section}
+      adminAccess={adminAccess}
       inboxEmail={
         section === "overview"
           ? parseMailFromAddress(project.smtpFrom)

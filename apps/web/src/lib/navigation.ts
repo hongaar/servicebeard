@@ -59,6 +59,7 @@ export const NAV_ICONS = {
   members: Users,
   billing: CreditCard,
   teamSettings: Settings,
+  adminOverview: LayoutDashboard,
   adminStatus: Server,
   adminAuditLog: ScrollText,
   overview: LayoutDashboard,
@@ -87,6 +88,7 @@ export function teamPageIcon(
 }
 
 export function homePageIcon(pathname: string): NavIconKey {
+  if (pathname === "/admin") return "adminOverview";
   if (pathname === "/admin/audit-log") return "adminAuditLog";
   if (pathname === "/admin/status") return "adminStatus";
   if (pathname === "/account") return "account";

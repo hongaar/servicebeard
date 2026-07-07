@@ -110,6 +110,10 @@
   white-space: nowrap;
 }
 
+.navSection:not(:first-child) {
+  margin-top: var(--space-4);
+}
+
 .navLink {
   display: flex;
   align-items: center;

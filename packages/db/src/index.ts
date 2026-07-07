@@ -45,6 +45,7 @@ export async function closeDb(): Promise<void> {
   }
 }
 
+export * from "./admin-overview";
 export * from "./audit-log";
 export * from "./crypto";
 export * from "./global-search";

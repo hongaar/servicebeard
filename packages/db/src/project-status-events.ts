@@ -1,8 +1,8 @@
 import type { ProjectStatusSeverity } from "@servicebeard/shared";
 import { classifySyncError } from "@servicebeard/shared";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "./index";
-import { projectStatusEvents } from "./schema";
+import { projects, projectStatusEvents, teams } from "./schema";
 
 const MAX_RESPONSE_BODY = 4000;
 const MAX_EVENTS_PER_PROJECT = 200;
@@ -121,3 +121,77 @@ export async function dismissAllProjectStatusEvents(
 
 /** @deprecated Use dismissAllProjectStatusEvents */
 export const dismissAllProjectSyncErrors = dismissAllProjectStatusEvents;
+
+export type AdminStatusEvent = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  teamId: string;
+  teamName: string;
+  category: string;
+  severity: string;
+  operation: string;
+  message: string;
+  status: number | null;
+  responseBody: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+};
+
+export async function listAdminStatusEvents(input: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ events: AdminStatusEvent[]; total: number }> {
+  const limit = Math.min(input.limit ?? 50, 100);
+  const offset = input.offset ?? 0;
+  const db = getDb();
+
+  const events = await db
+    .select({
+      id: projectStatusEvents.id,
+      projectId: projectStatusEvents.projectId,
+      projectName: projects.name,
+      teamId: projects.teamId,
+      teamName: teams.name,
+      category: projectStatusEvents.category,
+      severity: projectStatusEvents.severity,
+      operation: projectStatusEvents.operation,
+      message: projectStatusEvents.message,
+      status: projectStatusEvents.status,
+      responseBody: projectStatusEvents.responseBody,
+      metadata: projectStatusEvents.metadata,
+      createdAt: projectStatusEvents.createdAt,
+    })
+    .from(projectStatusEvents)
+    .innerJoin(projects, eq(projectStatusEvents.projectId, projects.id))
+    .innerJoin(teams, eq(projects.teamId, teams.id))
+    .where(isNull(projectStatusEvents.dismissedAt))
+    .orderBy(desc(projectStatusEvents.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [totalRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(projectStatusEvents)
+    .where(isNull(projectStatusEvents.dismissedAt));
+
+  return { events, total: totalRow?.count ?? 0 };
+}
+
+export async function dismissStatusEventById(
+  eventId: string,
+): Promise<boolean> {
+  const db = getDb();
+  const rows = await db
+    .update(projectStatusEvents)
+    .set({ dismissedAt: new Date() })
+    .where(
+      and(
+        eq(projectStatusEvents.id, eventId),
+        isNull(projectStatusEvents.dismissedAt),
+      ),
+    )
+    .returning({ id: projectStatusEvents.id });
+
+  return rows.length > 0;
+}

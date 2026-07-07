@@ -22,12 +22,13 @@ interface TeamDetail {
 }
 
 export function TeamPage() {
-  const { user, team, role } = useLoaderData({
+  const { user, team, role, adminAccess } = useLoaderData({
     from: "/teams/$teamId/members",
   }) as {
     user: { email: string; name: string | null };
     team: TeamDetail;
     role: string;
+    adminAccess: boolean;
   };
   const router = useRouter();
 
@@ -87,6 +88,7 @@ export function TeamPage() {
       user={user}
       teamId={team.id}
       teamName={team.name}
+      adminAccess={adminAccess}
     >
       {message && (
         <div

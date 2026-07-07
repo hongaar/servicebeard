@@ -37,9 +37,11 @@ import {
 import styles from "../styles/pages.module.css";
 
 export function ProjectsPage() {
-  const { user, projects, entitlements, teamName } = useLoaderData({
-    from: "/teams/$teamId/projects",
-  }) as ProjectsLoaderData;
+  const { user, projects, entitlements, teamName, adminAccess } = useLoaderData(
+    {
+      from: "/teams/$teamId/projects",
+    },
+  ) as ProjectsLoaderData;
   const { teamId } = useParams({ from: "/teams/$teamId/projects" });
   const search = useSearch({ strict: false }) as {
     create?: string | boolean;
@@ -204,6 +206,7 @@ export function ProjectsPage() {
       user={user}
       teamId={teamId}
       teamName={teamName}
+      adminAccess={adminAccess}
     >
       <div className={styles.sectionHeader}>
         <div className={styles.sectionHeaderText}>

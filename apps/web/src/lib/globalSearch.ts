@@ -134,6 +134,16 @@ export function buildSearchActions(
   if (isAdmin) {
     actions.push(
       {
+        id: "nav-admin-overview",
+        label: "Admin overview",
+        description: "Platform-wide teams and projects overview",
+        keywords: ["admin", "teams", "projects", "overview"],
+        group: "Navigation",
+        kind: "navigate",
+        to: "/admin",
+        icon: "adminOverview",
+      },
+      {
         id: "nav-admin-status",
         label: "System status",
         description: "Health checks and service connectivity",

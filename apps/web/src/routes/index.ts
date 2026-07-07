@@ -8,9 +8,11 @@ import {
   PROJECT_SECTION_LABELS,
   type ProjectSection,
 } from "../lib/navigation";
+import { isPlatformAdminTeamAccess } from "../lib/teamAccess";
 import { AcceptInvitePage } from "../pages/AcceptInvitePage";
 import { AccountPage } from "../pages/AccountPage";
 import { AdminAuditLogPage } from "../pages/AdminAuditLogPage";
+import { AdminOverviewPage } from "../pages/AdminOverviewPage";
 import { AdminStatusPage } from "../pages/AdminStatusPage";
 import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
 import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
@@ -40,16 +42,28 @@ async function requireUser() {
 
 async function loadTeamContext(teamId: string) {
   const user = await requireUser();
-  const [team, { teams: memberships }] = await Promise.all([
-    api.getTeam(teamId),
-    api.getTeams(),
-  ]);
+  const { teams: memberships } = await api.getTeams();
   const membership = memberships.find((t) => t.id === teamId);
-  return { user, team, role: membership?.role ?? "member" };
+  if (!membership && !user.isAdmin) {
+    throw redirect({ to: "/" });
+  }
+  const team = await api.getTeam(teamId);
+  return {
+    user,
+    team,
+    role: membership?.role ?? "admin",
+    adminAccess: isPlatformAdminTeamAccess(user, membership),
+  };
 }
 
 async function loadProjectContext(teamId: string, projectId: string) {
   const user = await requireUser();
+  const { teams: memberships } = await api.getTeams();
+  const membership = memberships.find((t) => t.id === teamId);
+  if (!membership && !user.isAdmin) {
+    throw redirect({ to: "/" });
+  }
+  const adminAccess = isPlatformAdminTeamAccess(user, membership);
   try {
     const [team, projectData, { threads }, { events: statusEvents }] =
       await Promise.all([
@@ -66,6 +80,7 @@ async function loadProjectContext(teamId: string, projectId: string) {
       threads,
       statusEvents,
       teamName: team.name,
+      adminAccess,
     };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
@@ -227,6 +242,19 @@ export const dashboardRoute = createRoute({
   },
 });
 
+export const adminOverviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: AdminOverviewPage,
+  head: routeHead("Overview"),
+  loader: async () => {
+    const { user } = await api.getMe();
+    if (!user) throw redirect({ to: "/login" });
+    if (!user.isAdmin) throw redirect({ to: "/" });
+    return { user };
+  },
+});
+
 export const adminStatusRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/status",
@@ -331,11 +359,22 @@ export const projectsRoute = createRoute({
   }),
   loader: async ({ params }) => {
     const user = await requireUser();
+    const { teams: memberships } = await api.getTeams();
+    const membership = memberships.find((t) => t.id === params.teamId);
+    if (!membership && !user.isAdmin) {
+      throw redirect({ to: "/" });
+    }
     const [team, { projects, entitlements }] = await Promise.all([
       api.getTeam(params.teamId),
       api.getProjects(params.teamId),
     ]);
-    return { user, projects, entitlements, teamName: team.name };
+    return {
+      user,
+      projects,
+      entitlements,
+      teamName: team.name,
+      adminAccess: isPlatformAdminTeamAccess(user, membership),
+    };
   },
 });
 

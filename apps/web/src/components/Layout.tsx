@@ -26,6 +26,7 @@ import {
 } from "./ContextPicker";
 import { GlobalSearch } from "./GlobalSearch";
 import styles from "./Layout.module.css";
+import { PlatformAdminAccessBanner } from "./PlatformAdminAccessBanner";
 import { ProviderLogo } from "./ProviderLogo";
 import { UserMenu } from "./UserMenu";
 
@@ -40,6 +41,7 @@ interface LayoutProps {
   projectName?: string;
   section?: ProjectSection;
   inboxEmail?: string;
+  adminAccess?: boolean;
   issueLink?: {
     provider: string;
     label: string;
@@ -63,6 +65,7 @@ export function Layout({
   projectName,
   section = "overview",
   inboxEmail,
+  adminAccess,
   issueLink,
 }: LayoutProps) {
   const router = useRouterState();
@@ -87,6 +90,7 @@ export function Layout({
 
   const isDashboard = pathname === "/";
   const isAccount = pathname === "/account";
+  const isAdminOverview = pathname === "/admin";
   const isAdminStatus = pathname === "/admin/status";
   const isAdminAuditLog = pathname === "/admin/audit-log";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
@@ -252,41 +256,55 @@ export function Layout({
                 </Link>
                 {user?.isAdmin && (
                   <>
+                    <p className={styles.navSection}>Admin</p>
+                    <Link
+                      to="/admin"
+                      className={navLinkClass(isAdminOverview)}
+                      title="Overview"
+                    >
+                      <NavIcon>
+                        <NAV_ICONS.adminOverview {...iconMd} />
+                      </NavIcon>
+                      <span className={styles.navLabel}>Overview</span>
+                    </Link>
                     <Link
                       to="/admin/status"
                       className={navLinkClass(isAdminStatus)}
+                      title="System status"
                     >
                       <NavIcon>
                         <NAV_ICONS.adminStatus {...iconMd} />
                       </NavIcon>
-                      System status
+                      <span className={styles.navLabel}>System status</span>
                     </Link>
                     <Link
                       to="/admin/audit-log"
                       className={navLinkClass(isAdminAuditLog)}
+                      title="Audit log"
                     >
                       <NavIcon>
                         <NAV_ICONS.adminAuditLog {...iconMd} />
                       </NavIcon>
-                      Audit log
+                      <span className={styles.navLabel}>Audit log</span>
                     </Link>
+                    {adminNavItems.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className={navLinkClass(
+                          pathname === item.to ||
+                            pathname.startsWith(`${item.to}/`),
+                        )}
+                        title={item.label}
+                      >
+                        <NavIcon>
+                          <item.icon {...iconMd} />
+                        </NavIcon>
+                        <span className={styles.navLabel}>{item.label}</span>
+                      </Link>
+                    ))}
                   </>
                 )}
-                {adminNavItems.map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={navLinkClass(
-                      pathname === item.to ||
-                        pathname.startsWith(`${item.to}/`),
-                    )}
-                  >
-                    <NavIcon>
-                      <item.icon {...iconMd} />
-                    </NavIcon>
-                    {item.label}
-                  </Link>
-                ))}
               </>
             )}
 
@@ -522,6 +540,7 @@ export function Layout({
                 <p className={styles.pageDescription}>{description}</p>
               )}
             </div>
+            {adminAccess && <PlatformAdminAccessBanner />}
             {children}
           </div>
           {appFooterLinks.length > 0 && (

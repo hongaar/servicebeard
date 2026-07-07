@@ -17,12 +17,13 @@ interface TeamDetail {
 }
 
 export function TeamSettingsPage() {
-  const { user, team, role } = useLoaderData({
+  const { user, team, role, adminAccess } = useLoaderData({
     from: "/teams/$teamId/settings",
   }) as {
     user: { email: string; name: string | null };
     team: TeamDetail;
     role: string;
+    adminAccess: boolean;
   };
   const navigate = useNavigate();
   const router = useRouter();
@@ -76,6 +77,7 @@ export function TeamSettingsPage() {
       user={user}
       teamId={team.id}
       teamName={team.name}
+      adminAccess={adminAccess}
     >
       {isAdmin ? (
         <Card title="General" subtitle="Name shown across projects and invites">

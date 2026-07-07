@@ -25,6 +25,7 @@ export type ProjectsLoaderData = {
   projects: Project[];
   entitlements: TeamEntitlementUsage | null;
   teamName: string;
+  adminAccess: boolean;
 };
 
 export type ProjectDetailLoaderData = {
@@ -35,4 +36,12 @@ export type ProjectDetailLoaderData = {
   statusEvents: ProjectStatusEvent[];
   teamName: string;
   section: ProjectSection;
+  adminAccess: boolean;
+};
+
+export type TeamLoaderData = {
+  user: AppUser;
+  team: { id: string; name: string; slug: string };
+  role: string;
+  adminAccess: boolean;
 };
