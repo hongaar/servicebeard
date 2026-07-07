@@ -20,6 +20,7 @@ import {
 import { api } from "../lib/api";
 import { iconMd } from "../lib/icons";
 import type { AppUser, TeamSummary } from "../lib/loaderTypes";
+import { refreshAppRoutes } from "../lib/queryClient";
 import styles from "../styles/pages.module.css";
 
 type DashboardPageProps = {
@@ -48,7 +49,7 @@ export function DashboardPage({
         slug: slugifyName(name),
       }),
     onSuccess: async (team) => {
-      await router.invalidate();
+      await refreshAppRoutes(router, { pendingInvites: true });
       setShowCreate(false);
       setName("");
       navigate({ to: "/teams/$teamId/projects", params: { teamId: team.id } });

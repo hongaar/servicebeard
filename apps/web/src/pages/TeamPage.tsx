@@ -7,6 +7,7 @@ import { Input, Select } from "../components/Input";
 import { Layout } from "../components/Layout";
 import { api } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import { refreshAppRoutes } from "../lib/queryClient";
 import styles from "../styles/pages.module.css";
 
 interface TeamMemberRow {
@@ -44,7 +45,7 @@ export function TeamPage() {
     mutationFn: () => api.inviteMember(team.id, { email, role: inviteRole }),
     onSuccess: async (result) => {
       const target = email.trim();
-      await router.invalidate();
+      await refreshAppRoutes(router, { teamId: team.id });
       if ("added" in result && result.added) {
         if (result.emailSent) {
           setMessage(
@@ -75,7 +76,7 @@ export function TeamPage() {
   const removeMember = useMutation({
     mutationFn: (memberId: string) => api.removeMember(team.id, memberId),
     onSuccess: async () => {
-      await router.invalidate();
+      await refreshAppRoutes(router, { teamId: team.id });
       setMessage("Member removed.");
       setIsError(false);
     },

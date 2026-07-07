@@ -34,6 +34,7 @@ import {
   formToCreateInput,
   type ProjectSettingsFormValues,
 } from "../lib/projectForm";
+import { refreshAppRoutes } from "../lib/queryClient";
 import styles from "../styles/pages.module.css";
 
 export function ProjectsPage() {
@@ -166,7 +167,7 @@ export function ProjectsPage() {
         formToCreateInput(form, { githubAppEnabled: githubApp?.enabled }),
       ),
     onSuccess: async (project) => {
-      await router.invalidate();
+      await refreshAppRoutes(router, { projectsTeamId: teamId });
       navigate({
         to: "/teams/$teamId/projects/$projectId/$section",
         params: { teamId, projectId: project.id, section: "overview" },

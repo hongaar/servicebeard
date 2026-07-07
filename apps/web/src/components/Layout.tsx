@@ -6,10 +6,9 @@ import {
   extensionTeamPageIcon,
   isExtensionTeamNavActive,
 } from "@extensions";
-import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
-import { api } from "../lib/api";
+import { useTeamProjects, useTeams } from "../hooks/useAppQueries";
 import { iconMd } from "../lib/icons";
 import {
   NAV_ICONS,
@@ -71,16 +70,8 @@ export function Layout({
   const router = useRouterState();
   const pathname = router.location.pathname;
 
-  const { data: teamsData } = useQuery({
-    queryKey: ["teams"],
-    queryFn: () => api.getTeams(),
-  });
-
-  const { data: projectsData } = useQuery({
-    queryKey: ["projects", teamId],
-    queryFn: () => api.getProjects(teamId!),
-    enabled: !!teamId,
-  });
+  const { data: teamsData } = useTeams();
+  const { data: projectsData } = useTeamProjects(teamId);
 
   const teams = teamsData?.teams ?? [];
   const projects = projectsData?.projects ?? [];

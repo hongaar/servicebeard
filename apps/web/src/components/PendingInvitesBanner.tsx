@@ -4,6 +4,7 @@ import { Mail } from "lucide-react";
 import { useState } from "react";
 import { api } from "../lib/api";
 import { iconSm } from "../lib/icons";
+import { refreshAppRoutes } from "../lib/queryClient";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
 
@@ -33,7 +34,7 @@ export function PendingInvitesBanner({
       );
       setAcceptingId(null);
       setError("");
-      await router.invalidate();
+      await refreshAppRoutes(router, { pendingInvites: true });
     },
     onError: (err) => {
       setAcceptingId(null);

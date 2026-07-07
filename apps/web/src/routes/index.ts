@@ -8,6 +8,7 @@ import {
   PROJECT_SECTION_LABELS,
   type ProjectSection,
 } from "../lib/navigation";
+import { appQueries, queryClient } from "../lib/queryClient";
 import { isPlatformAdminTeamAccess } from "../lib/teamAccess";
 import { AcceptInvitePage } from "../pages/AcceptInvitePage";
 import { AccountPage } from "../pages/AccountPage";
@@ -35,19 +36,21 @@ import { VerifyEmailPage } from "../pages/VerifyEmailPage";
 import { rootRoute } from "./root.tsx";
 
 async function requireUser() {
-  const { user } = await api.getMe();
+  const { user } = await queryClient.ensureQueryData(appQueries.me());
   if (!user) throw redirect({ to: "/login" });
   return user;
 }
 
 async function loadTeamContext(teamId: string) {
   const user = await requireUser();
-  const { teams: memberships } = await api.getTeams();
+  const { teams: memberships } = await queryClient.ensureQueryData(
+    appQueries.teams(),
+  );
   const membership = memberships.find((t) => t.id === teamId);
   if (!membership && !user.isAdmin) {
     throw redirect({ to: "/" });
   }
-  const team = await api.getTeam(teamId);
+  const team = await queryClient.ensureQueryData(appQueries.team(teamId));
   return {
     user,
     team,
@@ -58,7 +61,9 @@ async function loadTeamContext(teamId: string) {
 
 async function loadProjectContext(teamId: string, projectId: string) {
   const user = await requireUser();
-  const { teams: memberships } = await api.getTeams();
+  const { teams: memberships } = await queryClient.ensureQueryData(
+    appQueries.teams(),
+  );
   const membership = memberships.find((t) => t.id === teamId);
   if (!membership && !user.isAdmin) {
     throw redirect({ to: "/" });
@@ -67,7 +72,7 @@ async function loadProjectContext(teamId: string, projectId: string) {
   try {
     const [team, projectData, { threads }, { events: statusEvents }] =
       await Promise.all([
-        api.getTeam(teamId),
+        queryClient.ensureQueryData(appQueries.team(teamId)),
         api.getProject(teamId, projectId),
         api.getThreads(teamId, projectId),
         api.getStatusEvents(teamId, projectId),
@@ -227,7 +232,7 @@ export const dashboardRoute = createRoute({
     };
   },
   loader: async () => {
-    const { user } = await api.getMe();
+    const { user } = await queryClient.ensureQueryData(appQueries.me());
     if (!user) {
       if (ExtensionLanding) {
         return { landing: true as const };
@@ -235,8 +240,8 @@ export const dashboardRoute = createRoute({
       throw redirect({ to: "/login" });
     }
     const [{ teams }, { invites: pendingInvites }] = await Promise.all([
-      api.getTeams(),
-      api.getPendingInvites(),
+      queryClient.ensureQueryData(appQueries.teams()),
+      queryClient.ensureQueryData(appQueries.pendingInvites()),
     ]);
     return { landing: false as const, user, teams, pendingInvites };
   },
@@ -248,7 +253,7 @@ export const adminOverviewRoute = createRoute({
   component: AdminOverviewPage,
   head: routeHead("Overview"),
   loader: async () => {
-    const { user } = await api.getMe();
+    const { user } = await queryClient.ensureQueryData(appQueries.me());
     if (!user) throw redirect({ to: "/login" });
     if (!user.isAdmin) throw redirect({ to: "/" });
     return { user };
@@ -261,7 +266,7 @@ export const adminStatusRoute = createRoute({
   component: AdminStatusPage,
   head: routeHead("System status"),
   loader: async () => {
-    const { user } = await api.getMe();
+    const { user } = await queryClient.ensureQueryData(appQueries.me());
     if (!user) throw redirect({ to: "/login" });
     if (!user.isAdmin) throw redirect({ to: "/" });
     return { user };
@@ -274,7 +279,7 @@ export const adminAuditLogRoute = createRoute({
   component: AdminAuditLogPage,
   head: routeHead("Audit log"),
   loader: async () => {
-    const { user } = await api.getMe();
+    const { user } = await queryClient.ensureQueryData(appQueries.me());
     if (!user) throw redirect({ to: "/login" });
     if (!user.isAdmin) throw redirect({ to: "/" });
     return { user };
@@ -359,14 +364,16 @@ export const projectsRoute = createRoute({
   }),
   loader: async ({ params }) => {
     const user = await requireUser();
-    const { teams: memberships } = await api.getTeams();
+    const { teams: memberships } = await queryClient.ensureQueryData(
+      appQueries.teams(),
+    );
     const membership = memberships.find((t) => t.id === params.teamId);
     if (!membership && !user.isAdmin) {
       throw redirect({ to: "/" });
     }
     const [team, { projects, entitlements }] = await Promise.all([
-      api.getTeam(params.teamId),
-      api.getProjects(params.teamId),
+      queryClient.ensureQueryData(appQueries.team(params.teamId)),
+      queryClient.ensureQueryData(appQueries.projects(params.teamId)),
     ]);
     return {
       user,

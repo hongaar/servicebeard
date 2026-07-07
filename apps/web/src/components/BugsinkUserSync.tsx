@@ -1,15 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { api } from "../lib/api";
+import { useMe } from "../hooks/useAppQueries";
 import { setBugsinkUser } from "../lib/bugsink";
 
 export function BugsinkUserSync() {
-  const { data } = useQuery({
-    queryKey: ["bugsink", "me"],
-    queryFn: () => api.getMe(),
-    staleTime: 60_000,
-    retry: false,
-  });
+  const { data } = useMe({ retry: false });
 
   useEffect(() => {
     setBugsinkUser(data?.user ?? null);

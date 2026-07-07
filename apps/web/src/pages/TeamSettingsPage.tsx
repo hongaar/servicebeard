@@ -9,6 +9,7 @@ import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
 import { api } from "../lib/api";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
+import { refreshAppRoutes } from "../lib/queryClient";
 import styles from "../styles/pages.module.css";
 
 interface TeamDetail {
@@ -47,7 +48,7 @@ export function TeamSettingsPage() {
         slug: slugifyName(teamName),
       }),
     onSuccess: async () => {
-      await router.invalidate();
+      await refreshAppRoutes(router, { teamId: team.id });
       setSettingsMessage("Team name updated.");
       setSettingsIsError(false);
       setSettingsFieldErrors({});
@@ -61,7 +62,7 @@ export function TeamSettingsPage() {
   const deleteTeam = useMutation({
     mutationFn: () => api.deleteTeam(team.id),
     onSuccess: async () => {
-      await router.invalidate();
+      await refreshAppRoutes(router, { teamId: team.id });
       navigate({ to: "/", replace: true });
     },
     onError: (err) => {

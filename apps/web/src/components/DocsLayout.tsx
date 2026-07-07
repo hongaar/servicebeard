@@ -2,9 +2,8 @@ import {
   ExtensionDocsContentFooter,
   ExtensionDocsPublicHeader,
 } from "@extensions";
-import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { api } from "../lib/api";
+import { useMe } from "../hooks/useAppQueries";
 import { DOC_PATHS } from "../lib/docs";
 import styles from "../styles/docs.module.css";
 
@@ -82,11 +81,7 @@ export function DocsLayout({
   children: React.ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { data } = useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: () => api.getMe(),
-    staleTime: 60_000,
-  });
+  const { data } = useMe();
   const isLoggedIn = Boolean(data?.user);
 
   return (
