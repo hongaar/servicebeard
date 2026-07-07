@@ -52,6 +52,7 @@ async function ensureUser(
         name,
         passwordHash,
         isAdmin,
+        emailVerifiedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(users.id, existing.id));
@@ -81,6 +82,7 @@ async function ensureUser(
       oidcSub: externalSub,
       passwordHash,
       isAdmin,
+      emailVerifiedAt: new Date(),
     })
     .returning();
 

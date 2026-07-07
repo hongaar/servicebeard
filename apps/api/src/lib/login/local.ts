@@ -12,10 +12,6 @@ import {
 import { hashPassword, verifyPassword } from "./password";
 import type { CredentialLoginAdapter } from "./types";
 
-function isDevEnvironment(): boolean {
-  return process.env.NODE_ENV !== "production";
-}
-
 function isLocalSignupEnabled(): boolean {
   if (process.env.LOCAL_LOGIN_SIGNUP === "false") return false;
   if (process.env.LOCAL_LOGIN_SIGNUP === "true") return true;
@@ -43,7 +39,7 @@ export class LocalLoginAdapter implements CredentialLoginAdapter {
       passkeyEnabled: this.isEnabled(),
     } as const;
 
-    if (!this.isEnabled() || !isDevEnvironment()) {
+    if (!this.isEnabled() || process.env.NODE_ENV !== "development") {
       return config;
     }
 

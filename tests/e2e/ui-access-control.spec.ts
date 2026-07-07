@@ -17,8 +17,8 @@ test.describe("UI access control", () => {
 
     await page.goto(`/teams/${data.teams.teamB.id}/projects`);
 
-    await expect(
-      page.getByRole("heading", { name: "Access denied" }),
-    ).toBeVisible();
+    await expect(page).toHaveURL("/");
+    await expect(page.getByText(E2E_TEAMS.teamA.name)).toBeVisible();
+    await expect(page.getByText(E2E_TEAMS.teamB.name)).not.toBeVisible();
   });
 });
