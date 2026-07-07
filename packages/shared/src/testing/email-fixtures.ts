@@ -1,15 +1,29 @@
 import { resolveInboundSender } from "../mail";
-import type { ParsedEmail, Rule } from "../types";
+import type { ParsedEmail } from "../rules";
+import type { Rule } from "../types";
 
 export const testEmailDate = new Date("2026-01-15T12:00:00Z");
 
-export function testEmail(
-  overrides: Omit<ParsedEmail, "bodyMarkdown" | "bodyHtml" | "inlineImages"> & {
-    bodyMarkdown?: string;
-    bodyHtml?: string | null;
-    inlineImages?: ParsedEmail["inlineImages"];
-  },
-): ParsedEmail {
+type TestEmailInput = Omit<
+  ParsedEmail,
+  | "bodyMarkdown"
+  | "bodyHtml"
+  | "inlineImages"
+  | "senderEmail"
+  | "senderName"
+  | "replyToEmail"
+  | "replyToName"
+> & {
+  senderEmail?: string;
+  senderName?: string | null;
+  replyToEmail?: string | null;
+  replyToName?: string | null;
+  bodyMarkdown?: string;
+  bodyHtml?: string | null;
+  inlineImages?: ParsedEmail["inlineImages"];
+};
+
+export function testEmail(overrides: TestEmailInput): ParsedEmail {
   const fromEmail = overrides.fromEmail;
   const fromName = overrides.fromName ?? null;
   const replyToEmail = overrides.replyToEmail ?? null;
@@ -21,15 +35,24 @@ export function testEmail(
     replyToName,
   );
 
+  const {
+    bodyMarkdown: bodyMarkdownOverride,
+    bodyHtml: bodyHtmlOverride,
+    inlineImages: inlineImagesOverride,
+    senderEmail: senderEmailOverride,
+    senderName: senderNameOverride,
+    ...rest
+  } = overrides;
+
   return {
-    bodyMarkdown: overrides.bodyMarkdown ?? overrides.body,
-    bodyHtml: overrides.bodyHtml ?? null,
-    inlineImages: overrides.inlineImages ?? [],
+    ...rest,
     replyToEmail,
     replyToName,
-    senderEmail: overrides.senderEmail ?? sender.email,
-    senderName: overrides.senderName ?? sender.name,
-    ...overrides,
+    bodyMarkdown: bodyMarkdownOverride ?? overrides.body,
+    bodyHtml: bodyHtmlOverride ?? null,
+    inlineImages: inlineImagesOverride ?? [],
+    senderEmail: senderEmailOverride ?? sender.email,
+    senderName: senderNameOverride ?? sender.name,
   };
 }
 

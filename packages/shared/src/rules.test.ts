@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_CATCH_ALL_RULE } from "./default-rule";
 import { evaluateRules } from "./rules";
+import type { Rule } from "./types";
 import { baseRule, testEmail, testEmailDate } from "./testing/email-fixtures";
 
 describe("rules engine", () => {
@@ -102,13 +103,8 @@ describe("rules engine", () => {
   test("default catch-all rule matches any email and runs after specific rules", () => {
     const catchAll: Rule = {
       ...baseRule,
+      ...DEFAULT_CATCH_ALL_RULE,
       id: "catch-all",
-      name: DEFAULT_CATCH_ALL_RULE.name,
-      priority: DEFAULT_CATCH_ALL_RULE.priority,
-      matchSender: DEFAULT_CATCH_ALL_RULE.matchSender,
-      matchSubject: DEFAULT_CATCH_ALL_RULE.matchSubject,
-      matchBody: DEFAULT_CATCH_ALL_RULE.matchBody,
-      actionLabels: DEFAULT_CATCH_ALL_RULE.actionLabels,
     };
     const specific = {
       ...baseRule,

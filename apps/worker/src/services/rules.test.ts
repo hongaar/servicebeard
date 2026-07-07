@@ -3,7 +3,6 @@ import {
   DEFAULT_INBOUND_ISSUE_TEMPLATE,
 } from "@servicebeard/shared";
 import {
-  baseRule,
   testEmail,
   testEmailDate,
 } from "@servicebeard/shared/testing/email-fixtures";
