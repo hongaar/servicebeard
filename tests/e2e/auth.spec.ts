@@ -18,6 +18,12 @@ test.describe("Authentication UI flow", () => {
       await emailEntry.click();
     }
 
+    const loginResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/auth/login/local") &&
+        response.request().method() === "POST",
+    );
+
     await page.locator('input[type="email"]').fill(data.users.memberA.email);
     await page.locator('input[type="password"]').fill(data.password);
     await page
@@ -25,6 +31,10 @@ test.describe("Authentication UI flow", () => {
       .getByRole("button", { name: "Sign in", exact: true })
       .click();
 
+    const response = await loginResponse;
+    expect(response.ok()).toBe(true);
+
+    await page.goto("/");
     await expect(page).toHaveURL("/");
     await expect(
       page.getByRole("heading", { name: "Teams", exact: true }),
