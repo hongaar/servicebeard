@@ -28,6 +28,24 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 | Database | PostgreSQL + Drizzle ORM             |
 | Deploy   | Docker Compose or Helm + Docker      |
 
+## How sync works
+
+**Inbound (email → issue)**
+
+1. Worker polls IMAP for unseen messages per active project
+2. Thread match via `Message-ID` / `References` / subject+sender
+3. Existing thread → append as public comment on issue
+4. New thread → evaluate rules → create issue on the linked provider with metadata
+5. Optional acknowledgement email to the original sender (project setting)
+
+**Outbound (comment → email)**
+
+1. Provider webhook (`note_events` on GitLab, `issue_comment` on GitHub) or polling fallback
+2. Skip internal comments (`[internal]` marker at the start or end, or GitLab internal notes), email-synced comments (sync marker), bot-authored notes, and already-processed notes
+3. Send threaded reply email via project SMTP
+
+New issues include a collapsible **Support details** footer with a link back to the ServiceBeard project and a reminder about the `[internal]` marker.
+
 ## Quickstart
 
 ### Prerequisites
@@ -39,7 +57,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 
 ```bash
 cp .env.example .env
-# Edit .env — at minimum DATABASE_URL, ENCRYPTION_KEY, SESSION_SECRET, and login providers
+# Edit .env — see Configuration below (at minimum DATABASE_URL, ENCRYPTION_KEY, SESSION_SECRET, and login providers)
 ```
 
 ### 2. Install dependencies
@@ -91,46 +109,37 @@ bun run dev:web
 
 Dev login (when `LOCAL_LOGIN=true`): `dev@localhost` / `dev`
 
-### Extensions (optional)
+## Configuration
 
-To load a plugin extension (e.g. the private cloud edition), add to `.env`:
+Environment variables for local development live in [`.env.example`](.env.example). Production Docker Compose uses [`deploy/compose/.env.example`](deploy/compose/.env.example). Kubernetes deployments use Helm values (see [Deploy](#deploy)).
 
-```bash
-SB_EXTENSION_MANIFEST=../serviceboard-cloud/extension.config.ts
-```
+### Core
 
-Then install the extension repo and merge its env vars (see that repo's `.env.example`):
+| Variable         | Description                                                       |
+| ---------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`   | Postgres connection string                                        |
+| `ENCRYPTION_KEY` | 64-char hex key for AES-256-GCM secret encryption                 |
+| `SESSION_SECRET` | Session signing secret                                            |
+| `NODE_ENV`       | `development` or `production`                                     |
+| `PORT`           | API listen port (default: `3000`)                                 |
+| `LOG_LEVEL`      | Log verbosity (`debug`, `info`, `warn`, `error`; default: `info`) |
 
-```bash
-cd ../serviceboard-cloud && bun install
-```
+### URLs
 
-Re-run `bun run db:migrate` after setting the manifest so extension tables are applied.
+| Variable             | Description                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `API_URL`            | Public API base URL (e.g. `http://localhost:3000`)                                            |
+| `WEB_URL`            | Public web UI base URL (e.g. `http://localhost:5173`)                                         |
+| `WEBHOOK_BASE_URL`   | Public URL for issue-tracker webhooks (GitLab/GitHub must reach this)                         |
+| `OAUTH_REDIRECT_URI` | Optional override for OAuth callback (default: `{WEB_URL}/api/auth/callback`)                 |
+| `TLS_CA_BUNDLE`      | Optional path to a PEM CA bundle used for all provider API calls (merged with per-project CA) |
 
-## Local development
+### Worker
 
-`docker compose up -d` also starts Postgres, GreenMail, Adminer, and Roundcube. These services are for local development only — they are not deployed to Kubernetes.
-
-**Typical daily flow:**
-
-```bash
-docker compose up -d          # if not already running
-bun run db:migrate            # after pulling new migrations
-bun run dev                   # API + worker + web
-```
-
-### Configuration
-
-| Variable           | Description                                                                                   |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`     | Postgres connection string                                                                    |
-| `ENCRYPTION_KEY`   | 64-char hex key for AES-256-GCM secret encryption                                             |
-| `SESSION_SECRET`   | Session signing secret                                                                        |
-| `WEBHOOK_BASE_URL` | Public URL for issue-tracker webhooks (GitLab/GitHub must reach this)                         |
-| `TLS_CA_BUNDLE`    | Optional path to a PEM CA bundle used for all provider API calls (merged with per-project CA) |
-| `LOG_LEVEL`        | Log verbosity (`debug`, `info`, `warn`, `error`; default: `info`)                             |
-
-In development (`NODE_ENV=development`), the API and worker also append structured JSON logs to `.logs/api.log` and `.logs/worker.log` at the repo root. Use these when `bun run dev` truncates terminal output — e.g. `tail -f .logs/worker.log` for provider API errors including `responseBody`.
+| Variable                        | Description                                    |
+| ------------------------------- | ---------------------------------------------- |
+| `IMAP_POLL_INTERVAL_SECONDS`    | IMAP poll interval in seconds (minimum: 60)    |
+| `COMMENT_POLL_INTERVAL_SECONDS` | Comment poll interval in seconds (minimum: 60) |
 
 ### Authentication
 
@@ -144,6 +153,9 @@ Enabled with `LOCAL_LOGIN=true`. Supports credential sign-in and passkeys withou
 | -------------------- | --------------------------------------------------------------------------------- |
 | `LOCAL_LOGIN`        | `true` to enable, `false` or unset to disable                                     |
 | `LOCAL_LOGIN_SIGNUP` | Allow sign-up via local credentials (default: `true` when local login is enabled) |
+| `WEBAUTHN_RP_ID`     | Passkey relying party ID (defaults from `WEB_URL`)                                |
+| `WEBAUTHN_RP_NAME`   | Passkey relying party display name (default: `Servicebeard`)                      |
+| `WEBAUTHN_ORIGIN`    | Passkey origin (defaults from `WEB_URL`)                                          |
 
 #### OIDC (generic IdP)
 
@@ -225,6 +237,75 @@ Works with GitLab.com or self-hosted GitLab.
 
 For production, register `{WEB_URL}/api/auth/callback` in each OAuth app (same host users sign in from).
 
+### System mail (optional)
+
+Used for team invites, password reset, and email verification when local login is enabled.
+
+| Variable               | Description                               |
+| ---------------------- | ----------------------------------------- |
+| `MAIL_ADAPTER`         | Mail adapter (`smtp`; default when unset) |
+| `MAIL_FROM_NAME`       | Sender display name                       |
+| `SYSTEM_SMTP_HOST`     | SMTP host                                 |
+| `SYSTEM_SMTP_PORT`     | SMTP port                                 |
+| `SYSTEM_SMTP_SECURE`   | Use TLS (`true` / `false`)                |
+| `SYSTEM_SMTP_USER`     | SMTP username                             |
+| `SYSTEM_SMTP_PASSWORD` | SMTP password                             |
+| `SYSTEM_SMTP_FROM`     | From address (e.g. `noreply@example.com`) |
+
+### Observability (optional)
+
+| Variable                | Description                                   |
+| ----------------------- | --------------------------------------------- |
+| `BUGSINK_API_DSN`       | Bugsink / Sentry-compatible DSN for the API   |
+| `BUGSINK_WORKER_DSN`    | DSN for the worker                            |
+| `VITE_BUGSINK_DSN`      | DSN for the web UI (embedded at build time)   |
+| `VITE_UMAMI_WEBSITE_ID` | Umami Cloud analytics website ID (build time) |
+
+### Extensions (optional)
+
+Plugin extensions add API routes, web UI, and database migrations via a manifest file. Self-hosted OSS deployments typically leave extensions unset.
+
+| Variable                | Description                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `SB_EXTENSION_MANIFEST` | Path to `extension.config.ts` (absolute or relative to repo root)          |
+| `EXTENSION_DIR`         | Path to extension checkout for Docker image builds (see [Deploy](#deploy)) |
+
+**Local development / source builds:**
+
+1. Set `SB_EXTENSION_MANIFEST` in `.env` to the extension's manifest file.
+2. Install the extension's dependencies and merge any additional env vars from its `.env.example`.
+3. Re-run `bun run db:migrate` so extension tables are applied.
+
+**Docker Compose:** set `EXTENSION_DIR` in `.env` to the extension checkout and add the extension's compose overlay file when starting the stack (see [Deploy](#deploy)).
+
+Extension design and hook points are documented in [ARCHITECTURE.md](./ARCHITECTURE.md#extensions).
+
+### Docker Compose (production)
+
+Additional variables used by [`deploy/compose/`](deploy/compose/) (see [`deploy/compose/.env.example`](deploy/compose/.env.example)):
+
+| Variable            | Description                 |
+| ------------------- | --------------------------- |
+| `DOMAIN`            | Public hostname for HTTPS   |
+| `ACME_EMAIL`        | Let's Encrypt contact email |
+| `POSTGRES_USER`     | Postgres username           |
+| `POSTGRES_PASSWORD` | Postgres password           |
+| `POSTGRES_DB`       | Postgres database name      |
+
+## Local development
+
+`docker compose up -d` also starts Postgres, GreenMail, Adminer, and Roundcube. These services are for local development only — they are not deployed to Kubernetes.
+
+**Typical daily flow:**
+
+```bash
+docker compose up -d          # if not already running
+bun run db:migrate            # after pulling new migrations
+bun run dev                   # API + worker + web
+```
+
+In development (`NODE_ENV=development`), the API and worker also append structured JSON logs to `.logs/api.log` and `.logs/worker.log` at the repo root. Use these when `bun run dev` truncates terminal output — e.g. `tail -f .logs/worker.log` for provider API errors including `responseBody`.
+
 ### Database UI
 
 [Adminer](https://www.adminer.org/) is available at http://localhost:8081:
@@ -242,24 +323,6 @@ For a schema-aware view without an extra container, use Drizzle Studio:
 ```bash
 bun run db:studio
 ```
-
-### How sync works
-
-**Inbound (email → issue)**
-
-1. Worker polls IMAP for unseen messages per active project
-2. Thread match via `Message-ID` / `References` / subject+sender
-3. Existing thread → append as public comment on issue
-4. New thread → evaluate rules → create issue on the linked provider with metadata
-5. Optional acknowledgement email to the original sender (project setting)
-
-**Outbound (comment → email)**
-
-1. Provider webhook (`note_events` on GitLab, `issue_comment` on GitHub) or polling fallback
-2. Skip internal comments (`[internal]` marker at the start or end, or GitLab internal notes), email-synced comments (sync marker), bot-authored notes, and already-processed notes
-3. Send threaded reply email via project SMTP
-
-New issues include a collapsible **Support details** footer with a link back to the ServiceBeard project and a reminder about the `[internal]` marker.
 
 ### Testing
 
@@ -344,7 +407,7 @@ Production stack: Postgres, API, worker, web (nginx), and Caddy (HTTPS) in [`dep
 ```bash
 cd deploy/compose
 cp .env.example .env
-# Edit .env — DOMAIN, ACME_EMAIL, POSTGRES_PASSWORD, ENCRYPTION_KEY, SESSION_SECRET, login providers
+# Edit .env — see Configuration above (DOMAIN, ACME_EMAIL, POSTGRES_PASSWORD, ENCRYPTION_KEY, SESSION_SECRET, login providers)
 
 # Web image: embed VITE_* and CLOUD_PLAN_* vars from .env (see apps/web/vite.config.ts envPrefix)
 bun run extract-vite-env.ts .env .env.vite
@@ -354,14 +417,14 @@ docker compose --env-file .env -f docker-compose.yml up -d --build
 
 Point your domain at the server before starting Caddy so Let's Encrypt can issue a certificate. The API container runs database migrations on startup.
 
-**With a plugin extension** (e.g. the private cloud edition), set `EXTENSION_DIR` in `.env` to the extension checkout and add its compose overlay:
+**With a plugin extension**, set `EXTENSION_DIR` in `.env` to the extension checkout and add its compose overlay:
 
 ```bash
 bun run extract-vite-env.ts .env .env.vite
 
 docker compose --env-file .env \
   -f docker-compose.yml \
-  -f /path/to/extension/deploy/compose.cloud.yml \
+  -f /path/to/extension/deploy/compose.yml \
   up -d --build
 ```
 
