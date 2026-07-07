@@ -3,6 +3,7 @@ import {
   INBOUND_COMMENT_TEMPLATE_VARIABLES,
   INBOUND_ISSUE_TEMPLATE_VARIABLES,
   OUTBOUND_COMMENT_TEMPLATE_VARIABLES,
+  templatePreviewVariables,
 } from "@servicebeard/shared";
 import {
   TEMPLATE_DEFAULTS,
@@ -11,7 +12,8 @@ import {
 } from "../lib/projectTemplatesForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
-import { Checkbox, Textarea } from "./Input";
+import { Checkbox } from "./Input";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 interface ProjectTemplatesFormProps {
   values: ProjectTemplatesFormValues;
@@ -40,7 +42,7 @@ function TemplateVariables({ variables }: { variables: readonly string[] }) {
   );
 }
 
-interface TemplateTextareaProps {
+interface TemplateEditorProps {
   field: TemplateField;
   label: string;
   value: string;
@@ -49,10 +51,11 @@ interface TemplateTextareaProps {
   hint?: string;
   disabled?: boolean;
   error?: string;
+  outputHint: string;
   onChange: (field: TemplateField, value: string) => void;
 }
 
-function TemplateTextarea({
+function TemplateEditor({
   field,
   label,
   value,
@@ -61,19 +64,26 @@ function TemplateTextarea({
   hint,
   disabled,
   error,
+  outputHint,
   onChange,
-}: TemplateTextareaProps) {
+}: TemplateEditorProps) {
   const defaultTemplate = TEMPLATE_DEFAULTS[field];
   const isDefault = value === defaultTemplate;
 
   return (
     <>
-      <Textarea
+      <MarkdownEditor
         label={label}
         value={value}
-        onChange={(e) => onChange(field, e.target.value)}
+        onChange={(next) => onChange(field, next)}
         rows={rows}
-        hint={hint}
+        previewVariables={templatePreviewVariables(variables)}
+        hint={
+          <>
+            {hint ? <>{hint} </> : null}
+            {outputHint}
+          </>
+        }
         disabled={disabled}
         error={error}
         labelAction={
@@ -137,7 +147,7 @@ export function ProjectTemplatesForm({
           disabled={!values.inboundAckEnabled}
           hint="When enabled, a copy of each acknowledgement is sent to the project's From address so it appears in the support inbox."
         />
-        <TemplateTextarea
+        <TemplateEditor
           field="inboundAckTemplate"
           label="Acknowledgement template"
           value={values.inboundAckTemplate}
@@ -146,6 +156,7 @@ export function ProjectTemplatesForm({
           disabled={!values.inboundAckEnabled}
           error={fieldErrors?.inboundAckTemplate}
           variables={INBOUND_ACK_TEMPLATE_VARIABLES}
+          outputHint="Rich text is stored as Markdown and sent as HTML email with a plain-text fallback."
         />
       </div>
 
@@ -161,7 +172,7 @@ export function ProjectTemplatesForm({
           onChange={(v) => handleChange("outboundCommentCcMailbox", v)}
           hint="When enabled, a copy of each comment reply is sent to the project's From address so the full conversation stays in the support inbox."
         />
-        <TemplateTextarea
+        <TemplateEditor
           field="outboundCommentTemplate"
           label="Reply email template"
           value={values.outboundCommentTemplate}
@@ -169,6 +180,7 @@ export function ProjectTemplatesForm({
           rows={8}
           error={fieldErrors?.outboundCommentTemplate}
           variables={OUTBOUND_COMMENT_TEMPLATE_VARIABLES}
+          outputHint="Rich text is stored as Markdown and sent as HTML email with a plain-text fallback."
         />
       </div>
 
@@ -178,7 +190,7 @@ export function ProjectTemplatesForm({
           Controls how customer emails appear as issues and comments in your
           tracker. ServiceBeard appends sync metadata automatically.
         </p>
-        <TemplateTextarea
+        <TemplateEditor
           field="inboundIssueTemplate"
           label="New issue template"
           value={values.inboundIssueTemplate}
@@ -187,8 +199,9 @@ export function ProjectTemplatesForm({
           hint="Used when a new customer email creates an issue."
           error={fieldErrors?.inboundIssueTemplate}
           variables={INBOUND_ISSUE_TEMPLATE_VARIABLES}
+          outputHint="Rich text is stored as Markdown for your issue tracker."
         />
-        <TemplateTextarea
+        <TemplateEditor
           field="inboundCommentTemplate"
           label="Customer reply template"
           value={values.inboundCommentTemplate}
@@ -197,6 +210,7 @@ export function ProjectTemplatesForm({
           hint="Used when a customer replies to an existing thread."
           error={fieldErrors?.inboundCommentTemplate}
           variables={INBOUND_COMMENT_TEMPLATE_VARIABLES}
+          outputHint="Rich text is stored as Markdown for your issue tracker."
         />
       </div>
 

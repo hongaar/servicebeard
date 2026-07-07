@@ -10,6 +10,7 @@ import {
   isEligibleForInboundRuleEvaluation,
   isEmailEligibleForInboundSync,
   normalizeSubject,
+  buildMarkdownEmailParts,
   renderInboundAckTemplate,
   resolveServicebeardWebUrl,
   type ProviderType,
@@ -400,6 +401,7 @@ async function sendInboundAckEmail(
     issueUrl: issue.url,
   });
   const body = replyBodyWithQuote(ackBody, quotedEmailFromParsed(email));
+  const multipart = buildMarkdownEmailParts(body);
 
   const { inReplyTo, references } = threadingForParent(
     email.messageId,
@@ -428,7 +430,8 @@ async function sendInboundAckEmail(
       toName: thread.originalSenderName,
       cc,
       subject: email.subject,
-      body,
+      body: multipart.text,
+      bodyHtml: multipart.html,
       inReplyTo,
       references,
     },

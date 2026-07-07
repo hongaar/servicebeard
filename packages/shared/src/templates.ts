@@ -1,6 +1,8 @@
+import { markdownToHtml, markdownToPlainText } from "./email-content";
+
 export const DEFAULT_INBOUND_ACK_TEMPLATE = `Thank you for contacting us.
 
-We have received your email regarding "{{subject}}" and created issue #{{issueNumber}} for our team to review. We will follow up with you soon.
+We have received your email regarding **"{{subject}}"** and created issue **#{{issueNumber}}** for our team to review. We will follow up with you soon.
 
 Reference: {{issueUrl}}`;
 
@@ -47,6 +49,30 @@ export const INBOUND_COMMENT_TEMPLATE_VARIABLES = [
   "senderEmail",
   "body",
 ] as const;
+
+/** Sample values for template preview in the UI. */
+export const TEMPLATE_PREVIEW_VALUES: Record<string, string> = {
+  senderName: "Jane Customer",
+  senderEmail: "jane@example.com",
+  sender: "Jane Customer <jane@example.com>",
+  subject: "Help with my order",
+  issueNumber: "42",
+  issueUrl: "https://gitlab.example.com/issues/42",
+  commentBody:
+    "Thanks for your patience — we shipped a fix and it should be live now.",
+  authorName: "Alex Support",
+  body: "Hi, I'm having trouble with my recent order. Could you help?",
+};
+
+export function templatePreviewVariables(
+  variableNames: readonly string[],
+): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const name of variableNames) {
+    vars[name] = TEMPLATE_PREVIEW_VALUES[name] ?? name;
+  }
+  return vars;
+}
 
 export interface InboundAckTemplateVars {
   senderName: string;
@@ -123,4 +149,15 @@ export function renderInboundCommentTemplate(
   vars: InboundCommentTemplateVars,
 ): string {
   return renderTemplate(template, vars);
+}
+
+/** Markdown email body as multipart plain text and HTML parts. */
+export function buildMarkdownEmailParts(markdown: string): {
+  text: string;
+  html: string;
+} {
+  return {
+    text: markdownToPlainText(markdown),
+    html: markdownToHtml(markdown),
+  };
 }

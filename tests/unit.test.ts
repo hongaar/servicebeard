@@ -1100,6 +1100,61 @@ describe("outbound comment template", () => {
   });
 });
 
+describe("buildMarkdownEmailParts", () => {
+  test("produces plain text and html from markdown templates", async () => {
+    const { buildMarkdownEmailParts } = await import("@servicebeard/shared");
+    const { text, html } = buildMarkdownEmailParts("Hello **{{name}}**");
+    expect(text).toContain("Hello");
+    expect(text).toContain("{{name}}");
+    expect(html).toContain("<strong>");
+    expect(html).toContain("{{name}}");
+  });
+});
+
+describe("markdownEditor helpers", () => {
+  test("wraps the current selection", async () => {
+    const { wrapSelection } =
+      await import("../apps/web/src/lib/markdownEditor.ts");
+    const result = wrapSelection("hello world", 6, 11, "**", "**");
+    expect(result.value).toBe("hello **world**");
+    expect(result.selectionStart).toBe(8);
+    expect(result.selectionEnd).toBe(13);
+  });
+
+  test("prefixes list lines", async () => {
+    const { prefixLines } =
+      await import("../apps/web/src/lib/markdownEditor.ts");
+    const result = prefixLines("one\ntwo", 0, 7, "- ");
+    expect(result.value).toBe("- one\n- two");
+  });
+});
+
+describe("template preview variables", () => {
+  test("fills sample values for known template variables", async () => {
+    const { templatePreviewVariables, renderInboundAckTemplate } =
+      await import("@servicebeard/shared");
+    const vars = templatePreviewVariables([
+      "senderName",
+      "subject",
+      "issueNumber",
+      "issueUrl",
+    ]);
+    const rendered = renderInboundAckTemplate(
+      "Hi {{senderName}}, issue #{{issueNumber}}: {{issueUrl}}",
+      {
+        senderName: vars.senderName,
+        senderEmail: "jane@example.com",
+        subject: vars.subject,
+        issueNumber: Number(vars.issueNumber),
+        issueUrl: vars.issueUrl,
+      },
+    );
+    expect(rendered).toContain("Jane Customer");
+    expect(rendered).toContain("#42");
+    expect(rendered).not.toContain("{{");
+  });
+});
+
 describe("normalizeSubject", () => {
   test("strips Re: prefix", () => {
     expect(normalizeSubject("Re: Hello")).toBe("hello");
