@@ -7,6 +7,7 @@ export * from "./http";
 export * from "./linear";
 export * from "./log";
 export * from "./types";
+export * from "./upload";
 
 import { GitHubProvider } from "./github";
 import { GitLabProvider } from "./gitlab";

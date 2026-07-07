@@ -24,14 +24,38 @@ describe("normalizeSubject", () => {
   });
 });
 
+describe("isReplySubject", () => {
+  test("detects reply prefixes", async () => {
+    const { isReplySubject } = await import("@servicebeard/shared");
+    expect(isReplySubject("Re: Hello")).toBe(true);
+    expect(isReplySubject("Fwd: Test")).toBe(true);
+    expect(isReplySubject("FW: Test")).toBe(true);
+    expect(isReplySubject("Hello")).toBe(false);
+    expect(isReplySubject("test")).toBe(false);
+  });
+});
+
 describe("sync error classification", () => {
   test("classifies mail and provider operations", async () => {
     const { classifySyncError } = await import("@servicebeard/shared");
     expect(classifySyncError("imap", "fetch-unseen")).toBe("mail");
     expect(classifySyncError("smtp", "send-mail")).toBe("mail");
+    expect(classifySyncError("smtp", "send-ack")).toBe("mail");
+    expect(classifySyncError("smtp", "send-outbound-email")).toBe("mail");
     expect(classifySyncError("github", "list-comments")).toBe("provider");
     expect(classifySyncError("linear", "list-comments")).toBe("provider");
+    expect(classifySyncError("linear", "create-issue")).toBe("provider");
     expect(classifySyncError("inbound", "process-message")).toBe("provider");
     expect(classifySyncError("api", "unknown")).toBeNull();
+  });
+
+  test("classifies retriable failures as warnings", async () => {
+    const { classifySyncFailureSeverity } =
+      await import("@servicebeard/shared");
+    expect(classifySyncFailureSeverity("process-message")).toBe("warning");
+    expect(classifySyncFailureSeverity("list-comments")).toBe("warning");
+    expect(classifySyncFailureSeverity("fetch-since")).toBe("warning");
+    expect(classifySyncFailureSeverity("test-provider")).toBe("error");
+    expect(classifySyncFailureSeverity("ensure-webhook")).toBe("error");
   });
 });

@@ -11,6 +11,10 @@ import {
   type ProviderProjectLabel,
 } from "@servicebeard/shared";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import {
+  linearApiErrorMessage,
+  linearUploadErrorMessage,
+} from "./error-messages";
 import { ProviderApiError } from "./errors";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
@@ -26,6 +30,11 @@ import type {
   ProviderOptions,
   UploadFileResult,
 } from "./types";
+import {
+  assertNonEmptyUpload,
+  signedUploadHeaders,
+  uploadBlob,
+} from "./upload";
 
 const LINEAR_API_URL = "https://api.linear.app/graphql";
 const UUID_RE =
@@ -146,7 +155,7 @@ export class LinearProvider implements IssueProvider {
       }
       throw new LinearApiError(
         response.status,
-        `Linear API error ${response.status}: ${text}`,
+        linearApiErrorMessage(response.status, text),
         text,
       );
     }
@@ -603,6 +612,7 @@ export class LinearProvider implements IssueProvider {
     content: Buffer,
     mimeType: string,
   ): Promise<UploadFileResult> {
+    const normalized = assertNonEmptyUpload(content, filename);
     const data = await this.graphql<{
       fileUpload: {
         success: boolean;
@@ -626,7 +636,7 @@ export class LinearProvider implements IssueProvider {
       {
         contentType: mimeType,
         filename,
-        size: content.length,
+        size: normalized.length,
       },
     );
 
@@ -635,15 +645,13 @@ export class LinearProvider implements IssueProvider {
       throw new LinearApiError(400, "Linear fileUpload failed");
     }
 
-    const headers: Record<string, string> = {};
-    for (const header of upload.headers) {
-      headers[header.key] = header.value;
-    }
+    const putHeaders = signedUploadHeaders(upload.headers, mimeType);
+    const { body } = uploadBlob(normalized, putHeaders["Content-Type"]!);
 
     const putResponse = await fetch(upload.uploadUrl, {
       method: "PUT",
-      headers,
-      body: content,
+      headers: putHeaders,
+      body,
     });
 
     if (!putResponse.ok) {
@@ -654,7 +662,7 @@ export class LinearProvider implements IssueProvider {
       });
       throw new LinearApiError(
         putResponse.status,
-        `Linear upload PUT error ${putResponse.status}: ${text}`,
+        linearUploadErrorMessage(putResponse.status, text),
         text,
       );
     }
@@ -759,7 +767,7 @@ export class LinearProvider implements IssueProvider {
         comments: { nodes: LinearComment[] };
       } | null;
     }>(
-      `query IssueComments($issueId: String!, $since: DateTime!) {
+      `query IssueComments($issueId: String!, $since: DateTimeOrDuration!) {
         issue(id: $issueId) {
           comments(filter: { createdAt: { gte: $since } }) {
             nodes {

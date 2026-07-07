@@ -21,6 +21,7 @@ export async function loadProjectThreadMatchIndex(
       .select({
         subjectNormalized: issueThreads.subjectNormalized,
         originalSenderEmail: issueThreads.originalSenderEmail,
+        lastActivityAt: issueThreads.updatedAt,
       })
       .from(issueThreads)
       .where(eq(issueThreads.projectId, projectId)),

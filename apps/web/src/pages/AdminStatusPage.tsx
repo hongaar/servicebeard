@@ -12,9 +12,9 @@ import {
   type AdminCheckResult,
   type AdminStatusEvent,
   type AdminStatusResponse,
-  type ProjectStatusEvent,
 } from "../lib/api";
 import { iconMd } from "../lib/icons";
+import { statusSeverityClass } from "../lib/statusEvents";
 import styles from "../styles/pages.module.css";
 
 const CATEGORY_LABELS: Record<AdminCheckResult["category"], string> = {
@@ -75,12 +75,6 @@ function StatusSummary({ status }: { status: AdminStatusResponse }) {
       </span>
     </div>
   );
-}
-
-function statusSeverityClass(severity: ProjectStatusEvent["severity"]) {
-  if (severity === "warning") return styles.statusSeverityWarning;
-  if (severity === "info") return styles.statusSeverityInfo;
-  return styles.statusSeverityError;
 }
 
 function AdminStatusEventsSection() {

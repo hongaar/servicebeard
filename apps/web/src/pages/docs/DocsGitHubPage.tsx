@@ -77,7 +77,11 @@ export function DocsGitHubPage() {
           <ul>
             <li>
               <strong>Issues</strong> — Read and write (create issues, comments,
-              reactions, attachments)
+              reactions)
+            </li>
+            <li>
+              <strong>Contents</strong> — Read and write (upload inline images
+              from inbound email to <code>.servicebeard/attachments/</code>)
             </li>
             <li>
               <strong>Webhooks</strong> — Read and write (register the comment
@@ -230,8 +234,15 @@ export function DocsGitHubPage() {
             <td>Issues</td>
             <td>Read and write</td>
             <td>
-              Create issues from mail, post and read comments, upload comment
-              attachments, add reactions
+              Create issues from mail, post and read comments, add reactions
+            </td>
+          </tr>
+          <tr>
+            <td>Contents</td>
+            <td>Read and write</td>
+            <td>
+              Upload inline images from inbound email to{" "}
+              <code>.servicebeard/attachments/</code>
             </td>
           </tr>
           <tr>
@@ -261,8 +272,9 @@ export function DocsGitHubPage() {
       </table>
 
       <p>
-        You do <strong>not</strong> need Contents, Pull requests, or other
-        permissions for normal ServiceBeard operation.
+        You do <strong>not</strong> need Pull requests or other permissions for
+        normal ServiceBeard operation. Contents is required only when inbound
+        email includes inline images.
       </p>
       <p>
         Generate the token and paste it into the project&apos;s{" "}

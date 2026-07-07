@@ -1,5 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { parseGithubRepository } from "@servicebeard/shared";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { githubApiErrorMessage } from "./error-messages";
 import { ProviderApiError } from "./errors";
 import { getGithubAppBotUser, resolveGithubAccessToken } from "./github-app";
 import { providerFetch } from "./http";
@@ -16,6 +17,7 @@ import type {
   ProviderOptions,
   UploadFileResult,
 } from "./types";
+import { assertNonEmptyUpload } from "./upload";
 
 interface GitHubUser {
   id: number;
@@ -79,19 +81,6 @@ function apiBase(baseUrl: string): string {
   return `${normalized}/api/v3`;
 }
 
-function uploadsBase(baseUrl: string): string {
-  const normalized = baseUrl.replace(/\/$/, "");
-  try {
-    const parsed = new URL(normalized);
-    if (parsed.hostname === "github.com") {
-      return "https://uploads.github.com";
-    }
-    return `${parsed.protocol}//${parsed.host}/uploads`;
-  } catch {
-    return "https://uploads.github.com";
-  }
-}
-
 function inferImageContentTypeFromUrl(url: string): string | null {
   const ext = url.split("?")[0]?.split(".").pop()?.toLowerCase();
   switch (ext) {
@@ -125,6 +114,25 @@ const GITHUB_REACTIONS: Record<string, string> = {
   "e-mail": "rocket",
 };
 
+/** Orphan branch for email attachments; no history shared with the default branch. */
+export const GITHUB_ATTACHMENTS_BRANCH = "servicebeard-attachments";
+
+/** Same-repo raw URL for issue markdown; works for private repos when the viewer has access. */
+export function githubIssueAttachmentUrl(
+  baseUrl: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+): string {
+  const base = baseUrl.replace(/\/$/, "");
+  const encodedPath = path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${base}/${owner}/${repo}/raw/${branch}/${encodedPath}`;
+}
+
 export class GitHubProvider implements IssueProvider {
   readonly name = "github";
 
@@ -137,6 +145,154 @@ export class GitHubProvider implements IssueProvider {
   private repoPath(): string {
     const { owner, repo } = this.repo;
     return `/repos/${owner}/${repo}`;
+  }
+
+  private async getAttachmentsBranchHead(): Promise<string | null> {
+    try {
+      const ref = await this.request<{ object: { sha: string } }>(
+        "GET",
+        `${this.repoPath()}/git/ref/heads/${GITHUB_ATTACHMENTS_BRANCH}`,
+        undefined,
+        { quiet404: true },
+      );
+      return ref.object.sha;
+    } catch (err) {
+      if (err instanceof GitHubApiError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  private async createAttachmentCommit(
+    path: string,
+    content: Buffer,
+    message: string,
+    parentSha: string | null,
+  ): Promise<string> {
+    const blob = await this.request<{ sha: string }>(
+      "POST",
+      `${this.repoPath()}/git/blobs`,
+      {
+        content: content.toString("base64"),
+        encoding: "base64",
+      },
+    );
+
+    let baseTree: string | undefined;
+    if (parentSha) {
+      const parent = await this.request<{ tree: { sha: string } }>(
+        "GET",
+        `${this.repoPath()}/git/commits/${parentSha}`,
+      );
+      baseTree = parent.tree.sha;
+    }
+
+    const tree = await this.request<{ sha: string }>(
+      "POST",
+      `${this.repoPath()}/git/trees`,
+      {
+        ...(baseTree ? { base_tree: baseTree } : {}),
+        tree: [
+          {
+            path,
+            mode: "100644",
+            type: "blob",
+            sha: blob.sha,
+          },
+        ],
+      },
+    );
+
+    const commit = await this.request<{ sha: string }>(
+      "POST",
+      `${this.repoPath()}/git/commits`,
+      {
+        message,
+        tree: tree.sha,
+        parents: parentSha ? [parentSha] : [],
+      },
+    );
+
+    return commit.sha;
+  }
+
+  private async advanceAttachmentsBranch(
+    commitSha: string,
+    parentSha: string | null,
+  ): Promise<boolean> {
+    if (parentSha) {
+      await this.request(
+        "PATCH",
+        `${this.repoPath()}/git/refs/heads/${GITHUB_ATTACHMENTS_BRANCH}`,
+        { sha: commitSha },
+      );
+      return true;
+    }
+
+    try {
+      await this.request("POST", `${this.repoPath()}/git/refs`, {
+        ref: `refs/heads/${GITHUB_ATTACHMENTS_BRANCH}`,
+        sha: commitSha,
+      });
+      return true;
+    } catch (err) {
+      if (err instanceof GitHubApiError && err.status === 422) {
+        return false;
+      }
+      throw err;
+    }
+  }
+
+  private async commitAttachment(
+    path: string,
+    content: Buffer,
+    message: string,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const parentSha = await this.getAttachmentsBranchHead();
+        const commitSha = await this.createAttachmentCommit(
+          path,
+          content,
+          message,
+          parentSha,
+        );
+
+        const advanced = await this.advanceAttachmentsBranch(
+          commitSha,
+          parentSha,
+        );
+        if (advanced) {
+          return;
+        }
+      } catch (err) {
+        if (
+          attempt === 0 &&
+          err instanceof GitHubApiError &&
+          err.status === 422
+        ) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw new GitHubApiError(
+      422,
+      "Could not update attachments branch after retry",
+    );
+  }
+
+  private rawContentUrl(branch: string, path: string): string {
+    const { owner, repo } = this.repo;
+    return githubIssueAttachmentUrl(
+      this.config.baseUrl,
+      owner,
+      repo,
+      branch,
+      path,
+    );
   }
 
   private async authHeaders(
@@ -184,7 +340,7 @@ export class GitHubProvider implements IssueProvider {
       }
       throw new GitHubApiError(
         status,
-        `GitHub API error ${status}: ${text}`,
+        githubApiErrorMessage(status, path, text),
         text,
       );
     }
@@ -296,37 +452,20 @@ export class GitHubProvider implements IssueProvider {
   async uploadFile(
     filename: string,
     content: Buffer,
-    mimeType: string,
+    _mimeType: string,
   ): Promise<UploadFileResult> {
-    const { owner, repo } = this.repo;
-    const form = new FormData();
-    form.append("file", new Blob([content], { type: mimeType }), filename);
+    const normalized = assertNonEmptyUpload(content, filename);
+    const safeName = filename.replace(/[^\w.\-()+ ]/g, "_") || "attachment";
+    const path = `.servicebeard/attachments/${crypto.randomUUID()}/${safeName}`;
+    const branch = GITHUB_ATTACHMENTS_BRANCH;
 
-    const url = `${uploadsBase(this.config.baseUrl)}/repos/${owner}/${repo}/assets`;
-    const response = await providerFetch(this.config, url, {
-      method: "POST",
-      headers: await this.authHeaders(),
-      body: form,
-    });
+    await this.commitAttachment(
+      path,
+      normalized,
+      `Add email attachment ${safeName}`,
+    );
 
-    if (!response.ok) {
-      const text = await response.text();
-      logProvider("error", "GitHub file upload failed", {
-        status: response.status,
-        bodyPreview: text.slice(0, 500),
-      });
-      throw new GitHubApiError(
-        response.status,
-        `GitHub upload error ${response.status}: ${text}`,
-        text,
-      );
-    }
-
-    const data = (await response.json()) as { url?: string; href?: string };
-    const assetUrl = data.url ?? data.href;
-    if (!assetUrl) {
-      throw new Error("GitHub upload response missing asset URL");
-    }
+    const assetUrl = this.rawContentUrl(branch, path);
 
     return {
       url: assetUrl,

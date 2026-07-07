@@ -1,5 +1,9 @@
 import { parseGitLabUploadPath } from "@servicebeard/shared/email-content";
 import { ProviderApiError } from "./errors";
+import {
+  gitlabApiErrorMessage,
+  gitlabUploadErrorMessage,
+} from "./error-messages";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {
@@ -14,6 +18,7 @@ import type {
   ProviderOptions,
   UploadFileResult,
 } from "./types";
+import { assertNonEmptyUpload } from "./upload";
 
 interface GitLabUser {
   id: number;
@@ -147,7 +152,7 @@ export class GitLabProvider implements IssueProvider {
       }
       throw new GitLabApiError(
         status,
-        `GitLab API error ${status}: ${text}`,
+        gitlabApiErrorMessage(status, path, text),
         text,
       );
     }
@@ -426,8 +431,12 @@ export class GitLabProvider implements IssueProvider {
     content: Buffer,
     mimeType: string,
   ): Promise<UploadFileResult> {
+    const normalized = assertNonEmptyUpload(content, filename);
     const form = new FormData();
-    form.append("file", new Blob([content], { type: mimeType }), filename);
+    form.append(
+      "file",
+      new File([new Uint8Array(normalized)], filename, { type: mimeType }),
+    );
 
     const url = `${this.apiBase}/projects/${this.encodeProjectId()}/uploads`;
     const response = await providerFetch(this.config, url, {
@@ -446,7 +455,7 @@ export class GitLabProvider implements IssueProvider {
       });
       throw new GitLabApiError(
         response.status,
-        `GitLab upload error ${response.status}: ${text}`,
+        gitlabUploadErrorMessage(response.status, text),
         text,
       );
     }

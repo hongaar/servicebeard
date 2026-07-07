@@ -64,72 +64,62 @@ export async function fetchInboxMessagesSince(
   creds: MailCredentials,
   since: Date,
   skipMessageIds: ReadonlySet<string>,
-  context?: { projectId?: string },
+  _context?: { projectId?: string },
 ): Promise<InboxFetchResult> {
   const client = createImapClient(creds);
   const messages: InboxFetchResult["messages"] = [];
   let scannedThrough: Date | null = null;
 
+  await client.connect();
+  const lock = await client.getMailboxLock("INBOX");
+
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock("INBOX");
-
-    try {
-      const uids = await client.search({ since }, { uid: true });
-      if (!uids || uids.length === 0) {
-        return { messages, scannedThrough };
-      }
-
-      const pendingUids: number[] = [];
-
-      for await (const msg of client.fetch(
-        uids,
-        { envelope: true, uid: true, internalDate: true },
-        { uid: true },
-      )) {
-        if (!msg.uid) continue;
-        const internalDate = parseImapInternalDate(msg.internalDate);
-        scannedThrough = laterDate(scannedThrough, internalDate);
-
-        const envelopeId = msg.envelope?.messageId?.trim();
-        if (!envelopeId) {
-          pendingUids.push(msg.uid);
-          continue;
-        }
-        const messageId = normalizeMessageId(envelopeId);
-        if (!skipMessageIds.has(messageId)) {
-          pendingUids.push(msg.uid);
-        }
-      }
-
-      if (pendingUids.length === 0) {
-        return { messages, scannedThrough };
-      }
-
-      for await (const msg of client.fetch(
-        pendingUids,
-        { source: true, uid: true, internalDate: true },
-        { uid: true },
-      )) {
-        if (!msg.source || !msg.uid) continue;
-        messages.push({
-          uid: msg.uid,
-          raw: msg.source,
-          internalDate: parseImapInternalDate(msg.internalDate),
-        });
-      }
-    } finally {
-      lock.release();
-      await client.logout();
+    const uids = await client.search({ since }, { uid: true });
+    if (!uids || uids.length === 0) {
+      return { messages, scannedThrough };
     }
-  } catch (err) {
-    logExternalError("imap", "fetch-since", err, {
-      projectId: context?.projectId,
-      host: creds.imapHost,
-      port: creds.imapPort,
-      user: creds.imapUser,
-    });
-    throw err;
+
+    const pendingUids: number[] = [];
+
+    for await (const msg of client.fetch(
+      uids,
+      { envelope: true, uid: true, internalDate: true },
+      { uid: true },
+    )) {
+      if (!msg.uid) continue;
+      const internalDate = parseImapInternalDate(msg.internalDate);
+      scannedThrough = laterDate(scannedThrough, internalDate);
+
+      const envelopeId = msg.envelope?.messageId?.trim();
+      if (!envelopeId) {
+        pendingUids.push(msg.uid);
+        continue;
+      }
+      const messageId = normalizeMessageId(envelopeId);
+      if (!skipMessageIds.has(messageId)) {
+        pendingUids.push(msg.uid);
+      }
+    }
+
+    if (pendingUids.length === 0) {
+      return { messages, scannedThrough };
+    }
+
+    for await (const msg of client.fetch(
+      pendingUids,
+      { source: true, uid: true, internalDate: true },
+      { uid: true },
+    )) {
+      if (!msg.source || !msg.uid) continue;
+      messages.push({
+        uid: msg.uid,
+        raw: msg.source,
+        internalDate: parseImapInternalDate(msg.internalDate),
+      });
+    }
+  } finally {
+    lock.release();
+    await client.logout();
   }
 
   return { messages, scannedThrough };

@@ -29,12 +29,7 @@ import { RuleActionsCell } from "../components/RuleActionsCell";
 import { RuleForm } from "../components/RuleForm";
 import { TableRowAction } from "../components/TableRowAction";
 import { ThreadDetailDialog } from "../components/ThreadDetailDialog";
-import {
-  api,
-  type CreateRuleInput,
-  type ProjectStatusEvent,
-  type Rule,
-} from "../lib/api";
+import { api, type CreateRuleInput, type Rule } from "../lib/api";
 import { isResourceCreateBlocked } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import { iconMd } from "../lib/icons";
@@ -51,6 +46,7 @@ import {
   type ProjectTemplatesFormValues,
 } from "../lib/projectTemplatesForm";
 import { formatRuleMatch } from "../lib/ruleDisplay";
+import { statusCategoryLabel, statusSeverityClass } from "../lib/statusEvents";
 import styles from "../styles/pages.module.css";
 
 const SECTION_INFO: Record<ProjectSection, { description: string }> = {
@@ -347,14 +343,9 @@ export function ProjectDetailPage() {
     setEditingRuleId(ruleId);
   };
 
-  const statusCategoryLabel = (category: ProjectStatusEvent["category"]) =>
-    category === "mail" ? "Mailbox" : "Issue provider";
-
-  const statusSeverityClass = (severity: ProjectStatusEvent["severity"]) => {
-    if (severity === "warning") return styles.statusSeverityWarning;
-    if (severity === "info") return styles.statusSeverityInfo;
-    return styles.statusSeverityError;
-  };
+  const attentionStatusCount = statusEvents.filter(
+    (event) => event.severity === "error" || event.severity === "warning",
+  ).length;
 
   const errorStatusCount = statusEvents.filter(
     (event) => event.severity === "error",
@@ -451,9 +442,11 @@ export function ProjectDetailPage() {
               </div>
               <span className={styles.metricLabel}>Status</span>
               <span className={styles.metricHint}>
-                {errorStatusCount === 0
-                  ? "All clear"
-                  : `${errorStatusCount} need attention`}
+                {attentionStatusCount === 0
+                  ? errorStatusCount === 0 && statusEvents.length > 0
+                    ? `${statusEvents.length} recent event${statusEvents.length === 1 ? "" : "s"}`
+                    : "All clear"
+                  : `${attentionStatusCount} need attention`}
               </span>
             </Link>
             <Link

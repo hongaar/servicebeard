@@ -1,5 +1,8 @@
-import { normalizeSubject } from "./constants";
+import { isReplySubject, normalizeSubject } from "./constants";
 import { parseMailFromAddress } from "./mail";
+
+/** Max age for subject-based thread matching when In-Reply-To/References are absent. */
+export const SUBJECT_THREAD_MATCH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface InboundMailboxContext {
   supportEmail: string;
@@ -26,7 +29,23 @@ function effectiveSenderEmail(email: {
 export interface ThreadMatchIndex {
   storedMessageIds: ReadonlySet<string>;
   storedInReplyTos: ReadonlySet<string>;
-  subjectSenderKeys: ReadonlySet<string>;
+  /** subject+sender key → last activity time for freshness checks */
+  subjectThreadActivity: ReadonlyMap<string, Date>;
+}
+
+export function subjectSenderThreadKey(
+  subjectNormalized: string,
+  senderEmail: string,
+): string {
+  return `${subjectNormalized}\0${senderEmail.toLowerCase()}`;
+}
+
+export function isSubjectThreadMatchFresh(
+  lastActivityAt: Date,
+  at: Date = new Date(),
+  maxAgeMs: number = SUBJECT_THREAD_MATCH_MAX_AGE_MS,
+): boolean {
+  return at.getTime() - lastActivityAt.getTime() <= maxAgeMs;
 }
 
 /** Only process emails sent on or after the project was created. */
@@ -66,8 +85,24 @@ export function isRelayedInboundMail(
 
 export function buildThreadMatchIndex(
   storedMessages: Array<{ messageId: string; inReplyTo: string | null }>,
-  threads: Array<{ subjectNormalized: string; originalSenderEmail: string }>,
+  threads: Array<{
+    subjectNormalized: string;
+    originalSenderEmail: string;
+    lastActivityAt: Date;
+  }>,
 ): ThreadMatchIndex {
+  const subjectThreadActivity = new Map<string, Date>();
+  for (const thread of threads) {
+    const key = subjectSenderThreadKey(
+      thread.subjectNormalized,
+      thread.originalSenderEmail,
+    );
+    const existing = subjectThreadActivity.get(key);
+    if (!existing || thread.lastActivityAt.getTime() > existing.getTime()) {
+      subjectThreadActivity.set(key, thread.lastActivityAt);
+    }
+  }
+
   return {
     storedMessageIds: new Set(
       storedMessages.map((message) => message.messageId),
@@ -77,12 +112,7 @@ export function buildThreadMatchIndex(
         .map((message) => message.inReplyTo)
         .filter((value): value is string => Boolean(value)),
     ),
-    subjectSenderKeys: new Set(
-      threads.map(
-        (thread) =>
-          `${thread.subjectNormalized}\0${thread.originalSenderEmail.toLowerCase()}`,
-      ),
-    ),
+    subjectThreadActivity,
   };
 }
 
@@ -93,6 +123,7 @@ export function emailMatchesExistingThread(
     "inReplyTo" | "references" | "subject" | "fromEmail" | "senderEmail"
   >,
   index: ThreadMatchIndex,
+  at: Date = new Date(),
 ): boolean {
   const refIds = [
     ...(email.inReplyTo ? [email.inReplyTo] : []),
@@ -105,8 +136,19 @@ export function emailMatchesExistingThread(
     }
   }
 
-  const subjectSenderKey = `${normalizeSubject(email.subject)}\0${effectiveSenderEmail(email).toLowerCase()}`;
-  return index.subjectSenderKeys.has(subjectSenderKey);
+  if (!isReplySubject(email.subject)) {
+    return false;
+  }
+
+  const subjectSenderKey = subjectSenderThreadKey(
+    normalizeSubject(email.subject),
+    effectiveSenderEmail(email),
+  );
+  const lastActivityAt = index.subjectThreadActivity.get(subjectSenderKey);
+  if (!lastActivityAt) {
+    return false;
+  }
+  return isSubjectThreadMatchFresh(lastActivityAt, at);
 }
 
 /**
@@ -141,5 +183,5 @@ export function isEligibleForInboundRulePreview(
   if (!isEligibleForInboundRuleEvaluation(email, ctx)) {
     return false;
   }
-  return !emailMatchesExistingThread(email, threadIndex);
+  return !emailMatchesExistingThread(email, threadIndex, email.date);
 }

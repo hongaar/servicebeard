@@ -1,3 +1,4 @@
+import { describe, expect, test } from "bun:test";
 import {
   buildThreadMatchIndex,
   emailMatchesExistingThread,
@@ -5,7 +6,6 @@ import {
   isEligibleForInboundRulePreview,
   isEmailEligibleForInboundSync,
 } from "./inbound-mail";
-import { describe, expect, test } from "bun:test";
 
 describe("inbound sync window", () => {
   const projectCreatedAt = new Date("2026-06-01T10:00:00Z");
@@ -129,9 +129,11 @@ describe("inbound thread matching", () => {
       {
         subjectNormalized: "help needed",
         originalSenderEmail: "customer@mail.test",
+        lastActivityAt: new Date("2026-06-02T08:00:00Z"),
       },
     ],
   );
+  const matchAt = new Date("2026-06-02T08:00:00Z");
 
   test("matches by In-Reply-To against stored message IDs", () => {
     expect(
@@ -143,6 +145,7 @@ describe("inbound thread matching", () => {
           fromEmail: "customer@mail.test",
         },
         index,
+        matchAt,
       ),
     ).toBe(true);
   });
@@ -157,11 +160,12 @@ describe("inbound thread matching", () => {
           fromEmail: "customer@mail.test",
         },
         index,
+        matchAt,
       ),
     ).toBe(true);
   });
 
-  test("matches by normalized subject and sender", () => {
+  test("matches by normalized subject and sender for reply subjects", () => {
     expect(
       emailMatchesExistingThread(
         {
@@ -171,6 +175,72 @@ describe("inbound thread matching", () => {
           fromEmail: "customer@mail.test",
         },
         index,
+        matchAt,
+      ),
+    ).toBe(true);
+  });
+
+  test("does not match by subject alone for new conversations", () => {
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: null,
+          references: [],
+          subject: "Help needed",
+          fromEmail: "customer@mail.test",
+        },
+        index,
+        matchAt,
+      ),
+    ).toBe(false);
+  });
+
+  test("does not match stale conversations by subject", () => {
+    const staleIndex = buildThreadMatchIndex(
+      [],
+      [
+        {
+          subjectNormalized: "problem",
+          originalSenderEmail: "customer@mail.test",
+          lastActivityAt: new Date("2026-05-01T08:00:00Z"),
+        },
+      ],
+    );
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: null,
+          references: [],
+          subject: "Re: problem",
+          fromEmail: "customer@mail.test",
+        },
+        staleIndex,
+        new Date("2026-06-02T08:00:00Z"),
+      ),
+    ).toBe(false);
+  });
+
+  test("still matches stale conversations by message references", () => {
+    const staleIndex = buildThreadMatchIndex(
+      [{ messageId: "<parent@mail.test>", inReplyTo: null }],
+      [
+        {
+          subjectNormalized: "problem",
+          originalSenderEmail: "customer@mail.test",
+          lastActivityAt: new Date("2026-05-01T08:00:00Z"),
+        },
+      ],
+    );
+    expect(
+      emailMatchesExistingThread(
+        {
+          inReplyTo: "<parent@mail.test>",
+          references: [],
+          subject: "Re: problem",
+          fromEmail: "customer@mail.test",
+        },
+        staleIndex,
+        new Date("2026-06-02T08:00:00Z"),
       ),
     ).toBe(true);
   });
@@ -186,6 +256,7 @@ describe("inbound thread matching", () => {
           senderEmail: "customer@mail.test",
         },
         index,
+        matchAt,
       ),
     ).toBe(true);
   });
@@ -200,6 +271,7 @@ describe("inbound thread matching", () => {
           fromEmail: "customer@mail.test",
         },
         index,
+        matchAt,
       ),
     ).toBe(false);
   });

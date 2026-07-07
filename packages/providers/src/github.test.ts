@@ -49,6 +49,35 @@ describe("GitHub webhook parsing", () => {
     expect(event).toBeNull();
   });
 
+  test("builds private-repo-safe attachment URLs", async () => {
+    const { GITHUB_ATTACHMENTS_BRANCH, githubIssueAttachmentUrl } =
+      await import("@servicebeard/providers");
+
+    expect(
+      githubIssueAttachmentUrl(
+        "https://github.com",
+        "octocat",
+        "Hello-World",
+        GITHUB_ATTACHMENTS_BRANCH,
+        ".servicebeard/attachments/uuid/inline-image-1.png",
+      ),
+    ).toBe(
+      `https://github.com/octocat/Hello-World/raw/${GITHUB_ATTACHMENTS_BRANCH}/.servicebeard/attachments/uuid/inline-image-1.png`,
+    );
+
+    expect(
+      githubIssueAttachmentUrl(
+        "https://github.com",
+        "octocat",
+        "Hello-World",
+        GITHUB_ATTACHMENTS_BRANCH,
+        ".servicebeard/attachments/uuid/emojis.com long-blue-wizard-beard.png",
+      ),
+    ).toBe(
+      `https://github.com/octocat/Hello-World/raw/${GITHUB_ATTACHMENTS_BRANCH}/.servicebeard/attachments/uuid/emojis.com%20long-blue-wizard-beard.png`,
+    );
+  });
+
   test("verifies webhook signature", async () => {
     const { createHmac } = await import("node:crypto");
     const { GitHubProvider } = await import("@servicebeard/providers");

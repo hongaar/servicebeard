@@ -1,82 +1,17 @@
 import { recordProjectStatusEvent } from "@servicebeard/db";
 import { providerErrorDetails } from "@servicebeard/providers";
+import { createSyncEventRecorder } from "@servicebeard/shared";
 import { logger } from "./logger";
 
-function projectIdFromContext(
-  context?: Record<string, unknown>,
-): string | undefined {
-  return typeof context?.projectId === "string" ? context.projectId : undefined;
-}
+const syncEvents = createSyncEventRecorder({
+  logger,
+  persistEvent: recordProjectStatusEvent,
+  providerErrorDetails,
+});
 
-function persistProjectSyncError(
-  service: string,
-  operation: string,
-  err: unknown,
-  context?: Record<string, unknown>,
-): void {
-  const projectId = projectIdFromContext(context);
-  if (!projectId) return;
+export const { logExternalError, recordSyncStatusEvent } = syncEvents;
 
-  const providerError = providerErrorDetails(err);
-  if (providerError?.status === 404) return;
-
-  void recordProjectStatusEvent({
-    projectId,
-    service,
-    operation,
-    message:
-      providerError?.message ??
-      (err instanceof Error ? err.message : String(err)),
-    status: providerError?.status,
-    responseBody: providerError?.responseBody,
-    metadata: context,
-  }).catch((persistErr) => {
-    logger.warn(
-      { persistErr, projectId, service, operation },
-      "failed to record project sync error",
-    );
-  });
-}
-
-export function logExternalError(
-  service: string,
-  operation: string,
-  err: unknown,
-  context?: Record<string, unknown>,
-): void {
-  const providerError = providerErrorDetails(err);
-  if (providerError) {
-    const level = providerError.status === 404 ? "debug" : "error";
-    logger[level](
-      {
-        service,
-        operation,
-        provider: providerError.name,
-        status: providerError.status,
-        message: providerError.message,
-        responseBody: providerError.responseBody,
-        ...context,
-      },
-      "external service error",
-    );
-    if (providerError.status !== 404) {
-      persistProjectSyncError(service, operation, err, context);
-    }
-    return;
-  }
-
-  logger.error(
-    {
-      service,
-      operation,
-      message: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-      ...context,
-    },
-    "external service error",
-  );
-  persistProjectSyncError(service, operation, err, context);
-}
+export type { ExternalErrorOptions } from "@servicebeard/shared";
 
 export function providerFailureResponse(
   operation: string,
@@ -92,7 +27,7 @@ export function providerFailureResponse(
   const details = providerErrorDetails(err);
   return {
     ok: false,
-    error: err instanceof Error ? err.message : "Connection failed",
+    error: syncEvents.syncErrorMessage("api", operation, err),
     status: details?.status,
     responseBody: details?.responseBody,
   };

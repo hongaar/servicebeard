@@ -657,7 +657,7 @@ export interface ProjectStatusEvent {
   id: string;
   projectId: string;
   category: "mail" | "provider";
-  severity: "error" | "warning" | "info";
+  severity: "error" | "warning" | "info" | "success";
   operation: string;
   message: string;
   status: number | null;

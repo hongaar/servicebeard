@@ -33,7 +33,8 @@ export interface EntitlementRedirect {
 
 export interface ExtensionAppFooterLink {
   label: string;
-  to: string;
+  to?: string;
+  href?: string;
 }
 
 export const extensionRoutes: AnyRoute[] = [];

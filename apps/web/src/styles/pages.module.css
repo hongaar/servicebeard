@@ -539,6 +539,12 @@
   color: var(--color-primary-deep);
 }
 
+.statusSeveritySuccess {
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+}
+
 .statusEventActions {
   display: flex;
   justify-content: flex-end;

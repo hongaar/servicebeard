@@ -1,17 +1,8 @@
 import type { ProjectStatusEvent } from "../lib/api";
+import { statusCategoryLabel, statusSeverityClass } from "../lib/statusEvents";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
-
-function statusCategoryLabel(category: ProjectStatusEvent["category"]): string {
-  return category === "mail" ? "Mailbox" : "Issue provider";
-}
-
-function severityClass(severity: ProjectStatusEvent["severity"]): string {
-  if (severity === "warning") return styles.statusSeverityWarning;
-  if (severity === "info") return styles.statusSeverityInfo;
-  return styles.statusSeverityError;
-}
 
 interface ProjectStatusEventDialogProps {
   event: ProjectStatusEvent | null;
@@ -39,9 +30,10 @@ export function ProjectStatusEventDialog({
         <>
           <div className={styles.statusEventDialogHeader}>
             <span
-              className={[styles.badge, severityClass(event.severity)].join(
-                " ",
-              )}
+              className={[
+                styles.badge,
+                statusSeverityClass(event.severity),
+              ].join(" ")}
             >
               {event.severity}
             </span>

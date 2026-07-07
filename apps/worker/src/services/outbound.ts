@@ -6,14 +6,14 @@ import {
   projects,
 } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
-import { ProviderApiError } from "@servicebeard/providers";
 import {
+  formatSendOutboundEmailSuccess,
   isServicebeardInternalContent,
   isServicebeardSyncedContent,
   renderOutboundCommentTemplate,
 } from "@servicebeard/shared";
 import { and, eq, isNull } from "drizzle-orm";
-import { logExternalError } from "../lib/external-error";
+import { logExternalError, recordSyncStatusEvent } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import {
@@ -281,6 +281,25 @@ export async function processOutboundComment(
     { threadId: thread.id, noteId: event.noteId, inReplyTo, cc },
     "sent outbound email",
   );
+
+  recordSyncStatusEvent({
+    projectId,
+    service: "smtp",
+    operation: "send-outbound-email",
+    severity: "success",
+    message: formatSendOutboundEmailSuccess({
+      issueIid: thread.issueIid,
+      recipientEmail: thread.originalSenderEmail,
+      recipientName: thread.originalSenderName,
+      authorName: commentAuthorDisplayName(event),
+    }),
+    metadata: {
+      threadId: thread.id,
+      issueIid: thread.issueIid,
+      noteId: event.noteId,
+      messageId,
+    },
+  });
 }
 
 export async function pollCommentsForProject(projectId: string): Promise<void> {
@@ -326,13 +345,11 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
     try {
       notes = await provider.listCommentsSince(thread.issueIid, since);
     } catch (err) {
-      if (!(err instanceof ProviderApiError)) {
-        logExternalError(project.provider, "list-comments", err, {
-          projectId,
-          threadId: thread.id,
-          issueIid: thread.issueIid,
-        });
-      }
+      logExternalError(project.provider, "list-comments", err, {
+        projectId,
+        threadId: thread.id,
+        issueIid: thread.issueIid,
+      });
       continue;
     }
 

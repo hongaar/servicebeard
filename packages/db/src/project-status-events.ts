@@ -1,11 +1,12 @@
 import type { ProjectStatusSeverity } from "@servicebeard/shared";
 import { classifySyncError } from "@servicebeard/shared";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { getDb } from "./index";
 import { projects, projectStatusEvents, teams } from "./schema";
 
 const MAX_RESPONSE_BODY = 4000;
 const MAX_EVENTS_PER_PROJECT = 200;
+const DUPLICATE_EVENT_WINDOW_MS = 30 * 60 * 1000;
 
 export interface RecordProjectStatusEventInput {
   projectId: string;
@@ -32,13 +33,35 @@ export async function recordProjectStatusEvent(
   const category = classifySyncError(input.service, input.operation);
   if (!category) return;
 
+  const message = input.message.slice(0, 2000);
+  const severity = input.severity ?? "error";
   const db = getDb();
+
+  const shouldDedupe = severity === "error" || severity === "warning";
+
+  if (shouldDedupe) {
+    const duplicate = await db.query.projectStatusEvents.findFirst({
+      where: and(
+        eq(projectStatusEvents.projectId, input.projectId),
+        eq(projectStatusEvents.operation, input.operation),
+        eq(projectStatusEvents.message, message),
+        isNull(projectStatusEvents.dismissedAt),
+        gte(
+          projectStatusEvents.createdAt,
+          new Date(Date.now() - DUPLICATE_EVENT_WINDOW_MS),
+        ),
+      ),
+      columns: { id: true },
+    });
+    if (duplicate) return;
+  }
+
   await db.insert(projectStatusEvents).values({
     projectId: input.projectId,
     category,
-    severity: input.severity ?? "error",
+    severity,
     operation: input.operation,
-    message: input.message.slice(0, 2000),
+    message,
     status: input.status ?? null,
     responseBody: input.responseBody?.slice(0, MAX_RESPONSE_BODY) ?? null,
     metadata: sanitizeMetadata(input.metadata),

@@ -1,10 +1,58 @@
-export const PROJECT_STATUS_SEVERITIES = ["error", "warning", "info"] as const;
+export const PROJECT_STATUS_SEVERITIES = [
+  "error",
+  "warning",
+  "info",
+  "success",
+] as const;
 export type ProjectStatusSeverity = (typeof PROJECT_STATUS_SEVERITIES)[number];
 
 export const SYNC_ERROR_CATEGORIES = ["mail", "provider"] as const;
 export type SyncErrorCategory = (typeof SYNC_ERROR_CATEGORIES)[number];
 export const PROJECT_STATUS_CATEGORIES = SYNC_ERROR_CATEGORIES;
 export type ProjectStatusCategory = SyncErrorCategory;
+
+const MAIL_OPERATIONS = new Set([
+  "test-mail",
+  "imap-poll-project",
+  "fetch-since",
+  "poll",
+  "send-mail",
+  "send-ack",
+  "send-outbound-email",
+  "mark-seen",
+]);
+
+const PROVIDER_OPERATIONS = new Set([
+  "test-provider",
+  "ensure-webhook",
+  "process-message",
+  "list-comments",
+  "send-email",
+  "comment-poll-project",
+  "upload-inline-image",
+  "download-image",
+  "create-issue",
+  "add-issue-comment",
+]);
+
+/** Operations whose failures are retried automatically and recorded as warnings. */
+const RETRIABLE_FAILURE_OPERATIONS = new Set([
+  "process-message",
+  "list-comments",
+  "fetch-since",
+  "poll",
+  "imap-poll-project",
+  "comment-poll-project",
+  "mark-seen",
+  "send-email",
+  "send-mail",
+]);
+
+export function classifySyncFailureSeverity(
+  operation: string,
+): Extract<ProjectStatusSeverity, "error" | "warning"> {
+  return RETRIABLE_FAILURE_OPERATIONS.has(operation) ? "warning" : "error";
+}
 
 export function classifySyncError(
   service: string,
@@ -13,8 +61,7 @@ export function classifySyncError(
   if (
     service === "imap" ||
     service === "smtp" ||
-    operation === "test-mail" ||
-    operation === "imap-poll-project"
+    MAIL_OPERATIONS.has(operation)
   ) {
     return "mail";
   }
@@ -25,18 +72,16 @@ export function classifySyncError(
     service === "linear" ||
     service === "inbound" ||
     service === "outbound-email" ||
-    operation === "test-provider" ||
-    operation === "ensure-webhook" ||
-    operation === "process-message" ||
-    operation === "list-comments" ||
-    operation === "send-email" ||
-    operation === "comment-poll-project" ||
-    operation === "upload-inline-image"
+    PROVIDER_OPERATIONS.has(operation)
   ) {
     return "provider";
   }
 
   return null;
+}
+
+export function isQuietProvider404(operation: string): boolean {
+  return operation === "list-comments" || operation === "comment-poll-project";
 }
 
 export const TEAM_ROLES = ["owner", "admin", "member"] as const;
@@ -81,4 +126,9 @@ export function normalizeSubject(subject: string): string {
     .replace(/^(re|fwd|fw):\s*/gi, "")
     .trim()
     .toLowerCase();
+}
+
+/** True when the subject line indicates a reply (Re:/Fwd:/Fw:). */
+export function isReplySubject(subject: string): boolean {
+  return /^(re|fwd|fw):\s*/i.test(subject.trim());
 }

@@ -16,5 +16,8 @@ export * from "./poll-config";
 export * from "./provider-project-label";
 export * from "./rules";
 export * from "./schemas";
+export * from "./sync-error-messages";
+export * from "./sync-event-recorder";
+export * from "./sync-status-messages";
 export * from "./templates";
 export * from "./types";

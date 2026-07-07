@@ -7,17 +7,22 @@ import {
   projects,
 } from "@servicebeard/db";
 import {
+  buildMarkdownEmailParts,
+  formatAddIssueCommentSuccess,
+  formatCreateIssueSuccess,
+  formatSendAckInfo,
   isEligibleForInboundRuleEvaluation,
   isEmailEligibleForInboundSync,
+  isReplySubject,
   normalizeSubject,
-  buildMarkdownEmailParts,
   renderInboundAckTemplate,
   resolveServicebeardWebUrl,
+  SUBJECT_THREAD_MATCH_MAX_AGE_MS,
   type ProviderType,
 } from "@servicebeard/shared";
 import { getEntitlements } from "@servicebeard/shared/entitlements";
-import { and, count, eq, gte, inArray, lt, or } from "drizzle-orm";
-import { logExternalError } from "../lib/external-error";
+import { and, count, desc, eq, gte, inArray, lt, or } from "drizzle-orm";
+import { logExternalError, recordSyncStatusEvent } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
 import {
@@ -134,7 +139,12 @@ export async function processImapPoll(projectId: string): Promise<void> {
       { projectId },
     );
   } catch (err) {
-    logExternalError("imap", "poll", err, { projectId });
+    logExternalError("imap", "fetch-since", err, {
+      projectId,
+      host: creds.imapHost,
+      port: creds.imapPort,
+      user: creds.imapUser,
+    });
     throw err;
   }
 
@@ -256,6 +266,23 @@ export async function processInboundEmail(
       { threadId: thread.id, messageId: email.messageId },
       "added comment to existing thread",
     );
+    recordSyncStatusEvent({
+      projectId,
+      service: project.provider,
+      operation: "add-issue-comment",
+      severity: "success",
+      message: formatAddIssueCommentSuccess({
+        issueIid: thread.issueIid,
+        senderEmail: email.senderEmail,
+        senderName: email.senderName,
+      }),
+      metadata: {
+        threadId: thread.id,
+        issueIid: thread.issueIid,
+        messageId: email.messageId,
+        noteId: result.noteId,
+      },
+    });
     return;
   }
 
@@ -380,6 +407,25 @@ export async function processInboundEmail(
     await sendInboundAckEmail(project, threadRecord!, email, issue);
   }
 
+  recordSyncStatusEvent({
+    projectId,
+    service: project.provider,
+    operation: "create-issue",
+    severity: "success",
+    message: formatCreateIssueSuccess({
+      issueIid: issue.iid,
+      subject: email.subject,
+      senderEmail: email.senderEmail,
+      senderName: email.senderName,
+    }),
+    metadata: {
+      threadId: threadRecord!.id,
+      issueIid: issue.iid,
+      messageId: email.messageId,
+      ruleId: rule.id,
+    },
+  });
+
   logger.info(
     { threadId: threadRecord!.id, issueIid: issue.iid },
     "created new issue from email",
@@ -454,6 +500,23 @@ async function sendInboundAckEmail(
     { threadId: thread.id, messageId, inReplyTo, cc },
     "sent inbound acknowledgement email",
   );
+
+  recordSyncStatusEvent({
+    projectId: project.id,
+    service: "smtp",
+    operation: "send-ack",
+    severity: "info",
+    message: formatSendAckInfo({
+      issueIid: issue.iid,
+      recipientEmail: thread.originalSenderEmail,
+      recipientName: thread.originalSenderName,
+    }),
+    metadata: {
+      threadId: thread.id,
+      issueIid: issue.iid,
+      messageId,
+    },
+  });
 }
 
 async function findThread(
@@ -483,12 +546,20 @@ async function findThread(
   }
 
   const subjectNorm = normalizeSubject(email.subject);
+  if (!isReplySubject(email.subject)) {
+    return null;
+  }
+  const activitySince = new Date(
+    email.date.getTime() - SUBJECT_THREAD_MATCH_MAX_AGE_MS,
+  );
   const bySubject = await db.query.issueThreads.findFirst({
     where: and(
       eq(issueThreads.projectId, projectId),
       eq(issueThreads.subjectNormalized, subjectNorm),
       eq(issueThreads.originalSenderEmail, email.senderEmail),
+      gte(issueThreads.updatedAt, activitySince),
     ),
+    orderBy: desc(issueThreads.updatedAt),
   });
 
   return bySubject ?? null;
