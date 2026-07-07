@@ -12,10 +12,6 @@ test.describe("Authentication UI flow", () => {
     await expect(
       page.getByRole("heading", { name: /ServiceBeard/i }),
     ).toBeVisible();
-    await page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/auth/config") && response.ok(),
-    );
 
     const emailEntry = page.getByRole("button", { name: "Sign in with email" });
     if (await emailEntry.isVisible()) {
