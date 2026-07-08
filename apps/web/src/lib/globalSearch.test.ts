@@ -24,6 +24,13 @@ describe("global search", () => {
         (a) => a.label === "System status",
       ),
     ).toBe(true);
+    expect(
+      filterSearchActions(actions, "admin").every((a) =>
+        ["Admin overview", "System status", "Audit log"].includes(a.label)
+          ? a.group === "Admin"
+          : true,
+      ),
+    ).toBe(true);
   });
 
   test("groupSearchResults preserves group order", async () => {

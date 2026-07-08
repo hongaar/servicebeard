@@ -94,6 +94,7 @@ export interface SearchResultGroup {
 const CORE_GROUP_ORDER = [
   "Navigation",
   "Project",
+  "Admin",
   "Help",
   "Teams",
   "Projects",
@@ -105,11 +106,12 @@ const CORE_GROUP_ORDER = [
 function buildGroupOrder(): string[] {
   const extensionGroups = extensionGlobalSearchGroupOrder();
   const helpIndex = CORE_GROUP_ORDER.indexOf("Help");
-  return [
+  const ordered = [
     ...CORE_GROUP_ORDER.slice(0, helpIndex + 1),
     ...extensionGroups,
     ...CORE_GROUP_ORDER.slice(helpIndex + 1),
   ];
+  return [...new Set(ordered)];
 }
 
 export function groupSearchResults(
