@@ -323,8 +323,10 @@ export const teamMembersRoute = createRoute({
     ],
   }),
   loader: async ({ params }) => {
-    const { user, team, role } = await loadTeamContext(params.teamId);
-    return { user, team, role };
+    const { user, team, role, adminAccess } = await loadTeamContext(
+      params.teamId,
+    );
+    return { user, team, role, adminAccess };
   },
 });
 
@@ -343,8 +345,10 @@ export const teamSettingsRoute = createRoute({
     ],
   }),
   loader: async ({ params }) => {
-    const { user, team, role } = await loadTeamContext(params.teamId);
-    return { user, team, role };
+    const { user, team, role, adminAccess } = await loadTeamContext(
+      params.teamId,
+    );
+    return { user, team, role, adminAccess };
   },
 });
 
