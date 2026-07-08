@@ -38,6 +38,30 @@ Poll jobs use a **singleton** queue policy so only one IMAP poll and one comment
 
 ---
 
+## Provider API rate limiting
+
+All provider HTTP traffic goes through `providerFetch` in `packages/providers`. GitHub, GitLab, and Linear each expose quota headers (and Linear can return `RATELIMITED` in a GraphQL body on HTTP 400). The client parses those signals and groups requests into **credential-scoped buckets**:
+
+| Provider   | Bucket key                                  |
+| ---------- | ------------------------------------------- |
+| GitHub App | `github:{baseUrl}:install:{installationId}` |
+| GitHub PAT | `github:{baseUrl}:token:{hash}`             |
+| GitLab     | `gitlab:{baseUrl}:token:{hash}`             |
+| Linear     | `linear:token:{hash}`                       |
+
+Multiple projects that share a GitHub App installation or the same API token draw from the **same bucket**. Projects on different installations or tokens are independent.
+
+On a rate-limit response, `providerFetch` throws `ProviderRateLimitError` immediately (no inline sleep). The worker then:
+
+| Path                    | Behavior                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| **IMAP / comment poll** | Mark the bucket exhausted for this tick; skip remaining projects in that bucket; continue other buckets |
+| **`send-email` queue**  | Re-enqueue the job with `startAfter` set to the provider's reset time                                   |
+
+Quota snapshots and limit hits are logged via `logProvider` (remaining, reset time, bucket key). Primary provider limits are hourly rolling windows, so waits are typically minutes — deferring at the worker keeps poll ticks from blocking unrelated projects.
+
+---
+
 ## Core objects
 
 ### Project
@@ -288,6 +312,8 @@ Requires a **publicly reachable** API URL. If webhooks cannot be registered (e.g
 ## Error handling
 
 External failures (IMAP, SMTP, provider API) are logged and surfaced as **project sync errors** in the UI (categorized as mail vs provider). A failed inbound message is **not** marked ingested, so the next poll retries. Poll cursors (`lastImapPollAt`, `lastCommentPollAt`, `imapIngestedThrough`) update only after a successful poll cycle completes.
+
+Provider rate-limit errors are deferred rather than treated as hard failures — see [Provider API rate limiting](#provider-api-rate-limiting).
 
 ---
 
