@@ -1,4 +1,5 @@
 import { parseGithubRepository } from "@servicebeard/shared";
+import { mapCommentImageDownloadUrls } from "@servicebeard/shared/email-content";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { githubApiErrorMessage } from "./error-messages";
 import { ProviderApiError } from "./errors";
@@ -17,7 +18,7 @@ import type {
   ProviderOptions,
   UploadFileResult,
 } from "./types";
-import { assertNonEmptyUpload } from "./upload";
+import { assertNonEmptyUpload, inferImageContentTypeFromUrl } from "./upload";
 
 interface GitHubUser {
   id: number;
@@ -81,25 +82,28 @@ function apiBase(baseUrl: string): string {
   return `${normalized}/api/v3`;
 }
 
-function inferImageContentTypeFromUrl(url: string): string | null {
-  const ext = url.split("?")[0]?.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "png":
-      return "image/png";
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "gif":
-      return "image/gif";
-    case "webp":
-      return "image/webp";
-    case "svg":
-      return "image/svg+xml";
-    case "bmp":
-      return "image/bmp";
-    default:
-      return null;
+function graphqlBase(baseUrl: string): string {
+  const normalized = baseUrl.replace(/\/$/, "");
+  try {
+    if (new URL(normalized).hostname === "github.com") {
+      return "https://api.github.com/graphql";
+    }
+  } catch {
+    // fall through
   }
+  return `${normalized}/api/graphql`;
+}
+
+const USER_DISPLAY_NAME_TTL_MS = 24 * 60 * 60 * 1000;
+
+const userDisplayNameCache = new Map<
+  string,
+  { name: string | null; fetchedAtMs: number }
+>();
+const userDisplayNameInFlight = new Map<string, Promise<string | null>>();
+
+function userDisplayNameCacheKey(baseUrl: string, login: string): string {
+  return `${baseUrl.replace(/\/$/, "")}:${login.toLowerCase()}`;
 }
 
 const GITHUB_REACTIONS: Record<string, string> = {
@@ -473,19 +477,168 @@ export class GitHubProvider implements IssueProvider {
     };
   }
 
-  async downloadFile(url: string): Promise<DownloadedFile | null> {
-    const response = await providerFetch(this.config, url, {
-      headers: await this.authHeaders(),
-    });
+  private async graphql<T>(
+    query: string,
+    variables?: Record<string, unknown>,
+  ): Promise<T> {
+    const response = await providerFetch(
+      this.config,
+      graphqlBase(this.config.baseUrl),
+      {
+        method: "POST",
+        headers: await this.authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ query, variables }),
+      },
+    );
 
     if (!response.ok) {
-      logProvider("warn", "GitHub file download failed", {
-        url,
+      const text = await response.text();
+      logProvider("warn", "GitHub GraphQL request failed", {
         status: response.status,
+        bodyPreview: text.slice(0, 500),
+      });
+      throw new GitHubApiError(
+        response.status,
+        "GitHub GraphQL request failed",
+        text,
+      );
+    }
+
+    const payload = (await response.json()) as {
+      data?: T;
+      errors?: Array<{ message?: string }>;
+    };
+    if (payload.errors?.length) {
+      throw new GitHubApiError(
+        400,
+        payload.errors
+          .map((error) => error.message)
+          .filter(Boolean)
+          .join("; ") || "GitHub GraphQL request failed",
+      );
+    }
+    if (!payload.data) {
+      throw new GitHubApiError(400, "GitHub GraphQL response missing data");
+    }
+
+    return payload.data;
+  }
+
+  async getCommentBodyHtml(
+    issueIid: number,
+    commentId: string,
+  ): Promise<string | null> {
+    const { owner, repo } = this.repo;
+    const data = await this.graphql<{
+      repository: {
+        issue: {
+          comments: {
+            nodes: Array<{ databaseId: number | null; bodyHTML: string }>;
+          };
+        } | null;
+      } | null;
+    }>(
+      `query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            comments(first: 100) {
+              nodes {
+                databaseId
+                bodyHTML
+              }
+            }
+          }
+        }
+      }`,
+      { owner, repo, issue: issueIid },
+    );
+
+    const comment = data.repository?.issue?.comments.nodes.find(
+      (node) => String(node.databaseId ?? "") === commentId,
+    );
+    return comment?.bodyHTML ?? null;
+  }
+
+  async resolveUserDisplayName(login: string): Promise<string | null> {
+    const cacheKey = userDisplayNameCacheKey(this.config.baseUrl, login);
+    const cached = userDisplayNameCache.get(cacheKey);
+    if (cached && cached.fetchedAtMs > Date.now() - USER_DISPLAY_NAME_TTL_MS) {
+      return cached.name;
+    }
+
+    const inFlight = userDisplayNameInFlight.get(cacheKey);
+    if (inFlight) return inFlight;
+
+    const lookup = this.fetchUserDisplayName(login)
+      .then((name) => {
+        userDisplayNameCache.set(cacheKey, {
+          name,
+          fetchedAtMs: Date.now(),
+        });
+        return name;
+      })
+      .finally(() => {
+        userDisplayNameInFlight.delete(cacheKey);
+      });
+
+    userDisplayNameInFlight.set(cacheKey, lookup);
+    return lookup;
+  }
+
+  private async fetchUserDisplayName(login: string): Promise<string | null> {
+    try {
+      const user = await this.request<GitHubUser>(
+        "GET",
+        `/users/${encodeURIComponent(login)}`,
+      );
+      return user.name?.trim() || null;
+    } catch (err) {
+      logProvider("warn", "GitHub user profile lookup failed", {
+        login,
+        message: err instanceof Error ? err.message : String(err),
       });
       return null;
     }
+  }
 
+  async resolveAuthorDisplayName(event: {
+    authorName: string | null;
+    authorUsername: string;
+  }): Promise<string> {
+    const fromEvent = event.authorName?.trim();
+    if (fromEvent) return fromEvent;
+
+    const fromProfile = await this.resolveUserDisplayName(event.authorUsername);
+    return fromProfile || event.authorUsername;
+  }
+
+  async resolveCommentImageDownloads(
+    issueIid: number,
+    commentId: string,
+    noteBody: string,
+  ): Promise<Map<string, string>> {
+    try {
+      const bodyHtml = await this.getCommentBodyHtml(issueIid, commentId);
+      if (!bodyHtml) return new Map();
+      return mapCommentImageDownloadUrls(
+        noteBody,
+        bodyHtml,
+        this.config.baseUrl,
+      );
+    } catch (err) {
+      logProvider("warn", "GitHub comment image URL resolution failed", {
+        issueIid,
+        commentId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      return new Map();
+    }
+  }
+
+  private async readDownloadedFile(
+    response: Response,
+    nameForTypeInference: string,
+  ): Promise<DownloadedFile | null> {
     const headerType =
       response.headers
         .get("content-type")
@@ -496,7 +649,7 @@ export class GitHubProvider implements IssueProvider {
 
     if (headerType.includes("text/html") || content.length === 0) {
       logProvider("warn", "GitHub file download returned non-image payload", {
-        url,
+        nameForTypeInference,
         contentType: headerType,
         bytes: content.length,
       });
@@ -505,17 +658,52 @@ export class GitHubProvider implements IssueProvider {
 
     const contentType = headerType.startsWith("image/")
       ? headerType
-      : inferImageContentTypeFromUrl(url);
+      : inferImageContentTypeFromUrl(nameForTypeInference);
 
     if (!contentType) {
       logProvider("debug", "GitHub file download skipped, unknown image type", {
-        url,
+        nameForTypeInference,
         contentType: headerType,
       });
       return null;
     }
 
     return { content, contentType };
+  }
+
+  async downloadFile(url: string): Promise<DownloadedFile | null> {
+    if (/private-user-images\.githubusercontent\.com/i.test(url)) {
+      const response = await providerFetch(this.config, url, {
+        headers: {
+          Accept: "image/*,*/*",
+          "User-Agent": "servicebeard",
+        },
+      });
+      if (!response.ok) {
+        logProvider("warn", "GitHub signed image download failed", {
+          url,
+          status: response.status,
+        });
+        return null;
+      }
+      return this.readDownloadedFile(response, url);
+    }
+
+    const response = await providerFetch(this.config, url, {
+      headers: await this.authHeaders({
+        Accept: "application/vnd.github.raw",
+      }),
+    });
+
+    if (!response.ok) {
+      logProvider("warn", "GitHub file download failed", {
+        url,
+        status: response.status,
+      });
+      return null;
+    }
+
+    return this.readDownloadedFile(response, url);
   }
 
   async addReaction(
@@ -558,21 +746,30 @@ export class GitHubProvider implements IssueProvider {
         `${this.repoPath()}/issues/${issueIid}/comments?per_page=100`,
       );
 
-      return comments
-        .filter(
-          (comment) =>
-            new Date(comment.created_at).getTime() >= since.getTime(),
-        )
-        .map((comment) => ({
-          id: String(comment.id),
-          body: comment.body,
-          authorId: String(comment.user?.id ?? 0),
-          authorName: comment.user?.name?.trim() || null,
-          authorUsername: comment.user?.login ?? "unknown",
-          internal: false,
-          system: comment.user?.type === "Bot",
-          createdAt: new Date(comment.created_at),
-        }));
+      const recent = comments.filter(
+        (comment) => new Date(comment.created_at).getTime() >= since.getTime(),
+      );
+
+      return Promise.all(
+        recent.map(async (comment) => {
+          const login = comment.user?.login ?? "unknown";
+          let authorName = comment.user?.name?.trim() || null;
+          if (!authorName && login !== "unknown") {
+            authorName = await this.resolveUserDisplayName(login);
+          }
+
+          return {
+            id: String(comment.id),
+            body: comment.body,
+            authorId: String(comment.user?.id ?? 0),
+            authorName,
+            authorUsername: login,
+            internal: false,
+            system: comment.user?.type === "Bot",
+            createdAt: new Date(comment.created_at),
+          };
+        }),
+      );
     } catch (err) {
       if (err instanceof GitHubApiError && err.status === 404) {
         return null;

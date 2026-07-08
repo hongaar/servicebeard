@@ -5,6 +5,7 @@ import {
   markdownToPlainText,
   prepareGitLabNoteForOutboundEmail,
   replaceHtmlImageUrlsWithCid,
+  replaceInlinedImagesWithPlainTextPlaceholders,
   replaceMarkdownImagesWithCid,
   resolveProviderImageUrl,
 } from "@servicebeard/shared/email-content";
@@ -21,6 +22,13 @@ export interface OutboundMultipartContent {
     contentType: string;
     cid: string;
   }>;
+}
+
+export interface BuildOutboundMultipartOptions {
+  /** When set, only images in this slice are downloaded and inlined. */
+  imageSource?: string;
+  /** Map display URLs to signed/authenticated download URLs. */
+  imageDownloadUrlOverrides?: Map<string, string>;
 }
 
 function filenameFromUrl(url: string, index: number): string {
@@ -49,18 +57,21 @@ function registerImageCid(
 }
 
 export async function buildOutboundMultipartContent(
-  markdown: string,
+  content: string,
   provider?: IssueProvider,
   providerConfig?: ProviderConfig,
+  options?: BuildOutboundMultipartOptions,
 ): Promise<OutboundMultipartContent> {
   const baseUrl = providerConfig?.baseUrl ?? "";
-  const preparedMarkdown = prepareGitLabNoteForOutboundEmail(markdown);
-  const images = collectOutboundImageRefs(preparedMarkdown, baseUrl);
+  const imageSource = options?.imageSource ?? content;
+  const preparedContent = prepareGitLabNoteForOutboundEmail(content);
+  const preparedImageSource = prepareGitLabNoteForOutboundEmail(imageSource);
+  const images = collectOutboundImageRefs(preparedImageSource, baseUrl);
 
   if (images.length === 0) {
     return {
-      text: markdownToPlainText(preparedMarkdown),
-      html: markdownToHtml(preparedMarkdown),
+      text: markdownToPlainText(preparedContent),
+      html: markdownToHtml(preparedContent),
       attachments: [],
     };
   }
@@ -73,13 +84,18 @@ export async function buildOutboundMultipartContent(
     if (!resolvedUrl) continue;
     if (urlToCid.has(image.url) || urlToCid.has(resolvedUrl)) continue;
 
+    const override =
+      options?.imageDownloadUrlOverrides?.get(image.url) ??
+      options?.imageDownloadUrlOverrides?.get(resolvedUrl);
+    const downloadUrl = override ?? resolvedUrl;
+
     try {
       const downloaded = provider
-        ? await provider.downloadFile(resolvedUrl)
-        : await downloadFileAnonymously(resolvedUrl);
+        ? await provider.downloadFile(downloadUrl)
+        : await downloadFileAnonymously(downloadUrl);
       if (!downloaded) {
         logger.warn(
-          { url: resolvedUrl, originalUrl: image.url },
+          { url: downloadUrl, originalUrl: image.url, resolvedUrl },
           "skipping outbound email image, download failed",
         );
         continue;
@@ -87,33 +103,57 @@ export async function buildOutboundMultipartContent(
 
       const cid = `${randomBytes(8).toString("hex")}@servicebeard.local`;
       registerImageCid(urlToCid, image.url, resolvedUrl, cid);
+      if (override) {
+        registerImageCid(urlToCid, downloadUrl, resolvedUrl, cid);
+      }
       attachments.push({
-        filename: filenameFromUrl(resolvedUrl, index),
+        filename: filenameFromUrl(downloadUrl, index),
         content: downloaded.content,
         contentType: downloaded.contentType,
         cid,
       });
     } catch (err) {
       logExternalError("outbound-email", "download-image", err, {
-        url: resolvedUrl,
+        url: downloadUrl,
         originalUrl: image.url,
+        resolvedUrl,
       });
     }
   }
 
-  const markdownWithCid = replaceMarkdownImagesWithCid(
-    preparedMarkdown,
+  if (urlToCid.size === 0) {
+    return {
+      text: markdownToPlainText(preparedContent),
+      html: markdownToHtml(preparedContent),
+      attachments: [],
+    };
+  }
+
+  let contentWithCid = replaceMarkdownImagesWithCid(
+    preparedContent,
+    urlToCid,
+    baseUrl,
+  );
+  contentWithCid = replaceHtmlImageUrlsWithCid(
+    contentWithCid,
     urlToCid,
     baseUrl,
   );
   const html = replaceHtmlImageUrlsWithCid(
-    markdownToHtml(markdownWithCid),
+    markdownToHtml(contentWithCid),
     urlToCid,
     baseUrl,
   );
+  const text = markdownToPlainText(
+    replaceInlinedImagesWithPlainTextPlaceholders(
+      preparedContent,
+      urlToCid,
+      baseUrl,
+    ),
+  );
 
   return {
-    text: markdownToPlainText(markdownWithCid),
+    text,
     html,
     attachments,
   };

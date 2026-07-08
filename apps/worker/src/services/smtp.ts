@@ -68,6 +68,7 @@ export async function sendEmail(
         content: attachment.content,
         contentType: attachment.contentType,
         cid: attachment.cid,
+        contentDisposition: "inline" as const,
       })),
       messageId,
       inReplyTo,

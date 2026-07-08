@@ -137,6 +137,63 @@ describe("email content conversion", () => {
     expect(images[0]?.url).toContain("/uploads/");
   });
 
+  test("collects github html image refs from issue comments", async () => {
+    const { collectOutboundImageRefs } =
+      await import("@servicebeard/shared/email-content");
+    const note =
+      'See screenshot:\n\n<img width="393" alt="image" src="https://github.com/user-attachments/assets/abc-123" />';
+    const images = collectOutboundImageRefs(note, "https://github.com");
+    expect(images).toHaveLength(1);
+    expect(images[0]?.url).toBe(
+      "https://github.com/user-attachments/assets/abc-123",
+    );
+  });
+
+  test("collects linear markdown image refs from issue comments", async () => {
+    const { collectOutboundImageRefs } =
+      await import("@servicebeard/shared/email-content");
+    const note =
+      "Updated mockup\n\n![mockup](https://uploads.linear.app/abc/mockup.png)\n\nthoughts?";
+    const images = collectOutboundImageRefs(note, "https://linear.app");
+    expect(images).toHaveLength(1);
+    expect(images[0]?.url).toContain("uploads.linear.app");
+  });
+
+  test("collects github raw attachment urls from markdown", async () => {
+    const { collectOutboundImageRefs } =
+      await import("@servicebeard/shared/email-content");
+    const note =
+      "![shot](https://github.com/acme/app/raw/servicebeard-attachments/.servicebeard/attachments/uuid/shot.png)";
+    const images = collectOutboundImageRefs(note, "https://github.com");
+    expect(images).toHaveLength(1);
+    expect(images[0]?.url).toContain("/raw/servicebeard-attachments/");
+  });
+
+  test("maps github user-attachments urls to signed bodyHTML urls", async () => {
+    const { mapCommentImageDownloadUrls } =
+      await import("@servicebeard/shared/email-content");
+    const displayUrl = "https://github.com/user-attachments/assets/abc-123";
+    const signedUrl =
+      "https://private-user-images.githubusercontent.com/1/abc?jwt=token";
+    const overrides = mapCommentImageDownloadUrls(
+      `<img alt="Image" src="${displayUrl}" />`,
+      `<img alt="Image" src="${signedUrl}" />`,
+      "https://github.com",
+    );
+    expect(overrides.get(displayUrl)).toBe(signedUrl);
+  });
+
+  test("replaces inlined images with plain-text placeholders", async () => {
+    const { replaceInlinedImagesWithPlainTextPlaceholders } =
+      await import("@servicebeard/shared/email-content");
+    const urlToCid = new Map([["https://example.com/a.png", "img1@local"]]);
+    const result = replaceInlinedImagesWithPlainTextPlaceholders(
+      "Before ![logo](https://example.com/a.png) after",
+      urlToCid,
+    );
+    expect(result).toBe("Before [logo] after");
+  });
+
   test("parses gitlab upload paths into secret and filename", async () => {
     const { parseGitLabUploadPath } =
       await import("@servicebeard/shared/email-content");

@@ -33,6 +33,8 @@ export const QUEUE_NAMES = {
 
 /** pg-boss allows one cron schedule per queue name, so we tick every minute and honor per-project intervals in the worker. */
 const POLL_TICK_CRON = "* * * * *";
+/** Poll ticks should finish quickly; short expiry recovers after watch-mode restarts leave active jobs behind. */
+const POLL_JOB_EXPIRE_SECONDS = 90;
 
 const globalWorker = globalThis as typeof globalThis & {
   __servicebeardWorkerBoss?: PgBoss;
@@ -208,16 +210,25 @@ export async function startWorker(): Promise<PgBoss> {
   await boss.createQueue(QUEUE_NAMES.IMAP_POLL, {
     name: QUEUE_NAMES.IMAP_POLL,
     policy: "singleton",
+    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
   });
   await boss.createQueue(QUEUE_NAMES.COMMENT_POLL, {
     name: QUEUE_NAMES.COMMENT_POLL,
     policy: "singleton",
+    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
+  });
+  await boss.updateQueue(QUEUE_NAMES.IMAP_POLL, {
+    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
+  });
+  await boss.updateQueue(QUEUE_NAMES.COMMENT_POLL, {
+    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
   });
   await boss.createQueue(QUEUE_NAMES.SEND_EMAIL);
   await boss.createQueue(QUEUE_NAMES.ENSURE_WEBHOOK);
 
   await boss.purgeQueue(QUEUE_NAMES.IMAP_POLL);
   await boss.purgeQueue(QUEUE_NAMES.COMMENT_POLL);
+  await boss.expire();
   logger.info("cleared imap and comment poll queue backlogs");
 
   boss.work(QUEUE_NAMES.IMAP_POLL, { batchSize: 1 }, async () => {
@@ -280,12 +291,21 @@ export async function startWorker(): Promise<PgBoss> {
 }
 
 async function schedulePollJobs(boss: PgBoss): Promise<void> {
-  await boss.schedule(QUEUE_NAMES.IMAP_POLL, POLL_TICK_CRON, {}, { tz: "UTC" });
+  const pollScheduleOptions = {
+    tz: "UTC" as const,
+    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
+  };
+  await boss.schedule(
+    QUEUE_NAMES.IMAP_POLL,
+    POLL_TICK_CRON,
+    {},
+    pollScheduleOptions,
+  );
   await boss.schedule(
     QUEUE_NAMES.COMMENT_POLL,
     POLL_TICK_CRON,
     {},
-    { tz: "UTC" },
+    pollScheduleOptions,
   );
 
   logger.info({ cron: POLL_TICK_CRON }, "scheduled imap and comment poll jobs");

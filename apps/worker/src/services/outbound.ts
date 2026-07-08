@@ -6,6 +6,7 @@ import {
   projects,
 } from "@servicebeard/db";
 import type { NormalizedWebhookEvent } from "@servicebeard/providers";
+import { GitHubProvider } from "@servicebeard/providers";
 import {
   formatSendOutboundEmailSuccess,
   isServicebeardInternalContent,
@@ -209,12 +210,16 @@ export async function processOutboundComment(
   }
 
   const provider = createProjectProvider(project);
+  const authorDisplayName =
+    provider instanceof GitHubProvider
+      ? await provider.resolveAuthorDisplayName(event)
+      : commentAuthorDisplayName(event);
 
   const replyIntro = renderOutboundCommentTemplate(
     project.outboundCommentTemplate,
     {
       commentBody: event.noteBody,
-      authorName: commentAuthorDisplayName(event),
+      authorName: authorDisplayName,
       issueNumber: thread.issueIid,
       issueUrl: thread.issueUrl,
     },
@@ -223,10 +228,22 @@ export async function processOutboundComment(
     replyIntro,
     quotedEmailFromStored(parent, thread, project.smtpFrom),
   );
+  const imageDownloadUrlOverrides =
+    provider instanceof GitHubProvider
+      ? await provider.resolveCommentImageDownloads(
+          thread.issueIid,
+          event.noteId,
+          event.noteBody,
+        )
+      : undefined;
   const multipart = await buildOutboundMultipartContent(
     body,
     provider,
     projectProviderConfig(project),
+    {
+      imageSource: replyIntro,
+      imageDownloadUrlOverrides,
+    },
   );
   const { inReplyTo, references } = threadingForParent(
     parent.messageId,
@@ -294,7 +311,7 @@ export async function processOutboundComment(
       issueIid: thread.issueIid,
       recipientEmail: thread.originalSenderEmail,
       recipientName: thread.originalSenderName,
-      authorName: commentAuthorDisplayName(event),
+      authorName: authorDisplayName,
     }),
     metadata: {
       threadId: thread.id,

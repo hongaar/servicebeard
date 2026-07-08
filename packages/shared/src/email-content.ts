@@ -38,8 +38,7 @@ const GITLAB_MARKDOWN_IMAGE =
   /!\[([^\]]*)\]\(([^)]+)\)(?:\{width=(?:"\d+(?:%|px)?"|\d+(?:%|px)?)\s+height=(?:"\d+(?:%|px)?"|\d+(?:%|px)?)\})?/gi;
 const GITLAB_IMAGE_DIMENSIONS =
   /\{width=(?:"\d+(?:%|px)?"|\d+(?:%|px)?)\s+height=(?:"\d+(?:%|px)?"|\d+(?:%|px)?)\}/gi;
-const HTML_UPLOAD_IMAGE =
-  /<img\b[^>]*\bsrc=["']([^"']*\/uploads\/[^"']+)["'][^>]*>/gi;
+const HTML_IMAGE = /<img([^>]*?)src=["']([^"']+)["']([^>]*?)>/gi;
 const DATA_URI_IMAGE_MD =
   /!\[([^\]]*)\]\((data:image\/([^;]+);base64,([^)]+))\)/gi;
 const IMG_TAG = /<img\b([^>]*?)>/gi;
@@ -86,6 +85,76 @@ export function resolveProviderImageUrl(
   baseUrl: string,
 ): string | null {
   return normalizeUploadImagePath(url, baseUrl);
+}
+
+export function imagePlainTextPlaceholder(alt?: string): string {
+  const trimmed = alt?.trim();
+  return trimmed ? `[${trimmed}]` : "[image]";
+}
+
+function cidForImageUrl(
+  url: string,
+  urlToCid: Map<string, string>,
+  baseUrl?: string,
+): string | undefined {
+  return (
+    urlToCid.get(url) ??
+    (baseUrl
+      ? urlToCid.get(normalizeUploadImagePath(url, baseUrl) ?? "")
+      : undefined)
+  );
+}
+
+/** Map display URLs (e.g. GitHub user-attachments) to signed download URLs from bodyHTML. */
+export function mapCommentImageDownloadUrls(
+  noteBody: string,
+  bodyHtml: string,
+  baseUrl: string,
+): Map<string, string> {
+  const displayImages = collectOutboundImageRefs(noteBody, baseUrl);
+  const htmlImages = extractHtmlImages(bodyHtml);
+  const overrides = new Map<string, string>();
+
+  for (const [index, displayImage] of displayImages.entries()) {
+    const downloadImage = htmlImages[index];
+    if (!downloadImage) continue;
+    if (displayImage.url === downloadImage.url) continue;
+    overrides.set(displayImage.url, downloadImage.url);
+  }
+
+  return overrides;
+}
+
+export function replaceInlinedImagesWithPlainTextPlaceholders(
+  content: string,
+  urlToCid: Map<string, string>,
+  baseUrl?: string,
+): string {
+  const withGitLab = content.replace(
+    GITLAB_MARKDOWN_IMAGE,
+    (full, alt: string, url: string) => {
+      if (!cidForImageUrl(url, urlToCid, baseUrl)) return full;
+      return imagePlainTextPlaceholder(alt);
+    },
+  );
+
+  const withMarkdown = withGitLab.replace(
+    MARKDOWN_IMAGE,
+    (full, alt: string, url: string) => {
+      if (!cidForImageUrl(url, urlToCid, baseUrl)) return full;
+      return imagePlainTextPlaceholder(alt);
+    },
+  );
+
+  return withMarkdown.replace(
+    HTML_IMAGE,
+    (full, attrs: string, src: string) => {
+      if (!cidForImageUrl(src, urlToCid, baseUrl)) return full;
+      return imagePlainTextPlaceholder(
+        htmlAttribute(attrs, "alt") ?? undefined,
+      );
+    },
+  );
 }
 
 export function replaceGitLabImagesWithCid(
@@ -149,6 +218,7 @@ export function replaceHtmlImageUrlsWithCid(
 
 export function isResolvableImageUrl(url: string, baseUrl?: string): boolean {
   const trimmed = url.trim();
+  if (trimmed.startsWith("cid:") || trimmed.startsWith("data:")) return false;
   if (/^https?:\/\//i.test(trimmed)) return true;
   if (trimmed.startsWith("/uploads/")) return Boolean(baseUrl);
   if (baseUrl && trimmed.includes("/uploads/")) return true;
@@ -243,15 +313,16 @@ export function extractGitLabMarkdownImages(
   return images;
 }
 
-export function extractHtmlUploadImages(content: string): MarkdownImageRef[] {
+export function extractHtmlImages(content: string): MarkdownImageRef[] {
   const images: MarkdownImageRef[] = [];
-  const pattern = new RegExp(HTML_UPLOAD_IMAGE.source, "gi");
+  const pattern = new RegExp(HTML_IMAGE.source, "gi");
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(content)) !== null) {
-    const url = match[1] ?? "";
+    const url = match[2] ?? "";
+    const alt = htmlAttribute(match[1] ?? "", "alt") ?? "";
     images.push({
-      alt: "",
+      alt,
       url,
       fullMatch: match[0],
     });
@@ -268,7 +339,7 @@ export function collectOutboundImageRefs(
   return dedupeImageRefs([
     ...extractGitLabMarkdownImages(prepared),
     ...extractMarkdownImages(prepared),
-    ...extractHtmlUploadImages(content),
+    ...extractHtmlImages(prepared),
   ]).filter((image) => isResolvableImageUrl(image.url, baseUrl));
 }
 

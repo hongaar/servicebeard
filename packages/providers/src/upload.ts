@@ -26,6 +26,34 @@ export function uploadBlob(
   };
 }
 
+export function inferImageContentTypeFromUrl(url: string): string | null {
+  const withoutQuery = url.split("?")[0] ?? url;
+  const ext = withoutQuery.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    case "bmp":
+      return "image/bmp";
+    default:
+      break;
+  }
+
+  if (/\/user-attachments\/assets\//i.test(url)) return "image/png";
+  if (/user-images\.githubusercontent\.com/i.test(url)) return "image/png";
+  if (/uploads\.linear\.app/i.test(url)) return "image/png";
+
+  return null;
+}
+
 export function signedUploadHeaders(
   signedHeaders: Array<{ key: string; value: string }>,
   fallbackContentType: string,

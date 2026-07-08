@@ -32,6 +32,7 @@ import type {
 } from "./types";
 import {
   assertNonEmptyUpload,
+  inferImageContentTypeFromUrl,
   signedUploadHeaders,
   uploadBlob,
 } from "./upload";
@@ -91,27 +92,6 @@ interface LinearWebhookPayload {
 export class LinearApiError extends ProviderApiError {
   constructor(status: number, message: string, responseBody?: string) {
     super(status, message, "LinearApiError", responseBody);
-  }
-}
-
-function inferImageContentTypeFromUrl(url: string): string | null {
-  const ext = url.split("?")[0]?.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "png":
-      return "image/png";
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "gif":
-      return "image/gif";
-    case "webp":
-      return "image/webp";
-    case "svg":
-      return "image/svg+xml";
-    case "bmp":
-      return "image/bmp";
-    default:
-      return null;
   }
 }
 

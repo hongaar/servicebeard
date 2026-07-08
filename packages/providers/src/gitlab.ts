@@ -1,9 +1,9 @@
 import { parseGitLabUploadPath } from "@servicebeard/shared/email-content";
-import { ProviderApiError } from "./errors";
 import {
   gitlabApiErrorMessage,
   gitlabUploadErrorMessage,
 } from "./error-messages";
+import { ProviderApiError } from "./errors";
 import { providerFetch } from "./http";
 import { logProvider } from "./log";
 import type {
@@ -18,7 +18,7 @@ import type {
   ProviderOptions,
   UploadFileResult,
 } from "./types";
-import { assertNonEmptyUpload } from "./upload";
+import { assertNonEmptyUpload, inferImageContentTypeFromUrl } from "./upload";
 
 interface GitLabUser {
   id: number;
@@ -86,27 +86,6 @@ interface GitLabWebhookPayload {
 export class GitLabApiError extends ProviderApiError {
   constructor(status: number, message: string, responseBody?: string) {
     super(status, message, "GitLabApiError", responseBody);
-  }
-}
-
-function inferImageContentTypeFromUrl(url: string): string | null {
-  const ext = url.split("?")[0]?.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "png":
-      return "image/png";
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "gif":
-      return "image/gif";
-    case "webp":
-      return "image/webp";
-    case "svg":
-      return "image/svg+xml";
-    case "bmp":
-      return "image/bmp";
-    default:
-      return null;
   }
 }
 
