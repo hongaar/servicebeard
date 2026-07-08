@@ -217,12 +217,6 @@ export async function startWorker(): Promise<PgBoss> {
     policy: "singleton",
     expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
   });
-  await boss.updateQueue(QUEUE_NAMES.IMAP_POLL, {
-    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
-  });
-  await boss.updateQueue(QUEUE_NAMES.COMMENT_POLL, {
-    expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
-  });
   await boss.createQueue(QUEUE_NAMES.SEND_EMAIL);
   await boss.createQueue(QUEUE_NAMES.ENSURE_WEBHOOK);
 
