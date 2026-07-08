@@ -3,6 +3,7 @@ import { createSign } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { ProviderApiError } from "./errors";
 import { providerFetch } from "./http";
+import { normalizeProviderBaseUrl } from "./rate-limit/bucket";
 import type { ProviderConfig } from "./types";
 
 interface GithubAppConfig {
@@ -102,7 +103,12 @@ async function githubAppRequest<T>(
 ): Promise<T> {
   const url = `${apiBaseForApp(baseUrl)}${path}`;
   const response = await providerFetch(
-    { baseUrl, projectId: "", token: jwt },
+    {
+      baseUrl,
+      projectId: "",
+      token: jwt,
+      rateLimitBucketKey: `github:${normalizeProviderBaseUrl(baseUrl)}:app`,
+    },
     url,
     {
       ...init,
@@ -267,7 +273,12 @@ export async function getGithubAppBotUser(
   );
   const url = `${apiBaseForApp(baseUrl)}/users/${encodeURIComponent(botLogin)}`;
   const response = await providerFetch(
-    { baseUrl, projectId: "", token: installationToken },
+    {
+      baseUrl,
+      projectId: "",
+      token: installationToken,
+      githubInstallationId: installationId,
+    },
     url,
     {
       headers: {

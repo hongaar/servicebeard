@@ -6,6 +6,7 @@ export * from "./gitlab";
 export * from "./http";
 export * from "./linear";
 export * from "./log";
+export * from "./rate-limit";
 export * from "./types";
 export * from "./upload";
 

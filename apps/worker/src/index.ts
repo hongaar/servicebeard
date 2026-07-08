@@ -1,6 +1,9 @@
 import { getDb, projects } from "@servicebeard/db";
-import type { NormalizedWebhookEvent } from "@servicebeard/providers";
-import { setProviderLog } from "@servicebeard/providers";
+import {
+  isProviderRateLimitError,
+  setProviderLog,
+  type NormalizedWebhookEvent,
+} from "@servicebeard/providers";
 import {
   getCommentPollIntervalSeconds,
   getImapPollIntervalSeconds,
@@ -13,6 +16,11 @@ import { initBugsink } from "./lib/bugsink";
 import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
 import { logger } from "./lib/logger";
+import {
+  deferQueueJob,
+  markRateLimitBucketExhausted,
+  shouldSkipProjectForRateLimit,
+} from "./lib/provider-rate-limit";
 import { runExclusive } from "./lib/run-guard";
 import { processImapPoll } from "./services/inbound";
 import {
@@ -57,8 +65,15 @@ async function runImapPollsForDueProjects(): Promise<void> {
 
   let polled = 0;
   let skippedNotDue = 0;
+  let skippedRateLimited = 0;
+  const exhaustedBuckets = new Set<string>();
 
   for (const project of activeProjects) {
+    if (shouldSkipProjectForRateLimit(project, exhaustedBuckets)) {
+      skippedRateLimited++;
+      continue;
+    }
+
     const operational = await getEntitlements().isTeamOperational?.(
       project.teamId,
     );
@@ -98,6 +113,15 @@ async function runImapPollsForDueProjects(): Promise<void> {
       await processImapPoll(project.id);
       polled++;
     } catch (err) {
+      if (markRateLimitBucketExhausted(err, exhaustedBuckets)) {
+        skippedRateLimited++;
+        logExternalError("worker", "imap-poll-project", err, {
+          projectId: project.id,
+          bucketKey: err.bucketKey,
+          retryAt: new Date(err.retryAtMs).toISOString(),
+        });
+        continue;
+      }
       logExternalError("worker", "imap-poll-project", err, {
         projectId: project.id,
       });
@@ -105,7 +129,13 @@ async function runImapPollsForDueProjects(): Promise<void> {
   }
 
   logger.info(
-    { activeProjects: activeProjects.length, polled, skippedNotDue },
+    {
+      activeProjects: activeProjects.length,
+      polled,
+      skippedNotDue,
+      skippedRateLimited,
+      exhaustedBuckets: [...exhaustedBuckets],
+    },
     "imap poll tick",
   );
 }
@@ -119,8 +149,15 @@ async function runCommentPollsForDueProjects(): Promise<void> {
 
   let polled = 0;
   let skippedNotDue = 0;
+  let skippedRateLimited = 0;
+  const exhaustedBuckets = new Set<string>();
 
   for (const project of activeProjects) {
+    if (shouldSkipProjectForRateLimit(project, exhaustedBuckets)) {
+      skippedRateLimited++;
+      continue;
+    }
+
     const operational = await getEntitlements().isTeamOperational?.(
       project.teamId,
     );
@@ -160,15 +197,30 @@ async function runCommentPollsForDueProjects(): Promise<void> {
       await pollCommentsForProject(project.id);
       polled++;
     } catch (err) {
+      if (markRateLimitBucketExhausted(err, exhaustedBuckets)) {
+        skippedRateLimited++;
+        logExternalError("worker", "comment-poll-project", err, {
+          projectId: project.id,
+          bucketKey: err.bucketKey,
+          retryAt: new Date(err.retryAtMs).toISOString(),
+        });
+        continue;
+      }
       logExternalError("worker", "comment-poll-project", err, {
         projectId: project.id,
       });
     }
   }
 
-  if (polled > 0 || skippedNotDue === 0) {
+  if (polled > 0 || skippedNotDue === 0 || skippedRateLimited > 0) {
     logger.info(
-      { activeProjects: activeProjects.length, polled, skippedNotDue },
+      {
+        activeProjects: activeProjects.length,
+        polled,
+        skippedNotDue,
+        skippedRateLimited,
+        exhaustedBuckets: [...exhaustedBuckets],
+      },
       "comment poll tick",
     );
   } else {
@@ -253,6 +305,20 @@ export async function startWorker(): Promise<PgBoss> {
         processOutboundComment(job!.data.projectId, job!.data.event),
       );
     } catch (err) {
+      if (isProviderRateLimitError(err)) {
+        await deferQueueJob(
+          boss,
+          QUEUE_NAMES.SEND_EMAIL,
+          job!.data,
+          err,
+          "send-email",
+          {
+            projectId: job!.data.projectId,
+            noteId: job!.data.event.noteId,
+          },
+        );
+        return;
+      }
       logExternalError("worker", "send-email", err, {
         projectId: job!.data.projectId,
         noteId: job!.data.event.noteId,

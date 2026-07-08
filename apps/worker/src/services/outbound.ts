@@ -5,8 +5,11 @@ import {
   issueThreads,
   projects,
 } from "@servicebeard/db";
-import type { NormalizedWebhookEvent } from "@servicebeard/providers";
-import { GitHubProvider } from "@servicebeard/providers";
+import {
+  GitHubProvider,
+  isProviderRateLimitError,
+  type NormalizedWebhookEvent,
+} from "@servicebeard/providers";
 import {
   formatSendOutboundEmailSuccess,
   isServicebeardInternalContent,
@@ -365,6 +368,7 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
     try {
       notes = await provider.listCommentsSince(thread.issueIid, since);
     } catch (err) {
+      if (isProviderRateLimitError(err)) throw err;
       logExternalError(project.provider, "list-comments", err, {
         projectId,
         threadId: thread.id,

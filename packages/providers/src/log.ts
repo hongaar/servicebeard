@@ -1,5 +1,5 @@
 export type ProviderLogFn = (
-  level: "debug" | "warn" | "error",
+  level: "debug" | "info" | "warn" | "error",
   message: string,
   context?: Record<string, unknown>,
 ) => void;
@@ -11,7 +11,7 @@ export function setProviderLog(fn: ProviderLogFn | null): void {
 }
 
 export function logProvider(
-  level: "debug" | "warn" | "error",
+  level: "debug" | "info" | "warn" | "error",
   message: string,
   context?: Record<string, unknown>,
 ): void {

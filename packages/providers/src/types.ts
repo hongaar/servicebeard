@@ -70,6 +70,8 @@ export interface ProviderConfig {
   token: string;
   /** When set, mint short-lived installation tokens via the configured GitHub App. */
   githubInstallationId?: string | null;
+  /** Overrides automatic provider API rate-limit bucket grouping. */
+  rateLimitBucketKey?: string | null;
   webhookUrl?: string;
   webhookSecret?: string;
   tlsInsecure?: boolean;
