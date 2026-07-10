@@ -1,5 +1,7 @@
 import { marked } from "marked";
 import TurndownService from "turndown";
+import { QUOTE_ATTRIBUTION_TEXT_PATTERNS } from "./email-reply-markers";
+import { pickStrippedReplyBody, stripQuotedReply } from "./mail";
 import type { EmailInlineImage } from "./types";
 
 export type { EmailInlineImage };
@@ -60,14 +62,70 @@ export function htmlToMarkdown(html: string): string {
 }
 
 /** Removes quoted reply blocks from HTML before plain-text extraction. */
+function truncateHtmlAtGmailQuote(html: string): string {
+  const match = /<div[^>]*class="[^"]*gmail_quote[^"]*"/i.exec(html);
+  if (!match || match.index === undefined) return html;
+
+  const divStart = html.lastIndexOf("<div", match.index);
+  return html.slice(0, divStart >= 0 ? divStart : match.index).trimEnd();
+}
+
+function truncateHtmlAtQuoteAttribution(html: string): string {
+  for (const pattern of QUOTE_ATTRIBUTION_TEXT_PATTERNS) {
+    const match = pattern.exec(html);
+    if (!match?.index) continue;
+
+    const before = html.slice(0, match.index);
+    const tagStart = Math.max(
+      before.lastIndexOf("<blockquote"),
+      before.lastIndexOf("<div"),
+      before.lastIndexOf("<p"),
+      before.lastIndexOf("<table"),
+    );
+    return html.slice(0, tagStart >= 0 ? tagStart : match.index).trimEnd();
+  }
+
+  return html;
+}
+
+function removeBalancedTables(html: string, openTagPattern: RegExp): string {
+  let result = html;
+
+  for (;;) {
+    const match = openTagPattern.exec(result);
+    if (!match?.index) break;
+
+    const start = match.index;
+    let depth = 0;
+    let end = -1;
+    const tagPattern = /<\/?table\b[^>]*>/gi;
+    tagPattern.lastIndex = start;
+
+    for (const tagMatch of result.slice(start).matchAll(tagPattern)) {
+      const tag = tagMatch[0] ?? "";
+      if (tag.startsWith("</")) depth -= 1;
+      else depth += 1;
+
+      if (depth === 0) {
+        end = start + (tagMatch.index ?? 0) + tag.length;
+        break;
+      }
+    }
+
+    if (end === -1) break;
+    result = result.slice(0, start) + result.slice(end);
+  }
+
+  return result;
+}
+
 export function stripQuotedHtmlBlocks(html: string): string {
-  return html
-    .replace(
-      /<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
-      "",
-    )
-    .replace(/<table[^>]*data-sb-quote="1"[^>]*>[\s\S]*?<\/table>/gi, "")
-    .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, "");
+  let result = truncateHtmlAtGmailQuote(html);
+  result = truncateHtmlAtQuoteAttribution(result);
+  result = removeBalancedTables(result, /<table[^>]*data-sb-quote="1"/i);
+  result = result.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, "");
+  result = truncateHtmlAtGmailQuote(result);
+  return result.trim();
 }
 
 export function markdownToHtml(markdown: string): string {
@@ -527,8 +585,22 @@ export function buildEmailMarkdownBody(
   text: string,
   html: string | null,
 ): string {
-  if (html) return htmlToMarkdown(stripQuotedHtmlBlocks(html));
-  return text;
+  if (html) {
+    const fromHtml = htmlToMarkdown(stripQuotedHtmlBlocks(html));
+    if (text) {
+      const fromText = stripQuotedReply(text);
+      const textHadQuote = fromText.length < text.trim().length;
+      if (
+        fromText &&
+        textHadQuote &&
+        fromHtml.startsWith(fromText.split("\n\n")[0] ?? "")
+      ) {
+        return fromText;
+      }
+    }
+    return pickStrippedReplyBody(fromHtml, text) || fromHtml;
+  }
+  return stripQuotedReply(text);
 }
 
 export function buildEmailPlainBody(
@@ -536,9 +608,10 @@ export function buildEmailPlainBody(
   html: string | null,
   markdown: string,
 ): string {
-  if (text) return text;
-  if (markdown) return markdownToPlainText(markdown);
-  if (html) return htmlToMarkdown(stripQuotedHtmlBlocks(html));
+  if (text) return stripQuotedReply(text);
+  if (markdown) return stripQuotedReply(markdownToPlainText(markdown));
+  if (html)
+    return stripQuotedReply(htmlToMarkdown(stripQuotedHtmlBlocks(html)));
   return "";
 }
 

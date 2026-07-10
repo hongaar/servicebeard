@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  containsQuoteAttribution,
+  findQuoteReplyCutIndex,
+} from "./email-reply-markers";
 
 /** Accepts `user@host`, `user@localhost`, and `Name <user@host>`. */
 const MAILBOX_ADDR = /^[^\s@]+@[^\s@]+$/;
@@ -154,27 +158,83 @@ ${formatQuoteAttributionLine(quoted)}
 ${quotedBody}`;
 }
 
-const QUOTE_REPLY_MARKERS: RegExp[] = [
-  /\n+On .+ wrote:\s*\n/i,
-  /\n-{2,}\s*Original Message\s*-{2,}\s*\n/i,
-  /\n_{3,}\s*\n/,
-  /\nFrom:\s.+\nSent:\s.+\n/i,
-  /\nFrom:\s.+\nDate:\s.+\n/i,
-];
+function stripTrailingQuotedLines(body: string): string {
+  const lines = body.split("\n");
+  let cut = lines.length;
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index] ?? "";
+    if (!line.trim()) {
+      cut = index;
+      continue;
+    }
+    if (/^>+/.test(line.trim())) {
+      cut = index;
+      continue;
+    }
+    break;
+  }
+
+  return lines.slice(0, cut).join("\n").trimEnd();
+}
+
+function hasQuoteLeak(body: string): boolean {
+  const trimmed = body.trim();
+  if (!trimmed) return false;
+
+  return (
+    /\n>/.test(trimmed) ||
+    /^>/.test(trimmed) ||
+    containsQuoteAttribution(trimmed) ||
+    /Reply from .+/i.test(trimmed) ||
+    /Thank you for contacting us/i.test(trimmed)
+  );
+}
 
 /** Strips quoted reply history from plain-text bodies (for issue tracker comments). */
 export function stripQuotedReply(body: string): string {
   const normalized = body.replace(/\r\n/g, "\n");
-  let cutAt = normalized.length;
+  const cutAt = findQuoteReplyCutIndex(normalized);
+  return stripTrailingQuotedLines(normalized.slice(0, cutAt));
+}
 
-  for (const pattern of QUOTE_REPLY_MARKERS) {
-    const match = pattern.exec(normalized);
-    if (match && match.index < cutAt) {
-      cutAt = match.index;
+/** Picks the cleanest stripped reply body from multipart or derived candidates. */
+export function pickStrippedReplyBody(
+  ...candidates: Array<string | undefined | null>
+): string {
+  const seen = new Set<string>();
+  const stripped: string[] = [];
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+
+    const result = stripQuotedReply(trimmed);
+    if (result.trim()) stripped.push(result);
+  }
+
+  if (stripped.length === 0) return "";
+
+  for (let i = 0; i < stripped.length; i += 1) {
+    for (let j = 0; j < stripped.length; j += 1) {
+      if (i === j) continue;
+      const longer = stripped[i]!;
+      const shorter = stripped[j]!;
+      if (shorter.length >= longer.length - 20) continue;
+      if (!hasQuoteLeak(longer)) continue;
+
+      const opening = shorter.split("\n\n")[0]?.trim();
+      if (opening && longer.startsWith(opening)) return shorter;
     }
   }
 
-  return normalized.slice(0, cutAt).trimEnd();
+  const clean = stripped.filter((body) => !hasQuoteLeak(body));
+  if (clean.length > 0) return clean[0]!;
+
+  return stripped.reduce((best, current) =>
+    current.length < best.length ? current : best,
+  );
 }
 
 export const mailFromSchema = z.string().min(3).refine(isValidMailFrom, {

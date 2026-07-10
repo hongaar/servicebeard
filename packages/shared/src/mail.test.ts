@@ -14,6 +14,36 @@ describe("stripQuotedReply", () => {
       stripQuotedReply("Thanks\n\n-----Original Message-----\nFrom: a@b.com"),
     ).toBe("Thanks");
   });
+
+  test("removes Dutch reply attribution lines", async () => {
+    const { stripQuotedReply } = await import("@servicebeard/shared");
+    expect(
+      stripQuotedReply(
+        "nog een plaintext antwoord!\n\nsupport@mail.test schreef op 2026-07-10 14:19:\n\n> quoted",
+      ),
+    ).toBe("nog een plaintext antwoord!");
+  });
+
+  test("removes attribution when quote body is empty", async () => {
+    const { stripQuotedReply } = await import("@servicebeard/shared");
+    expect(
+      stripQuotedReply(
+        "dat is leuk, een antwoord!\n\nsupport@mail.test schreef op 2026-07-10 14:19:",
+      ),
+    ).toBe("dat is leuk, een antwoord!");
+  });
+
+  test("prefers cleaner plain text over html-derived markdown", async () => {
+    const { pickStrippedReplyBody } = await import("@servicebeard/shared");
+    const plain =
+      "nog een plaintext antwoord!\n\nsupport@mail.test schreef op 2026-07-10 14:19:\n\n> quoted";
+    const markdown =
+      "nog een plaintext antwoord!\n\nTest team · gh-test\n\noh hi there!\n\nReply from Joram";
+
+    expect(pickStrippedReplyBody(markdown, plain)).toBe(
+      "nog een plaintext antwoord!",
+    );
+  });
 });
 
 describe("mail from validation", () => {

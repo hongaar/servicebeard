@@ -146,6 +146,39 @@ On 2026-06-23 22:02, support@mail.test wrote:
     expect(comment).not.toContain("We shipped a fix");
     expect(comment).not.toContain("support@mail.test wrote");
   });
+
+  test("strips Dutch plain-text quotes when html body still contains history", () => {
+    const text =
+      "nog een plaintext antwoord!\n\nsupport@mail.test schreef op 2026-07-10 14:19:\n\n> Test team · gh-test\n> oh hi there!";
+    const html =
+      "<p>nog een plaintext antwoord!</p><table><tr><td>Test team · gh-test</td></tr><tr><td>oh hi there!</td></tr><tr><td>Reply from Joram on issue #29</td></tr></table>";
+    const parsed = buildParsedEmailContent(text, html, []);
+
+    const comment = formatCommentBody(
+      testEmail({
+        messageId: "<dutch-reply@mail.test>",
+        inReplyTo: "<parent@servicebeard.local>",
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "customer@mail.test",
+        fromName: "customer",
+        subject: "Re: problem",
+        body: parsed.body,
+        bodyMarkdown: parsed.bodyMarkdown,
+        bodyHtml: html,
+        date: testEmailDate,
+      }),
+      DEFAULT_INBOUND_COMMENT_TEMPLATE,
+      parsed.bodyMarkdown,
+    );
+
+    expect(comment).toContain("nog een plaintext antwoord!");
+    expect(comment).not.toContain("oh hi there");
+    expect(comment).not.toContain("schreef op");
+    expect(comment).not.toContain("Reply from Joram");
+  });
 });
 
 describe("issue support details footer", () => {

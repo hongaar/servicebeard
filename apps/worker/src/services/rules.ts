@@ -3,9 +3,9 @@ import {
   buildIssueSupportDetailsFooter,
   buildSyncMarker,
   formatEmailSender,
+  pickStrippedReplyBody,
   renderInboundCommentTemplate,
   renderInboundIssueTemplate,
-  stripQuotedReply,
   type IssueSupportDetailsOptions,
   type RuleMatchResult,
 } from "@servicebeard/shared";
@@ -39,8 +39,10 @@ export function formatCommentBody(
   bodyMarkdown?: string,
   provider?: ProviderType | string,
 ): string {
-  const body = stripQuotedReply(
-    bodyMarkdown ?? email.bodyMarkdown ?? email.body,
+  const body = pickStrippedReplyBody(
+    bodyMarkdown,
+    email.bodyMarkdown,
+    email.body,
   );
   const rendered = renderInboundCommentTemplate(template, {
     sender: formatEmailSender(email.senderName, email.senderEmail),

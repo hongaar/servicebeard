@@ -84,6 +84,28 @@ describe("email content conversion", () => {
     expect(content.body).not.toContain("Old message");
   });
 
+  test("strips nested gmail_quote divs from html", async () => {
+    const { stripQuotedHtmlBlocks } =
+      await import("@servicebeard/shared/email-content");
+    const html =
+      '<p>Reply</p><div class="gmail_quote"><div><p>Nested</p><p>Quoted history</p></div></div>';
+    expect(stripQuotedHtmlBlocks(html)).not.toContain("Quoted history");
+    expect(stripQuotedHtmlBlocks(html)).toContain("Reply");
+  });
+
+  test("strips Dutch attribution from multipart replies", async () => {
+    const { buildParsedEmailContent } =
+      await import("@servicebeard/shared/email-content");
+    const text =
+      "nog een plaintext antwoord!\n\nsupport@mail.test schreef op 2026-07-10 14:19:\n\n> Test team";
+    const html =
+      "<p>nog een plaintext antwoord!</p><table><tr><td>Test team</td></tr><tr><td>oh hi there!</td></tr></table>";
+
+    const content = buildParsedEmailContent(text, html, []);
+    expect(content.body).toBe("nog een plaintext antwoord!");
+    expect(content.bodyMarkdown).not.toContain("oh hi there!");
+  });
+
   test("preserves inline image position with placeholders", async () => {
     const {
       buildParsedEmailContent,
