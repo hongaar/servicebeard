@@ -4,6 +4,7 @@ import {
   listAdminStatusEvents,
   listAdminTeams,
   listAuditLogEntries,
+  listJobRuns,
 } from "@servicebeard/db";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -15,6 +16,15 @@ export const adminRoutes = new Hono<{ Variables: AppVariables }>();
 
 const overviewQuerySchema = z.object({
   search: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+const jobRunsQuerySchema = z.object({
+  search: z.string().optional(),
+  jobType: z.string().optional(),
+  status: z.string().optional(),
+  projectId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -121,6 +131,37 @@ adminRoutes.post("/status-events/:eventId/dismiss", async (c) => {
   const dismissed = await dismissStatusEventById(eventId);
   if (!dismissed) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
+});
+
+adminRoutes.get("/job-runs", async (c) => {
+  requirePlatformAdmin(c);
+  const query = jobRunsQuerySchema.parse({
+    search: c.req.query("search"),
+    jobType: c.req.query("jobType"),
+    status: c.req.query("status"),
+    projectId: c.req.query("projectId"),
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+
+  const result = await listJobRuns(query);
+  return c.json({
+    runs: result.runs.map((run) => ({
+      id: run.id,
+      jobType: run.jobType,
+      projectId: run.projectId,
+      projectName: run.projectName,
+      teamId: run.teamId,
+      teamName: run.teamName,
+      status: run.status,
+      startedAt: run.startedAt.toISOString(),
+      finishedAt: run.finishedAt?.toISOString() ?? null,
+      durationMs: run.durationMs,
+      error: run.error,
+      metadata: run.metadata,
+    })),
+    total: result.total,
+  });
 });
 
 adminRoutes.get("/audit-log", async (c) => {

@@ -183,6 +183,26 @@ export const api = {
       `/admin/audit-log${qs ? `?${qs}` : ""}`,
     );
   },
+  listJobRuns: (params?: {
+    search?: string;
+    jobType?: string;
+    status?: string;
+    projectId?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.jobType) query.set("jobType", params.jobType);
+    if (params?.status) query.set("status", params.status);
+    if (params?.projectId) query.set("projectId", params.projectId);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const qs = query.toString();
+    return request<{ runs: AdminJobRun[]; total: number }>(
+      `/admin/job-runs${qs ? `?${qs}` : ""}`,
+    );
+  },
   listAdminTeams: (params?: {
     search?: string;
     limit?: number;
@@ -818,6 +838,24 @@ export interface AdminAuditLogEntry {
   userEmail: string | null;
   userName: string | null;
   teamName: string | null;
+}
+
+export type AdminJobRunStatus =
+  "running" | "completed" | "failed" | "deferred" | "skipped";
+
+export interface AdminJobRun {
+  id: string;
+  jobType: string;
+  projectId: string | null;
+  projectName: string | null;
+  teamId: string | null;
+  teamName: string | null;
+  status: AdminJobRunStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  error: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface AdminTeamOverview {

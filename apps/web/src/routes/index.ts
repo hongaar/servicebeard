@@ -13,8 +13,10 @@ import { isPlatformAdminTeamAccess } from "../lib/teamAccess";
 import { AcceptInvitePage } from "../pages/AcceptInvitePage";
 import { AccountPage } from "../pages/AccountPage";
 import { AdminAuditLogPage } from "../pages/AdminAuditLogPage";
+import { AdminHealthPage } from "../pages/AdminHealthPage";
+import { AdminJobRunsPage } from "../pages/AdminJobRunsPage";
 import { AdminOverviewPage } from "../pages/AdminOverviewPage";
-import { AdminStatusPage } from "../pages/AdminStatusPage";
+import { AdminProjectStatusPage } from "../pages/AdminProjectStatusPage";
 import { DocsGitHubPage } from "../pages/docs/DocsGitHubPage";
 import { DocsGitLabPage } from "../pages/docs/DocsGitLabPage";
 import { DocsIndexPage } from "../pages/docs/DocsIndexPage";
@@ -260,11 +262,32 @@ export const adminOverviewRoute = createRoute({
   },
 });
 
-export const adminStatusRoute = createRoute({
+export const adminHealthRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/health",
+  component: AdminHealthPage,
+  head: routeHead("System health"),
+  loader: async () => {
+    const { user } = await queryClient.ensureQueryData(appQueries.me());
+    if (!user) throw redirect({ to: "/login" });
+    if (!user.isAdmin) throw redirect({ to: "/" });
+    return { user };
+  },
+});
+
+export const adminStatusRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/status",
-  component: AdminStatusPage,
-  head: routeHead("System status"),
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/health" });
+  },
+});
+
+export const adminProjectStatusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/project-status",
+  component: AdminProjectStatusPage,
+  head: routeHead("Project status"),
   loader: async () => {
     const { user } = await queryClient.ensureQueryData(appQueries.me());
     if (!user) throw redirect({ to: "/login" });
@@ -278,6 +301,19 @@ export const adminAuditLogRoute = createRoute({
   path: "/admin/audit-log",
   component: AdminAuditLogPage,
   head: routeHead("Audit log"),
+  loader: async () => {
+    const { user } = await queryClient.ensureQueryData(appQueries.me());
+    if (!user) throw redirect({ to: "/login" });
+    if (!user.isAdmin) throw redirect({ to: "/" });
+    return { user };
+  },
+});
+
+export const adminJobRunsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/job-runs",
+  component: AdminJobRunsPage,
+  head: routeHead("Job runs"),
   loader: async () => {
     const { user } = await queryClient.ensureQueryData(appQueries.me());
     if (!user) throw redirect({ to: "/login" });

@@ -82,8 +82,10 @@ export function Layout({
   const isDashboard = pathname === "/";
   const isAccount = pathname === "/account";
   const isAdminOverview = pathname === "/admin";
-  const isAdminStatus = pathname === "/admin/status";
+  const isAdminHealth = pathname === "/admin/health";
+  const isAdminProjectStatus = pathname === "/admin/project-status";
   const isAdminAuditLog = pathname === "/admin/audit-log";
+  const isAdminJobRuns = pathname === "/admin/job-runs";
   const isTeamMembers = teamId && pathname === `/teams/${teamId}/members`;
   const isTeamSettings = teamId && pathname === `/teams/${teamId}/settings`;
   const isProjectsList = teamId && pathname === `/teams/${teamId}/projects`;
@@ -259,14 +261,24 @@ export function Layout({
                       <span className={styles.navLabel}>Overview</span>
                     </Link>
                     <Link
-                      to="/admin/status"
-                      className={navLinkClass(isAdminStatus)}
-                      title="System status"
+                      to="/admin/health"
+                      className={navLinkClass(isAdminHealth)}
+                      title="System health"
                     >
                       <NavIcon>
-                        <NAV_ICONS.adminStatus {...iconMd} />
+                        <NAV_ICONS.adminHealth {...iconMd} />
                       </NavIcon>
-                      <span className={styles.navLabel}>System status</span>
+                      <span className={styles.navLabel}>System health</span>
+                    </Link>
+                    <Link
+                      to="/admin/project-status"
+                      className={navLinkClass(isAdminProjectStatus)}
+                      title="Project status"
+                    >
+                      <NavIcon>
+                        <NAV_ICONS.adminProjectStatus {...iconMd} />
+                      </NavIcon>
+                      <span className={styles.navLabel}>Project status</span>
                     </Link>
                     <Link
                       to="/admin/audit-log"
@@ -277,6 +289,16 @@ export function Layout({
                         <NAV_ICONS.adminAuditLog {...iconMd} />
                       </NavIcon>
                       <span className={styles.navLabel}>Audit log</span>
+                    </Link>
+                    <Link
+                      to="/admin/job-runs"
+                      className={navLinkClass(isAdminJobRuns)}
+                      title="Job runs"
+                    >
+                      <NavIcon>
+                        <NAV_ICONS.adminJobRuns {...iconMd} />
+                      </NavIcon>
+                      <span className={styles.navLabel}>Job runs</span>
                     </Link>
                     {adminNavItems.map((item) => (
                       <Link

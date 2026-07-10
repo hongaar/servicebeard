@@ -20,13 +20,19 @@ describe("global search", () => {
       filterSearchActions(actions, "help").some((a) => a.group === "Help"),
     ).toBe(true);
     expect(
-      filterSearchActions(actions, "status").some(
-        (a) => a.label === "System status",
+      filterSearchActions(actions, "health").some(
+        (a) => a.label === "System health",
       ),
     ).toBe(true);
     expect(
       filterSearchActions(actions, "admin").every((a) =>
-        ["Admin overview", "System status", "Audit log"].includes(a.label)
+        [
+          "Admin overview",
+          "System health",
+          "Project status",
+          "Audit log",
+          "Job runs",
+        ].includes(a.label)
           ? a.group === "Admin"
           : true,
       ),

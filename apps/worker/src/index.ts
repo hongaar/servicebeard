@@ -15,6 +15,14 @@ import { loadWorkerExtensions } from "./extensions";
 import { initBugsink } from "./lib/bugsink";
 import "./lib/env-loader";
 import { logExternalError } from "./lib/external-error";
+import {
+  beginJobRun,
+  createJobRunTrace,
+  finishJobRunWithError,
+  loadProjectJobRunContext,
+  type JobRunTrace,
+  type PollTickSummary,
+} from "./lib/job-run";
 import { logger } from "./lib/logger";
 import {
   deferQueueJob,
@@ -62,7 +70,11 @@ function isProjectPollDue(
   return Date.now() - lastPollAt.getTime() >= intervalSeconds * 1000;
 }
 
-async function scheduleImapPollsForDueProjects(boss: PgBoss): Promise<void> {
+async function scheduleImapPollsForDueProjects(
+  boss: PgBoss,
+  trace: JobRunTrace,
+): Promise<PollTickSummary> {
+  trace.current = { scope: "platform", phase: "load-active-projects" };
   const db = getDb();
   const imapPollIntervalSeconds = getImapPollIntervalSeconds();
   const activeProjects = await db.query.projects.findMany({
@@ -75,6 +87,14 @@ async function scheduleImapPollsForDueProjects(boss: PgBoss): Promise<void> {
   const exhaustedBuckets = new Set<string>();
 
   for (const project of activeProjects) {
+    trace.current = {
+      scope: "platform",
+      phase: "schedule-enqueue",
+      projectId: project.id,
+      projectName: project.name,
+      teamId: project.teamId,
+    };
+
     if (shouldSkipProjectForRateLimit(project, exhaustedBuckets)) {
       skippedRateLimited++;
       continue;
@@ -133,9 +153,21 @@ async function scheduleImapPollsForDueProjects(boss: PgBoss): Promise<void> {
     },
     "imap poll tick",
   );
+
+  return {
+    activeProjects: activeProjects.length,
+    enqueued,
+    skippedNotDue,
+    skippedRateLimited,
+    exhaustedBuckets: [...exhaustedBuckets],
+  };
 }
 
-async function scheduleCommentPollsForDueProjects(boss: PgBoss): Promise<void> {
+async function scheduleCommentPollsForDueProjects(
+  boss: PgBoss,
+  trace: JobRunTrace,
+): Promise<PollTickSummary> {
+  trace.current = { scope: "platform", phase: "load-active-projects" };
   const db = getDb();
   const commentPollIntervalSeconds = getCommentPollIntervalSeconds();
   const activeProjects = await db.query.projects.findMany({
@@ -148,6 +180,14 @@ async function scheduleCommentPollsForDueProjects(boss: PgBoss): Promise<void> {
   const exhaustedBuckets = new Set<string>();
 
   for (const project of activeProjects) {
+    trace.current = {
+      scope: "platform",
+      phase: "schedule-enqueue",
+      projectId: project.id,
+      projectName: project.name,
+      teamId: project.teamId,
+    };
+
     if (shouldSkipProjectForRateLimit(project, exhaustedBuckets)) {
       skippedRateLimited++;
       continue;
@@ -213,6 +253,14 @@ async function scheduleCommentPollsForDueProjects(boss: PgBoss): Promise<void> {
       "comment poll tick skipped, not due yet",
     );
   }
+
+  return {
+    activeProjects: activeProjects.length,
+    enqueued,
+    skippedNotDue,
+    skippedRateLimited,
+    exhaustedBuckets: [...exhaustedBuckets],
+  };
 }
 
 function registerSendEmailWorkers(boss: PgBoss): void {
@@ -223,10 +271,31 @@ function registerSendEmailWorkers(boss: PgBoss): void {
     source: string;
     event: NormalizedWebhookEvent;
   }>[]) => {
+    const { projectId, event } = job!.data;
+    const projectContext = await loadProjectJobRunContext(projectId);
+    const run = await beginJobRun({
+      jobType: QUEUE_NAMES.SEND_EMAIL,
+      projectId,
+      metadata: {
+        ...projectContext,
+        operation: "send-email",
+        noteId: event.noteId,
+        source: job!.data.source,
+      },
+    });
     try {
-      await runExclusive(`send-email:${job!.data.event.noteId}`, async () =>
-        processOutboundComment(job!.data.projectId, job!.data.event),
+      const result = await runExclusive(
+        `send-email:${event.noteId}`,
+        async () => processOutboundComment(projectId, event),
       );
+      if (result === undefined) {
+        await run.finish({
+          status: "skipped",
+          metadata: { reason: "concurrent" },
+        });
+        return;
+      }
+      await run.finish({ status: "completed" });
     } catch (err) {
       if (isProviderRateLimitError(err)) {
         await deferQueueJob(
@@ -236,15 +305,27 @@ function registerSendEmailWorkers(boss: PgBoss): void {
           err,
           "send-email",
           {
-            projectId: job!.data.projectId,
-            noteId: job!.data.event.noteId,
+            projectId,
+            noteId: event.noteId,
           },
         );
+        await run.finish({
+          status: "deferred",
+          metadata: {
+            bucketKey: err.bucketKey,
+            retryAt: new Date(err.retryAtMs).toISOString(),
+          },
+        });
         return;
       }
+      await finishJobRunWithError(run, err, {
+        ...projectContext,
+        operation: "send-email",
+        noteId: event.noteId,
+      });
       logExternalError("worker", "send-email", err, {
-        projectId: job!.data.projectId,
-        noteId: job!.data.event.noteId,
+        projectId,
+        noteId: event.noteId,
       });
       throw err;
     }
@@ -260,8 +341,15 @@ function registerImapPollProjectWorkers(boss: PgBoss): void {
 
   const handler = async ([job]: PgBoss.Job<{ projectId: string }>[]) => {
     const { projectId } = job!.data;
+    const projectContext = await loadProjectJobRunContext(projectId);
+    const run = await beginJobRun({
+      jobType: QUEUE_NAMES.IMAP_POLL_PROJECT,
+      projectId,
+      metadata: { ...projectContext, operation: "imap-poll" },
+    });
     try {
       await processImapPoll(projectId);
+      await run.finish({ status: "completed" });
     } catch (err) {
       if (isProviderRateLimitError(err)) {
         await deferQueueJob(
@@ -272,8 +360,21 @@ function registerImapPollProjectWorkers(boss: PgBoss): void {
           "imap-poll-project",
           { projectId },
         );
+        await run.finish({
+          status: "deferred",
+          metadata: {
+            ...projectContext,
+            operation: "imap-poll",
+            bucketKey: err.bucketKey,
+            retryAt: new Date(err.retryAtMs).toISOString(),
+          },
+        });
         return;
       }
+      await finishJobRunWithError(run, err, {
+        ...projectContext,
+        operation: "imap-poll",
+      });
       logExternalError("worker", "imap-poll-project", err, { projectId });
       throw err;
     }
@@ -289,8 +390,15 @@ function registerCommentPollProjectWorkers(boss: PgBoss): void {
 
   const handler = async ([job]: PgBoss.Job<{ projectId: string }>[]) => {
     const { projectId } = job!.data;
+    const projectContext = await loadProjectJobRunContext(projectId);
+    const run = await beginJobRun({
+      jobType: QUEUE_NAMES.COMMENT_POLL_PROJECT,
+      projectId,
+      metadata: { ...projectContext, operation: "comment-poll" },
+    });
     try {
       await pollCommentsForProject(projectId);
+      await run.finish({ status: "completed" });
     } catch (err) {
       if (isProviderRateLimitError(err)) {
         await deferQueueJob(
@@ -301,8 +409,21 @@ function registerCommentPollProjectWorkers(boss: PgBoss): void {
           "comment-poll-project",
           { projectId },
         );
+        await run.finish({
+          status: "deferred",
+          metadata: {
+            ...projectContext,
+            operation: "comment-poll",
+            bucketKey: err.bucketKey,
+            retryAt: new Date(err.retryAtMs).toISOString(),
+          },
+        });
         return;
       }
+      await finishJobRunWithError(run, err, {
+        ...projectContext,
+        operation: "comment-poll",
+      });
       logExternalError("worker", "comment-poll-project", err, { projectId });
       throw err;
     }
@@ -369,25 +490,39 @@ export async function startWorker(): Promise<PgBoss> {
   logger.info("cleared imap and comment poll queue backlogs");
 
   boss.work(QUEUE_NAMES.IMAP_POLL, { batchSize: 1 }, async () => {
-    try {
-      await runExclusive("imap-poll", () =>
-        scheduleImapPollsForDueProjects(boss),
-      );
-    } catch (err) {
-      logExternalError("worker", "imap-poll-tick", err);
-      throw err;
-    }
+    await runExclusive("imap-poll", async () => {
+      const trace = createJobRunTrace();
+      const run = await beginJobRun({
+        jobType: QUEUE_NAMES.IMAP_POLL,
+        metadata: { scope: "platform", operation: "imap-poll-tick" },
+      });
+      try {
+        const summary = await scheduleImapPollsForDueProjects(boss, trace);
+        await run.finish({ status: "completed", metadata: summary });
+      } catch (err) {
+        await finishJobRunWithError(run, err, trace.current);
+        logExternalError("worker", "imap-poll-tick", err);
+        throw err;
+      }
+    });
   });
 
   boss.work(QUEUE_NAMES.COMMENT_POLL, { batchSize: 1 }, async () => {
-    try {
-      await runExclusive("comment-poll", () =>
-        scheduleCommentPollsForDueProjects(boss),
-      );
-    } catch (err) {
-      logExternalError("worker", "comment-poll-tick", err);
-      throw err;
-    }
+    await runExclusive("comment-poll", async () => {
+      const trace = createJobRunTrace();
+      const run = await beginJobRun({
+        jobType: QUEUE_NAMES.COMMENT_POLL,
+        metadata: { scope: "platform", operation: "comment-poll-tick" },
+      });
+      try {
+        const summary = await scheduleCommentPollsForDueProjects(boss, trace);
+        await run.finish({ status: "completed", metadata: summary });
+      } catch (err) {
+        await finishJobRunWithError(run, err, trace.current);
+        logExternalError("worker", "comment-poll-tick", err);
+        throw err;
+      }
+    });
   });
 
   registerSendEmailWorkers(boss);
@@ -398,12 +533,22 @@ export async function startWorker(): Promise<PgBoss> {
     QUEUE_NAMES.ENSURE_WEBHOOK,
     { batchSize: 1 },
     async ([job]) => {
+      const projectId = job!.data.projectId;
+      const projectContext = await loadProjectJobRunContext(projectId);
+      const run = await beginJobRun({
+        jobType: QUEUE_NAMES.ENSURE_WEBHOOK,
+        projectId,
+        metadata: { ...projectContext, operation: "ensure-webhook" },
+      });
       try {
-        await ensureWebhookForProject(job!.data.projectId);
+        await ensureWebhookForProject(projectId);
+        await run.finish({ status: "completed" });
       } catch (err) {
-        logExternalError("worker", "ensure-webhook", err, {
-          projectId: job!.data.projectId,
+        await finishJobRunWithError(run, err, {
+          ...projectContext,
+          operation: "ensure-webhook",
         });
+        logExternalError("worker", "ensure-webhook", err, { projectId });
       }
     },
   );

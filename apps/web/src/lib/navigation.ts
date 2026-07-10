@@ -6,17 +6,18 @@ import {
   CreditCard,
   FileText,
   Folder,
+  History,
   Home,
   LayoutDashboard,
   Mail,
   MessagesSquare,
   Scale,
   ScrollText,
-  Server,
   Settings,
   Shield,
   SlidersHorizontal,
   Sparkles,
+  Stethoscope,
   UserRound,
   Users,
 } from "lucide-react";
@@ -60,8 +61,10 @@ export const NAV_ICONS = {
   billing: CreditCard,
   teamSettings: Settings,
   adminOverview: LayoutDashboard,
-  adminStatus: Server,
+  adminHealth: Stethoscope,
+  adminProjectStatus: Activity,
   adminAuditLog: ScrollText,
+  adminJobRuns: History,
   overview: LayoutDashboard,
   rules: SlidersHorizontal,
   conversations: MessagesSquare,
@@ -89,8 +92,10 @@ export function teamPageIcon(
 
 export function homePageIcon(pathname: string): NavIconKey {
   if (pathname === "/admin") return "adminOverview";
+  if (pathname === "/admin/health") return "adminHealth";
+  if (pathname === "/admin/project-status") return "adminProjectStatus";
   if (pathname === "/admin/audit-log") return "adminAuditLog";
-  if (pathname === "/admin/status") return "adminStatus";
+  if (pathname === "/admin/job-runs") return "adminJobRuns";
   if (pathname === "/account") return "account";
   return "teams";
 }
