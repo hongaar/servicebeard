@@ -12,6 +12,7 @@ import type {
   CreateIssueResult,
   DownloadedFile,
   IssueProvider,
+  IssueState,
   NormalizedWebhookEvent,
   ProviderConfig,
   ProviderNote,
@@ -30,6 +31,7 @@ interface GitLabIssue {
   id: number;
   iid: number;
   web_url: string;
+  state?: string;
 }
 
 interface GitLabNote {
@@ -386,6 +388,69 @@ export class GitLabProvider implements IssueProvider {
     if (errors.length > 0) {
       throw new Error(`GitLab status update failed: ${errors.join(", ")}`);
     }
+  }
+
+  async getIssueState(issueIid: number): Promise<IssueState | null> {
+    try {
+      const issue = await this.request<GitLabIssue>(
+        "GET",
+        `/projects/${this.encodeProjectId()}/issues/${issueIid}`,
+        undefined,
+        { quiet404: true },
+      );
+      return {
+        closed: issue.state === "closed",
+        statusId: issue.state ?? null,
+      };
+    } catch (err) {
+      if (err instanceof GitLabApiError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  async getDefaultOpenStatus(): Promise<string> {
+    return "opened";
+  }
+
+  async updateIssueStatus(issueIid: number, status: string): Promise<void> {
+    if (status === "opened" || status === "open") {
+      await this.request(
+        "PUT",
+        `/projects/${this.encodeProjectId()}/issues/${issueIid}`,
+        { state_event: "reopen" },
+      );
+      return;
+    }
+
+    if (status === "closed") {
+      await this.request(
+        "PUT",
+        `/projects/${this.encodeProjectId()}/issues/${issueIid}`,
+        { state_event: "close" },
+      );
+      return;
+    }
+
+    if (status.startsWith("gid://")) {
+      const state = await this.getIssueState(issueIid);
+      if (state?.closed) {
+        await this.request(
+          "PUT",
+          `/projects/${this.encodeProjectId()}/issues/${issueIid}`,
+          { state_event: "reopen" },
+        );
+      }
+      await this.updateWorkItemStatus(issueIid, status);
+      return;
+    }
+
+    await this.request(
+      "PUT",
+      `/projects/${this.encodeProjectId()}/issues/${issueIid}`,
+      { status },
+    );
   }
 
   async addComment(

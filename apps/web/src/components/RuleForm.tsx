@@ -34,6 +34,7 @@ const emptyForm: CreateRuleInput = {
   matchSubject: "",
   matchBody: "",
   actionCreateIssue: true,
+  actionReopenOnReply: true,
   actionStatus: null,
   actionLabels: [],
   actionAssigneeId: null,
@@ -328,6 +329,13 @@ export function RuleForm({
           label="Create issue when matched"
           checked={form.actionCreateIssue ?? true}
           onChange={(v) => setForm((f) => ({ ...f, actionCreateIssue: v }))}
+        />
+        <Checkbox
+          label="Reopen resolved issue on customer reply"
+          checked={form.actionReopenOnReply ?? true}
+          onChange={(v) => setForm((f) => ({ ...f, actionReopenOnReply: v }))}
+          disabled={!form.actionCreateIssue}
+          hint="When enabled, a customer reply on a closed issue reopens it using this rule's default status, or your provider's default open status."
         />
 
         <div className={styles.sectionTitle}>Default issue settings</div>

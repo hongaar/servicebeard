@@ -1,3 +1,4 @@
+import type { EmailStyleConfig } from "@servicebeard/shared";
 import { relations } from "drizzle-orm";
 import {
   boolean,
@@ -268,6 +269,10 @@ Reply from {{authorName}} on issue #{{issueNumber}}
 
 {{body}}`,
       ),
+    emailStylePreset: text("email_style_preset").notNull().default("none"),
+    emailStyleConfig: jsonb(
+      "email_style_config",
+    ).$type<EmailStyleConfig | null>(),
     imapMarkIngestedAsSeen: boolean("imap_mark_ingested_as_seen")
       .notNull()
       .default(true),
@@ -306,6 +311,9 @@ export const rules = pgTable(
     matchSubject: text("match_subject"),
     matchBody: text("match_body"),
     actionCreateIssue: boolean("action_create_issue").notNull().default(true),
+    actionReopenOnReply: boolean("action_reopen_on_reply")
+      .notNull()
+      .default(true),
     actionStatus: text("action_status"),
     actionLabels: jsonb("action_labels")
       .$type<string[]>()

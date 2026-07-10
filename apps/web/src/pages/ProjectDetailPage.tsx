@@ -1,4 +1,5 @@
 import { LimitReachedDialog } from "@extensions";
+import type { EmailStyleConfig } from "@servicebeard/shared";
 import { providerIssuesWebUrl } from "@servicebeard/shared";
 import { parseMailFromAddress } from "@servicebeard/shared/mail";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -24,7 +25,7 @@ import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
 import { ProjectSettingsForm } from "../components/ProjectSettingsForm";
 import { ProjectStatusEventDialog } from "../components/ProjectStatusEventDialog";
-import { ProjectTemplatesForm } from "../components/ProjectTemplatesForm";
+import { ProjectTemplatesSection } from "../components/ProjectTemplatesForm";
 import { RuleActionsCell } from "../components/RuleActionsCell";
 import { RuleForm } from "../components/RuleForm";
 import { TableRowAction } from "../components/TableRowAction";
@@ -41,7 +42,8 @@ import {
   type ProjectSettingsFormValues,
 } from "../lib/projectForm";
 import {
-  formToTemplatesUpdateInput,
+  formToEmailTemplatesUpdateInput,
+  formToIssueTrackerTemplatesUpdateInput,
   projectToTemplatesForm,
   type ProjectTemplatesFormValues,
 } from "../lib/projectTemplatesForm";
@@ -81,6 +83,7 @@ function ruleToFormInput(rule: Rule): CreateRuleInput {
     matchSubject: rule.matchSubject ?? "",
     matchBody: rule.matchBody ?? "",
     actionCreateIssue: rule.actionCreateIssue,
+    actionReopenOnReply: rule.actionReopenOnReply ?? true,
     actionStatus: rule.actionStatus,
     actionLabels: rule.actionLabels,
     actionAssigneeId: rule.actionAssigneeId,
@@ -127,9 +130,13 @@ export function ProjectDetailPage() {
     () => projectToSettingsForm(project),
   );
   const [templatesForm, setTemplatesForm] =
-    useState<ProjectTemplatesFormValues>(() => projectToTemplatesForm(project));
+    useState<ProjectTemplatesFormValues>(() =>
+      projectToTemplatesForm(project, teamName),
+    );
   const [settingsError, setSettingsError] = useState("");
-  const [templatesError, setTemplatesError] = useState("");
+  const [emailTemplatesError, setEmailTemplatesError] = useState("");
+  const [issueTrackerTemplatesError, setIssueTrackerTemplatesError] =
+    useState("");
   const [settingsFieldErrors, setSettingsFieldErrors] = useState<
     Record<string, string>
   >({});
@@ -173,9 +180,10 @@ export function ProjectDetailPage() {
 
   useEffect(() => {
     setSettingsForm(projectToSettingsForm(project));
-    setTemplatesForm(projectToTemplatesForm(project));
+    setTemplatesForm(projectToTemplatesForm(project, teamName));
     setSettingsError("");
-    setTemplatesError("");
+    setEmailTemplatesError("");
+    setIssueTrackerTemplatesError("");
     setSettingsFieldErrors({});
     setTemplatesFieldErrors({});
     setShowRuleForm(false);
@@ -187,7 +195,7 @@ export function ProjectDetailPage() {
     setSelectedStatusEventId(null);
     setShowDeleteDialog(false);
     setDeleteError("");
-  }, [project.id]);
+  }, [project.id, teamName]);
 
   useEffect(() => {
     if (!search.githubInstallationId && !search.githubAppError) return;
@@ -270,16 +278,32 @@ export function ProjectDetailPage() {
       handleMutationError(err, setSettingsError, setSettingsFieldErrors),
   });
 
-  const saveTemplates = useMutation({
+  const saveEmailTemplates = useMutation({
     mutationFn: () =>
       api.updateProject(
         teamId,
         project.id,
-        formToTemplatesUpdateInput(templatesForm),
+        formToEmailTemplatesUpdateInput(templatesForm),
       ),
     onSuccess: () => window.location.reload(),
     onError: (err) =>
-      handleMutationError(err, setTemplatesError, setTemplatesFieldErrors),
+      handleMutationError(err, setEmailTemplatesError, setTemplatesFieldErrors),
+  });
+
+  const saveIssueTrackerTemplates = useMutation({
+    mutationFn: () =>
+      api.updateProject(
+        teamId,
+        project.id,
+        formToIssueTrackerTemplatesUpdateInput(templatesForm),
+      ),
+    onSuccess: () => window.location.reload(),
+    onError: (err) =>
+      handleMutationError(
+        err,
+        setIssueTrackerTemplatesError,
+        setTemplatesFieldErrors,
+      ),
   });
 
   const deleteProject = useMutation({
@@ -321,11 +345,12 @@ export function ProjectDetailPage() {
 
   const updateTemplates = (
     field: keyof ProjectTemplatesFormValues,
-    value: string | boolean,
+    value: string | boolean | EmailStyleConfig,
   ) => {
     setTemplatesForm((f) => ({ ...f, [field]: value }));
     setTemplatesFieldErrors((prev) => clearFieldError(prev, field));
-    setTemplatesError("");
+    setEmailTemplatesError("");
+    setIssueTrackerTemplatesError("");
   };
 
   const clearRuleFieldError = (field: string) => {
@@ -831,24 +856,20 @@ export function ProjectDetailPage() {
       )}
 
       {section === "templates" && (
-        <Card title="Templates">
-          {templatesError && (
-            <div className={[styles.alert, styles.alertError].join(" ")}>
-              {templatesError}
-            </div>
-          )}
-          <ProjectTemplatesForm
-            values={templatesForm}
-            onChange={updateTemplates}
-            onSubmit={() => saveTemplates.mutate()}
-            submitLabel={saveTemplates.isPending ? "Saving…" : "Save templates"}
-            isPending={saveTemplates.isPending}
-            fieldErrors={templatesFieldErrors}
-            onClearFieldError={(field) =>
-              setTemplatesFieldErrors((prev) => clearFieldError(prev, field))
-            }
-          />
-        </Card>
+        <ProjectTemplatesSection
+          values={templatesForm}
+          onChange={updateTemplates}
+          emailError={emailTemplatesError}
+          issueTrackerError={issueTrackerTemplatesError}
+          onSubmitEmail={() => saveEmailTemplates.mutate()}
+          onSubmitIssueTracker={() => saveIssueTrackerTemplates.mutate()}
+          isEmailPending={saveEmailTemplates.isPending}
+          isIssueTrackerPending={saveIssueTrackerTemplates.isPending}
+          fieldErrors={templatesFieldErrors}
+          onClearFieldError={(field) =>
+            setTemplatesFieldErrors((prev) => clearFieldError(prev, field))
+          }
+        />
       )}
 
       {section === "settings" && (

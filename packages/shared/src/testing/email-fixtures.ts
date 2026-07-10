@@ -66,6 +66,7 @@ export const baseRule: Rule = {
   matchSubject: null,
   matchBody: null,
   actionCreateIssue: true,
+  actionReopenOnReply: true,
   actionStatus: null,
   actionLabels: ["support"],
   actionAssigneeId: null,

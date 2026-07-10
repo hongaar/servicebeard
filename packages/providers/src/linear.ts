@@ -24,6 +24,7 @@ import type {
   CreateIssueResult,
   DownloadedFile,
   IssueProvider,
+  IssueState,
   NormalizedWebhookEvent,
   ProviderConfig,
   ProviderNote,
@@ -71,6 +72,7 @@ interface LinearLabel {
 interface LinearWorkflowState {
   id: string;
   name: string;
+  type: string;
 }
 
 interface LinearWebhookPayload {
@@ -545,6 +547,92 @@ export class LinearProvider implements IssueProvider {
     return names
       .map((name) => labels.find((label) => label.name === name)?.id)
       .filter((id): id is string => Boolean(id));
+  }
+
+  async getIssueState(issueIid: number): Promise<IssueState | null> {
+    const issue = await this.issueByNumber(issueIid);
+    if (!issue) return null;
+
+    const data = await this.graphql<{
+      issue: { state: { id: string; type: string } } | null;
+    }>(
+      `query IssueState($issueId: String!) {
+        issue(id: $issueId) {
+          state { id type }
+        }
+      }`,
+      { issueId: issue.id },
+      { quiet404: true },
+    );
+
+    const state = data.issue?.state;
+    if (!state) return null;
+
+    return {
+      closed: state.type === "completed" || state.type === "canceled",
+      statusId: state.id,
+    };
+  }
+
+  async getDefaultOpenStatus(): Promise<string> {
+    const teamId = await this.resolveTeamId();
+    const data = await this.graphql<{
+      team: {
+        defaultIssueState: { id: string } | null;
+        states: { nodes: LinearWorkflowState[] };
+      } | null;
+    }>(
+      `query TeamDefaultState($teamId: String!) {
+        team(id: $teamId) {
+          defaultIssueState { id }
+          states { nodes { id name type } }
+        }
+      }`,
+      { teamId },
+    );
+
+    const defaultState = data.team?.defaultIssueState?.id;
+    if (defaultState) return defaultState;
+
+    const states = data.team?.states.nodes ?? [];
+    const preferred = states.find(
+      (state) => state.type === "backlog" || state.type === "unstarted",
+    );
+    if (preferred) return preferred.id;
+
+    const firstOpen = states.find(
+      (state) => state.type !== "completed" && state.type !== "canceled",
+    );
+    if (!firstOpen) {
+      throw new LinearApiError(400, "Linear team has no open workflow states");
+    }
+
+    return firstOpen.id;
+  }
+
+  async updateIssueStatus(issueIid: number, status: string): Promise<void> {
+    const issue = await this.issueByNumber(issueIid);
+    if (!issue) {
+      throw new LinearApiError(404, `Linear issue #${issueIid} not found`);
+    }
+
+    const data = await this.graphql<{
+      issueUpdate: { success: boolean };
+    }>(
+      `mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
+        issueUpdate(id: $id, input: $input) {
+          success
+        }
+      }`,
+      {
+        id: issue.id,
+        input: { stateId: status },
+      },
+    );
+
+    if (!data.issueUpdate.success) {
+      throw new LinearApiError(400, "Linear issueUpdate failed");
+    }
   }
 
   async addComment(

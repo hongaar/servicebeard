@@ -9,6 +9,7 @@ export const DEFAULT_CATCH_ALL_RULE: CreateRuleInput = {
   matchSubject: null,
   matchBody: null,
   actionCreateIssue: true,
+  actionReopenOnReply: true,
   actionStatus: null,
   actionLabels: [],
   actionAssigneeId: null,

@@ -59,8 +59,41 @@ export function htmlToMarkdown(html: string): string {
   return turndown.turndown(cleaned).trim();
 }
 
+/** Removes quoted reply blocks from HTML before plain-text extraction. */
+export function stripQuotedHtmlBlocks(html: string): string {
+  return html
+    .replace(
+      /<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
+      "",
+    )
+    .replace(/<table[^>]*data-sb-quote="1"[^>]*>[\s\S]*?<\/table>/gi, "")
+    .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, "");
+}
+
 export function markdownToHtml(markdown: string): string {
   return marked.parse(markdown, { async: false }) as string;
+}
+
+const EMAIL_PARAGRAPH_STYLE = "margin: 0 0 1em 0;";
+const EMAIL_HR_STYLE =
+  "border: 0; border-top: 1px solid #e5e7eb; margin: 1.25em 0;";
+const EMAIL_LINK_STYLE = "color: #2563eb;";
+
+/** Inline spacing for markdown body HTML so email clients match expected paragraph/hr gaps. */
+export function styleEmailContentHtml(html: string): string {
+  return html
+    .replace(
+      /<p(?![^>]*\bstyle=)([^>]*)>/gi,
+      `<p style="${EMAIL_PARAGRAPH_STYLE}"$1>`,
+    )
+    .replace(
+      /<hr(?![^>]*\bstyle=)([^>]*?)(\s*\/?)>/gi,
+      `<hr style="${EMAIL_HR_STYLE}"$1$2>`,
+    )
+    .replace(
+      /<a(?![^>]*\bstyle=)([^>]*)>/gi,
+      `<a style="${EMAIL_LINK_STYLE}"$1>`,
+    );
 }
 
 export function markdownToPlainText(markdown: string): string {
@@ -494,7 +527,7 @@ export function buildEmailMarkdownBody(
   text: string,
   html: string | null,
 ): string {
-  if (html) return htmlToMarkdown(html);
+  if (html) return htmlToMarkdown(stripQuotedHtmlBlocks(html));
   return text;
 }
 
@@ -505,7 +538,7 @@ export function buildEmailPlainBody(
 ): string {
   if (text) return text;
   if (markdown) return markdownToPlainText(markdown);
-  if (html) return htmlToMarkdown(html);
+  if (html) return htmlToMarkdown(stripQuotedHtmlBlocks(html));
   return "";
 }
 

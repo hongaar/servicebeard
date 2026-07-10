@@ -12,6 +12,7 @@ import type {
   CreateIssueResult,
   DownloadedFile,
   IssueProvider,
+  IssueState,
   NormalizedWebhookEvent,
   ProviderConfig,
   ProviderNote,
@@ -434,6 +435,45 @@ export class GitHubProvider implements IssueProvider {
         { id: "closed", name: "Closed" },
       ],
     };
+  }
+
+  async getIssueState(issueIid: number): Promise<IssueState | null> {
+    try {
+      const issue = await this.request<GitHubIssue>(
+        "GET",
+        `${this.repoPath()}/issues/${issueIid}`,
+        undefined,
+        { quiet404: true },
+      );
+      return {
+        closed: issue.state === "closed",
+        statusId: issue.state,
+      };
+    } catch (err) {
+      if (err instanceof GitHubApiError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  async getDefaultOpenStatus(): Promise<string> {
+    return "open";
+  }
+
+  async updateIssueStatus(issueIid: number, status: string): Promise<void> {
+    if (status === "open" || status === "opened") {
+      await this.request("PATCH", `${this.repoPath()}/issues/${issueIid}`, {
+        state: "open",
+      });
+      return;
+    }
+
+    if (status === "closed") {
+      await this.request("PATCH", `${this.repoPath()}/issues/${issueIid}`, {
+        state: "closed",
+      });
+    }
   }
 
   async addComment(

@@ -31,6 +31,15 @@ export function formatSendAckInfo(input: {
   return `Sent acknowledgement email to ${recipient} for issue #${input.issueIid}`;
 }
 
+export function formatReopenIssueSuccess(input: {
+  issueIid: number;
+  senderEmail: string;
+  senderName?: string | null;
+}): string {
+  const sender = formatPerson(input.senderEmail, input.senderName);
+  return `Reopened issue #${input.issueIid} after customer reply from ${sender}`;
+}
+
 export function formatSendOutboundEmailSuccess(input: {
   issueIid: number;
   recipientEmail: string;

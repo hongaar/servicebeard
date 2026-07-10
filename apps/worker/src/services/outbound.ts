@@ -23,6 +23,7 @@ import {
 } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
+import { applyEmailStyleToHtml } from "./email-style-apply";
 import {
   latestThreadMessage,
   outboundCommentCc,
@@ -227,10 +228,8 @@ export async function processOutboundComment(
       issueUrl: thread.issueUrl,
     },
   );
-  const body = replyBodyWithQuote(
-    replyIntro,
-    quotedEmailFromStored(parent, thread, project.smtpFrom),
-  );
+  const quoted = quotedEmailFromStored(parent, thread, project.smtpFrom);
+  const body = replyBodyWithQuote(replyIntro, quoted);
   const imageDownloadUrlOverrides =
     provider instanceof GitHubProvider
       ? await provider.resolveCommentImageDownloads(
@@ -239,15 +238,28 @@ export async function processOutboundComment(
           event.noteBody,
         )
       : undefined;
+  const outboundOptions = {
+    imageSource: replyIntro,
+    imageDownloadUrlOverrides,
+  };
   const multipart = await buildOutboundMultipartContent(
     body,
     provider,
     projectProviderConfig(project),
-    {
-      imageSource: replyIntro,
-      imageDownloadUrlOverrides,
-    },
+    outboundOptions,
   );
+  const contentMultipart = await buildOutboundMultipartContent(
+    replyIntro,
+    provider,
+    projectProviderConfig(project),
+    outboundOptions,
+  );
+  const styled = applyEmailStyleToHtml(project, {
+    contentMarkdown: replyIntro,
+    contentHtml: contentMultipart.html,
+    quoted,
+    fallbackHtml: multipart.html,
+  });
   const { inReplyTo, references } = threadingForParent(
     parent.messageId,
     parent.references,
@@ -275,8 +287,8 @@ export async function processOutboundComment(
       cc,
       subject: parent.subject ?? `Issue #${thread.issueIid}`,
       body: multipart.text,
-      bodyHtml: multipart.html,
-      attachments: multipart.attachments,
+      bodyHtml: styled.html,
+      attachments: [...styled.attachments, ...multipart.attachments],
       inReplyTo,
       references,
     },

@@ -76,6 +76,7 @@ export interface Rule {
   matchSubject: string | null;
   matchBody: string | null;
   actionCreateIssue: boolean;
+  actionReopenOnReply: boolean;
   actionStatus: string | null;
   actionLabels: string[];
   actionAssigneeId: string | null;

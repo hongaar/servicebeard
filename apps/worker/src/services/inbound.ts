@@ -28,6 +28,7 @@ import {
 } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { resolveEmailMarkdown } from "./email-content";
+import { applyEmailStyleToHtml } from "./email-style-apply";
 import {
   inboundAckCc,
   inboundEmailAddresses,
@@ -36,6 +37,7 @@ import {
   replyBodyWithQuote,
   threadingForParent,
 } from "./email-thread";
+import { maybeReopenIssueOnReply } from "./issue-reopen";
 import { fetchInboxMessagesSince, markMessageSeen, parseEmail } from "./mail";
 import { createProjectProvider } from "./provider";
 import {
@@ -236,6 +238,24 @@ export async function processInboundEmail(
   const addresses = inboundEmailAddresses(email);
 
   if (thread) {
+    await maybeReopenIssueOnReply(
+      provider,
+      {
+        projectId,
+        providerName: project.provider,
+        rules: project.rules.map((rule) => ({
+          id: rule.id,
+          actionStatus: rule.actionStatus,
+          actionReopenOnReply: rule.actionReopenOnReply,
+        })),
+      },
+      thread,
+      {
+        senderEmail: email.senderEmail,
+        senderName: email.senderName,
+      },
+    );
+
     const markdownBody = await resolveEmailMarkdown(email, provider, projectId);
     const commentBody = formatCommentBody(
       email,
@@ -449,8 +469,14 @@ async function sendInboundAckEmail(
     issueNumber: issue.iid,
     issueUrl: issue.url,
   });
-  const body = replyBodyWithQuote(ackBody, quotedEmailFromParsed(email));
+  const quoted = quotedEmailFromParsed(email);
+  const body = replyBodyWithQuote(ackBody, quoted);
   const multipart = buildMarkdownEmailParts(body);
+  const styled = applyEmailStyleToHtml(project, {
+    contentMarkdown: ackBody,
+    quoted,
+    fallbackHtml: multipart.html,
+  });
 
   const { inReplyTo, references } = threadingForParent(
     email.messageId,
@@ -480,7 +506,8 @@ async function sendInboundAckEmail(
       cc,
       subject: email.subject,
       body: multipart.text,
-      bodyHtml: multipart.html,
+      bodyHtml: styled.html,
+      attachments: styled.attachments,
       inReplyTo,
       references,
     },

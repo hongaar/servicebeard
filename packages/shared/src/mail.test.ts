@@ -103,3 +103,17 @@ describe("email threading helpers", () => {
     ).toBeUndefined();
   });
 });
+
+describe("splitReplyAndQuote", () => {
+  test("splits styled email reply from quote section", async () => {
+    const { splitReplyAndQuote } = await import("@servicebeard/shared");
+    const result = splitReplyAndQuote("New reply only", {
+      fromName: "Support",
+      fromEmail: "support@mail.test",
+      date: new Date("2026-06-01T10:00:00Z"),
+      body: "Previous message content",
+    });
+    expect(result.replyText).toBe("New reply only");
+    expect(result.quotedText).toContain("Support <support@mail.test> wrote:");
+  });
+});

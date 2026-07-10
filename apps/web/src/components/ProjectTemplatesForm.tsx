@@ -4,6 +4,7 @@ import {
   INBOUND_ISSUE_TEMPLATE_VARIABLES,
   OUTBOUND_COMMENT_TEMPLATE_VARIABLES,
   templatePreviewVariables,
+  type EmailStyleConfig,
 } from "@servicebeard/shared";
 import {
   TEMPLATE_DEFAULTS,
@@ -12,14 +13,16 @@ import {
 } from "../lib/projectTemplatesForm";
 import styles from "../styles/pages.module.css";
 import { Button } from "./Button";
+import { Card } from "./Card";
 import { Checkbox } from "./Input";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { ProjectEmailStyleForm } from "./ProjectEmailStyleForm";
 
-interface ProjectTemplatesFormProps {
+interface TemplateFormProps {
   values: ProjectTemplatesFormValues;
   onChange: (
     field: keyof ProjectTemplatesFormValues,
-    value: string | boolean,
+    value: string | boolean | EmailStyleConfig,
   ) => void;
   onSubmit: () => void;
   submitLabel: string;
@@ -103,7 +106,20 @@ function TemplateEditor({
   );
 }
 
-export function ProjectTemplatesForm({
+function useTemplateFormHandlers(
+  onChange: TemplateFormProps["onChange"],
+  onClearFieldError?: TemplateFormProps["onClearFieldError"],
+) {
+  return (
+    field: keyof ProjectTemplatesFormValues,
+    value: string | boolean | EmailStyleConfig,
+  ) => {
+    onChange(field, value);
+    onClearFieldError?.(field);
+  };
+}
+
+export function ProjectEmailTemplatesForm({
   values,
   onChange,
   onSubmit,
@@ -111,14 +127,8 @@ export function ProjectTemplatesForm({
   isPending,
   fieldErrors,
   onClearFieldError,
-}: ProjectTemplatesFormProps) {
-  const handleChange = (
-    field: keyof ProjectTemplatesFormValues,
-    value: string | boolean,
-  ) => {
-    onChange(field, value);
-    onClearFieldError?.(field);
-  };
+}: TemplateFormProps) {
+  const handleChange = useTemplateFormHandlers(onChange, onClearFieldError);
 
   return (
     <form
@@ -130,7 +140,18 @@ export function ProjectTemplatesForm({
       }}
     >
       <div className={styles.formSection}>
-        <h3 className={styles.sectionTitle}>Acknowledgement emails</h3>
+        <ProjectEmailStyleForm
+          preset={values.emailStylePreset}
+          config={values.emailStyleConfig}
+          ackTemplate={values.inboundAckTemplate}
+          replyTemplate={values.outboundCommentTemplate}
+          onPresetChange={(preset) => handleChange("emailStylePreset", preset)}
+          onConfigChange={(config) => handleChange("emailStyleConfig", config)}
+        />
+      </div>
+
+      <div className={styles.formSection}>
+        <h4 className={styles.subsectionTitle}>Acknowledgement emails</h4>
         <p className={styles.templateSectionLead}>
           Sent automatically when a new customer email creates an issue.
         </p>
@@ -161,7 +182,7 @@ export function ProjectTemplatesForm({
       </div>
 
       <div className={styles.formSection}>
-        <h3 className={styles.sectionTitle}>Comment reply emails</h3>
+        <h4 className={styles.subsectionTitle}>Comment reply emails</h4>
         <p className={styles.templateSectionLead}>
           Sent to the customer when your team posts a public comment on the
           linked issue.
@@ -184,35 +205,57 @@ export function ProjectTemplatesForm({
         />
       </div>
 
-      <div className={styles.formSection}>
-        <h3 className={styles.sectionTitle}>Issue tracker templates</h3>
-        <p className={styles.templateSectionLead}>
-          Controls how customer emails appear as issues and comments in your
-          tracker. ServiceBeard appends sync metadata automatically.
-        </p>
-        <TemplateEditor
-          field="inboundIssueTemplate"
-          label="New issue template"
-          value={values.inboundIssueTemplate}
-          onChange={handleChange}
-          rows={6}
-          hint="Used when a new customer email creates an issue."
-          error={fieldErrors?.inboundIssueTemplate}
-          variables={INBOUND_ISSUE_TEMPLATE_VARIABLES}
-          outputHint="Rich text is stored as Markdown for your issue tracker."
-        />
-        <TemplateEditor
-          field="inboundCommentTemplate"
-          label="Customer reply template"
-          value={values.inboundCommentTemplate}
-          onChange={handleChange}
-          rows={6}
-          hint="Used when a customer replies to an existing thread."
-          error={fieldErrors?.inboundCommentTemplate}
-          variables={INBOUND_COMMENT_TEMPLATE_VARIABLES}
-          outputHint="Rich text is stored as Markdown for your issue tracker."
-        />
+      <div className={styles.formActions}>
+        <Button type="submit" disabled={isPending}>
+          {submitLabel}
+        </Button>
       </div>
+    </form>
+  );
+}
+
+export function ProjectIssueTrackerTemplatesForm({
+  values,
+  onChange,
+  onSubmit,
+  submitLabel,
+  isPending,
+  fieldErrors,
+  onClearFieldError,
+}: TemplateFormProps) {
+  const handleChange = useTemplateFormHandlers(onChange, onClearFieldError);
+
+  return (
+    <form
+      className={styles.form}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (isPending) return;
+        onSubmit();
+      }}
+    >
+      <TemplateEditor
+        field="inboundIssueTemplate"
+        label="New issue template"
+        value={values.inboundIssueTemplate}
+        onChange={handleChange}
+        rows={6}
+        hint="Used when a new customer email creates an issue."
+        error={fieldErrors?.inboundIssueTemplate}
+        variables={INBOUND_ISSUE_TEMPLATE_VARIABLES}
+        outputHint="Rich text is stored as Markdown for your issue tracker."
+      />
+      <TemplateEditor
+        field="inboundCommentTemplate"
+        label="Customer reply template"
+        value={values.inboundCommentTemplate}
+        onChange={handleChange}
+        rows={6}
+        hint="Used when a customer replies to an existing thread."
+        error={fieldErrors?.inboundCommentTemplate}
+        variables={INBOUND_COMMENT_TEMPLATE_VARIABLES}
+        outputHint="Rich text is stored as Markdown for your issue tracker."
+      />
 
       <div className={styles.formActions}>
         <Button type="submit" disabled={isPending}>
@@ -220,5 +263,71 @@ export function ProjectTemplatesForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+export function ProjectTemplatesSection({
+  values,
+  onChange,
+  emailError,
+  issueTrackerError,
+  fieldErrors,
+  onClearFieldError,
+  onSubmitEmail,
+  onSubmitIssueTracker,
+  isEmailPending,
+  isIssueTrackerPending,
+}: Omit<TemplateFormProps, "onSubmit" | "submitLabel" | "isPending"> & {
+  emailError?: string;
+  issueTrackerError?: string;
+  onSubmitEmail: () => void;
+  onSubmitIssueTracker: () => void;
+  isEmailPending?: boolean;
+  isIssueTrackerPending?: boolean;
+}) {
+  return (
+    <div className={styles.templateCards}>
+      <Card
+        title="Email templates"
+        subtitle="Customer-facing acknowledgement and comment reply emails sent from your support mailbox."
+      >
+        {emailError && (
+          <div className={[styles.alert, styles.alertError].join(" ")}>
+            {emailError}
+          </div>
+        )}
+        <ProjectEmailTemplatesForm
+          values={values}
+          onChange={onChange}
+          onSubmit={onSubmitEmail}
+          submitLabel={isEmailPending ? "Saving…" : "Save email templates"}
+          isPending={isEmailPending}
+          fieldErrors={fieldErrors}
+          onClearFieldError={onClearFieldError}
+        />
+      </Card>
+
+      <Card
+        title="Issue tracker templates"
+        subtitle="Controls how customer emails appear as issues and comments in your tracker. ServiceBeard appends sync metadata automatically."
+      >
+        {issueTrackerError && (
+          <div className={[styles.alert, styles.alertError].join(" ")}>
+            {issueTrackerError}
+          </div>
+        )}
+        <ProjectIssueTrackerTemplatesForm
+          values={values}
+          onChange={onChange}
+          onSubmit={onSubmitIssueTracker}
+          submitLabel={
+            isIssueTrackerPending ? "Saving…" : "Save issue tracker templates"
+          }
+          isPending={isIssueTrackerPending}
+          fieldErrors={fieldErrors}
+          onClearFieldError={onClearFieldError}
+        />
+      </Card>
+    </div>
   );
 }

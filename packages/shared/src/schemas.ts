@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROVIDERS, TEAM_ROLES } from "./constants";
+import { MAX_LOGO_BYTES } from "./email-style";
 import { stripEmptyStrings } from "./errors";
 import {
   looksLikeGithubRepositoryUrl,
@@ -187,6 +188,46 @@ export const providerConfigSchema = z.preprocess(
     .superRefine(refineProviderCredentials),
 );
 
+const emailStyleLogoSchema = z
+  .object({
+    data: z.string().min(1),
+    contentType: z
+      .string()
+      .regex(
+        /^image\/(png|jpeg|jpg|gif|svg\+xml|webp)$/i,
+        "Invalid image type",
+      ),
+  })
+  .superRefine((logo, ctx) => {
+    try {
+      const bytes = Buffer.from(logo.data, "base64");
+      if (bytes.length > MAX_LOGO_BYTES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Logo must be ${MAX_LOGO_BYTES / 1024} KB or smaller`,
+          path: ["data"],
+        });
+      }
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Logo data must be valid base64",
+        path: ["data"],
+      });
+    }
+  });
+
+export const emailStyleConfigSchema = z.object({
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Primary color must be a hex color"),
+  logo: emailStyleLogoSchema.nullable(),
+  showTeamName: z.boolean(),
+  teamName: z.string().max(100),
+  showProjectName: z.boolean(),
+  projectName: z.string().max(100),
+});
+
 const createProjectFields = z.object({
   name: z.string().min(1).max(100),
   slug: z
@@ -222,6 +263,8 @@ export const updateProjectSchema = z.preprocess(
       inboundIssueTemplate: z.string().min(1).max(10000).optional(),
       inboundCommentTemplate: z.string().min(1).max(10000).optional(),
       imapMarkIngestedAsSeen: z.boolean().optional(),
+      emailStylePreset: z.enum(["none", "minimal", "branded"]).optional(),
+      emailStyleConfig: emailStyleConfigSchema.nullable().optional(),
     })
     .superRefine(refineGithubProjectId)
     .superRefine(refineLinearTeamId),
@@ -235,6 +278,7 @@ export const createRuleSchema = z.object({
   matchSubject: z.string().nullable().optional(),
   matchBody: z.string().nullable().optional(),
   actionCreateIssue: z.boolean().default(true),
+  actionReopenOnReply: z.boolean().default(true),
   actionStatus: z.string().nullable().optional(),
   actionLabels: z.array(z.string()).default([]),
   actionAssigneeId: z.string().nullable().optional(),
@@ -285,6 +329,8 @@ export interface UpdateProjectInput extends Partial<CreateProjectInput> {
   inboundIssueTemplate?: string;
   inboundCommentTemplate?: string;
   imapMarkIngestedAsSeen?: boolean;
+  emailStylePreset?: "none" | "minimal" | "branded";
+  emailStyleConfig?: z.infer<typeof emailStyleConfigSchema> | null;
 }
 export type CreateRuleInput = z.infer<typeof createRuleSchema>;
 export type UpdateRuleInput = z.infer<typeof updateRuleSchema>;

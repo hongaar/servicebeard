@@ -122,10 +122,7 @@ export interface QuotedEmail {
   body: string;
 }
 
-export function formatQuotedReply(
-  replyText: string,
-  quoted: QuotedEmail,
-): string {
+export function formatQuoteAttributionLine(quoted: QuotedEmail): string {
   const sender = quoted.fromName
     ? `${quoted.fromName} <${quoted.fromEmail}>`
     : quoted.fromEmail;
@@ -138,6 +135,13 @@ export function formatQuotedReply(
     minute: "2-digit",
     timeZoneName: "short",
   });
+  return `On ${dateStr}, ${sender} wrote:`;
+}
+
+export function formatQuotedReply(
+  replyText: string,
+  quoted: QuotedEmail,
+): string {
   const quotedBody = quoted.body
     .split("\n")
     .map((line) => `> ${line}`)
@@ -145,7 +149,7 @@ export function formatQuotedReply(
 
   return `${replyText.trim()}
 
-On ${dateStr}, ${sender} wrote:
+${formatQuoteAttributionLine(quoted)}
 
 ${quotedBody}`;
 }

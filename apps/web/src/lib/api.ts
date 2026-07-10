@@ -635,6 +635,15 @@ export interface Project {
   inboundIssueTemplate: string;
   inboundCommentTemplate: string;
   imapMarkIngestedAsSeen: boolean;
+  emailStylePreset: "none" | "minimal" | "branded";
+  emailStyleConfig: {
+    primaryColor: string;
+    logo: { data: string; contentType: string } | null;
+    showTeamName: boolean;
+    teamName: string;
+    showProjectName: boolean;
+    projectName: string;
+  } | null;
 }
 
 export interface Rule {
@@ -647,6 +656,7 @@ export interface Rule {
   matchSubject: string | null;
   matchBody: string | null;
   actionCreateIssue: boolean;
+  actionReopenOnReply: boolean;
   actionStatus: string | null;
   actionLabels: string[];
   actionAssigneeId: string | null;
@@ -761,6 +771,8 @@ export interface UpdateProjectInput extends Partial<CreateProjectInput> {
   inboundIssueTemplate?: string;
   inboundCommentTemplate?: string;
   imapMarkIngestedAsSeen?: boolean;
+  emailStylePreset?: "none" | "minimal" | "branded";
+  emailStyleConfig?: Project["emailStyleConfig"];
 }
 
 export interface CreateRuleInput {
@@ -771,6 +783,7 @@ export interface CreateRuleInput {
   matchSubject?: string | null;
   matchBody?: string | null;
   actionCreateIssue?: boolean;
+  actionReopenOnReply?: boolean;
   actionStatus?: string | null;
   actionLabels?: string[];
   actionAssigneeId?: string | null;

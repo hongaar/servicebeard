@@ -165,6 +165,7 @@ projectRoutes.post("/:teamId/projects", async (c) => {
     matchSubject: DEFAULT_CATCH_ALL_RULE.matchSubject ?? null,
     matchBody: DEFAULT_CATCH_ALL_RULE.matchBody ?? null,
     actionCreateIssue: DEFAULT_CATCH_ALL_RULE.actionCreateIssue,
+    actionReopenOnReply: DEFAULT_CATCH_ALL_RULE.actionReopenOnReply,
     actionStatus: DEFAULT_CATCH_ALL_RULE.actionStatus ?? null,
     actionLabels: DEFAULT_CATCH_ALL_RULE.actionLabels,
     actionAssigneeId: DEFAULT_CATCH_ALL_RULE.actionAssigneeId ?? null,
@@ -291,6 +292,12 @@ projectRoutes.patch("/:teamId/projects/:projectId", async (c) => {
   }
   if (body.imapMarkIngestedAsSeen !== undefined) {
     updates.imapMarkIngestedAsSeen = body.imapMarkIngestedAsSeen;
+  }
+  if (body.emailStylePreset !== undefined) {
+    updates.emailStylePreset = body.emailStylePreset;
+  }
+  if (body.emailStyleConfig !== undefined) {
+    updates.emailStyleConfig = body.emailStyleConfig;
   }
 
   const [updated] = await db
@@ -423,6 +430,7 @@ projectRoutes.post("/:teamId/projects/:projectId/rules", async (c) => {
       matchSubject: body.matchSubject ?? null,
       matchBody: body.matchBody ?? null,
       actionCreateIssue: body.actionCreateIssue,
+      actionReopenOnReply: body.actionReopenOnReply,
       actionStatus: body.actionStatus ?? null,
       actionLabels: body.actionLabels,
       actionAssigneeId: body.actionAssigneeId ?? null,

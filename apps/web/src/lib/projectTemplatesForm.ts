@@ -1,4 +1,6 @@
+import type { EmailStyleConfig, EmailStylePreset } from "@servicebeard/shared";
 import {
+  DEFAULT_EMAIL_STYLE_CONFIG,
   DEFAULT_INBOUND_ACK_TEMPLATE,
   DEFAULT_INBOUND_COMMENT_TEMPLATE,
   DEFAULT_INBOUND_ISSUE_TEMPLATE,
@@ -14,6 +16,8 @@ export interface ProjectTemplatesFormValues {
   outboundCommentCcMailbox: boolean;
   inboundIssueTemplate: string;
   inboundCommentTemplate: string;
+  emailStylePreset: EmailStylePreset;
+  emailStyleConfig: EmailStyleConfig;
 }
 
 export const TEMPLATE_DEFAULTS = {
@@ -36,11 +40,15 @@ export const defaultProjectTemplatesForm: ProjectTemplatesFormValues = {
   inboundAckCcMailbox: false,
   ...TEMPLATE_DEFAULTS,
   outboundCommentCcMailbox: false,
+  emailStylePreset: "none",
+  emailStyleConfig: { ...DEFAULT_EMAIL_STYLE_CONFIG },
 };
 
 export function projectToTemplatesForm(
   project: Project,
+  teamName?: string,
 ): ProjectTemplatesFormValues {
+  const styleConfig = project.emailStyleConfig;
   return {
     inboundAckEnabled: project.inboundAckEnabled,
     inboundAckCcMailbox: project.inboundAckCcMailbox ?? false,
@@ -52,10 +60,20 @@ export function projectToTemplatesForm(
       project.inboundIssueTemplate ?? DEFAULT_INBOUND_ISSUE_TEMPLATE,
     inboundCommentTemplate:
       project.inboundCommentTemplate ?? DEFAULT_INBOUND_COMMENT_TEMPLATE,
+    emailStylePreset: project.emailStylePreset ?? "none",
+    emailStyleConfig: {
+      primaryColor:
+        styleConfig?.primaryColor ?? DEFAULT_EMAIL_STYLE_CONFIG.primaryColor,
+      logo: styleConfig?.logo ?? null,
+      showTeamName: styleConfig?.showTeamName ?? true,
+      teamName: styleConfig?.teamName?.trim() || teamName || "",
+      showProjectName: styleConfig?.showProjectName ?? true,
+      projectName: styleConfig?.projectName?.trim() || project.name,
+    },
   };
 }
 
-export function formToTemplatesUpdateInput(
+export function formToEmailTemplatesUpdateInput(
   form: ProjectTemplatesFormValues,
 ): UpdateProjectInput {
   return {
@@ -64,7 +82,25 @@ export function formToTemplatesUpdateInput(
     inboundAckTemplate: form.inboundAckTemplate,
     outboundCommentTemplate: form.outboundCommentTemplate,
     outboundCommentCcMailbox: form.outboundCommentCcMailbox,
+    emailStylePreset: form.emailStylePreset,
+    emailStyleConfig: form.emailStyleConfig,
+  };
+}
+
+export function formToIssueTrackerTemplatesUpdateInput(
+  form: ProjectTemplatesFormValues,
+): UpdateProjectInput {
+  return {
     inboundIssueTemplate: form.inboundIssueTemplate,
     inboundCommentTemplate: form.inboundCommentTemplate,
+  };
+}
+
+export function formToTemplatesUpdateInput(
+  form: ProjectTemplatesFormValues,
+): UpdateProjectInput {
+  return {
+    ...formToEmailTemplatesUpdateInput(form),
+    ...formToIssueTrackerTemplatesUpdateInput(form),
   };
 }

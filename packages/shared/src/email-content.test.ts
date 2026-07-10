@@ -36,6 +36,54 @@ describe("email content conversion", () => {
     expect(markdownToPlainText(markdown)).toContain("Hello team");
   });
 
+  test("adds email-client spacing to markdown body html", async () => {
+    const { markdownToHtml, styleEmailContentHtml } =
+      await import("@servicebeard/shared/email-content");
+    const html = styleEmailContentHtml(
+      markdownToHtml(
+        "First paragraph.\n\nSecond paragraph.\n\n---\n\nFooter link: [issue](https://example.com)",
+      ),
+    );
+
+    expect(html).toContain('style="margin: 0 0 1em 0;"');
+    expect(html).toContain(
+      'style="border: 0; border-top: 1px solid #e5e7eb; margin: 1.25em 0;"',
+    );
+    expect(html).toContain('style="color: #2563eb;"');
+  });
+
+  test("strips blockquote from html before plain body extraction", async () => {
+    const { buildParsedEmailContent, stripQuotedHtmlBlocks } =
+      await import("@servicebeard/shared/email-content");
+    const html =
+      "<p>Thanks!</p><blockquote><p>On Mon, Jane wrote:</p><p>Old message</p></blockquote>";
+    expect(stripQuotedHtmlBlocks(html)).not.toContain("Old message");
+
+    const content = buildParsedEmailContent(false, html, []);
+    expect(content.body).toBe("Thanks!");
+    expect(content.body).not.toContain("Old message");
+  });
+
+  test("strips gmail_quote divs from html", async () => {
+    const { stripQuotedHtmlBlocks } =
+      await import("@servicebeard/shared/email-content");
+    const html =
+      '<p>Reply</p><div class="gmail_quote"><p>Quoted history</p></div>';
+    expect(stripQuotedHtmlBlocks(html)).not.toContain("Quoted history");
+  });
+
+  test("strips styled email quote tables from html", async () => {
+    const { buildParsedEmailContent, stripQuotedHtmlBlocks } =
+      await import("@servicebeard/shared/email-content");
+    const html =
+      '<p>Thanks!</p><table data-sb-quote="1"><tr><td>On Mon, support wrote:</td></tr><tr><td>Old message</td></tr></table>';
+    expect(stripQuotedHtmlBlocks(html)).not.toContain("Old message");
+
+    const content = buildParsedEmailContent(false, html, []);
+    expect(content.body).toBe("Thanks!");
+    expect(content.body).not.toContain("Old message");
+  });
+
   test("preserves inline image position with placeholders", async () => {
     const {
       buildParsedEmailContent,

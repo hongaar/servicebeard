@@ -88,6 +88,11 @@ export interface DownloadedFile {
   contentType: string;
 }
 
+export interface IssueState {
+  closed: boolean;
+  statusId: string | null;
+}
+
 export interface IssueProvider {
   readonly name: string;
   createIssue(input: CreateIssueInput): Promise<CreateIssueResult>;
@@ -116,4 +121,7 @@ export interface IssueProvider {
   parseWebhook(payload: unknown): NormalizedWebhookEvent | null;
   ensureWebhook(config: ProviderConfig): Promise<void>;
   getCurrentUser(): Promise<{ id: string; username: string }>;
+  getIssueState(issueIid: number): Promise<IssueState | null>;
+  getDefaultOpenStatus(): Promise<string>;
+  updateIssueStatus(issueIid: number, status: string): Promise<void>;
 }

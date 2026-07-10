@@ -2,6 +2,7 @@ import {
   DEFAULT_INBOUND_COMMENT_TEMPLATE,
   DEFAULT_INBOUND_ISSUE_TEMPLATE,
 } from "@servicebeard/shared";
+import { buildParsedEmailContent } from "@servicebeard/shared/email-content";
 import {
   testEmail,
   testEmailDate,
@@ -115,6 +116,35 @@ On 2026-06-23 22:02, support@mail.test wrote:
 
     expect(comment).toContain("**Reply from Jane <jane@example.com>**");
     expect(comment).not.toContain("noreply@servicebeard.app");
+  });
+
+  test("strips blockquote from HTML-only replies to styled emails", () => {
+    const html =
+      '<p>Great, thanks!</p><blockquote style="margin:0"><p>On Mon, Jun 1, 2026, support@mail.test wrote:</p><p>We shipped a fix.</p></blockquote>';
+    const parsed = buildParsedEmailContent(false, html, []);
+
+    const comment = formatCommentBody(
+      testEmail({
+        messageId: "<html-reply@mail.test>",
+        inReplyTo: "<parent@servicebeard.local>",
+        references: [],
+        toAddresses: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        fromEmail: "customer@mail.test",
+        fromName: "customer",
+        subject: "Re: problem",
+        body: parsed.body,
+        bodyMarkdown: parsed.bodyMarkdown,
+        bodyHtml: html,
+        date: testEmailDate,
+      }),
+      DEFAULT_INBOUND_COMMENT_TEMPLATE,
+    );
+
+    expect(comment).toContain("Great, thanks!");
+    expect(comment).not.toContain("We shipped a fix");
+    expect(comment).not.toContain("support@mail.test wrote");
   });
 });
 
