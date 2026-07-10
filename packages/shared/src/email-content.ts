@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import TurndownService from "turndown";
 import { QUOTE_ATTRIBUTION_TEXT_PATTERNS } from "./email-reply-markers";
+import { EMAIL_STYLE_LOGO_CID } from "./email-style";
 import { pickStrippedReplyBody, stripQuotedReply } from "./mail";
 import type { EmailInlineImage } from "./types";
 
@@ -11,6 +12,7 @@ export interface RawEmailAttachment {
   contentType: string;
   content: Buffer;
   cid?: string | null;
+  contentDisposition?: string | null;
 }
 
 export interface MarkdownImageRef {
@@ -615,6 +617,37 @@ export function buildEmailPlainBody(
   return "";
 }
 
+export function isServicebeardStyleLogoCid(contentId: string | null): boolean {
+  if (!contentId) return false;
+  return (
+    normalizeContentId(contentId) === normalizeContentId(EMAIL_STYLE_LOGO_CID)
+  );
+}
+
+/** Whether an inbound inline image belongs to the customer's reply (not quoted history). */
+export function shouldProcessInboundInlineImage(
+  markdown: string,
+  image: EmailInlineImage,
+  options?: { inReplyTo?: string | null },
+): boolean {
+  if (isServicebeardStyleLogoCid(image.contentId ?? null)) return false;
+
+  if (image.placeholder) {
+    return markdown.includes(image.placeholder);
+  }
+
+  if (image.contentId) {
+    const cid = normalizeContentId(image.contentId);
+    return markdown.includes(`cid:${cid}`);
+  }
+
+  if (options?.inReplyTo) {
+    return image.contentDisposition === "attachment";
+  }
+
+  return true;
+}
+
 export function extractInlineImages(
   attachments: RawEmailAttachment[],
 ): EmailInlineImage[] {
@@ -626,6 +659,12 @@ export function extractInlineImages(
       contentType: attachment.contentType,
       content: attachment.content,
       contentId: attachment.cid ?? null,
+      contentDisposition:
+        attachment.contentDisposition === "attachment"
+          ? "attachment"
+          : attachment.contentDisposition === "inline"
+            ? "inline"
+            : null,
     }));
 }
 
@@ -645,7 +684,8 @@ export function buildParsedEmailContent(
   let inlineImages: EmailInlineImage[] = [];
 
   if (bodyHtml) {
-    const { html, slots } = replaceHtmlImagesWithPlaceholders(bodyHtml);
+    const strippedHtml = stripQuotedHtmlBlocks(bodyHtml);
+    const { html, slots } = replaceHtmlImagesWithPlaceholders(strippedHtml);
     bodyHtml = html;
     const usedAttachmentCids = new Set<string>();
 
@@ -682,13 +722,16 @@ export function buildParsedEmailContent(
         ? normalizeContentId(attachment.contentId)
         : null;
       if (cid && usedAttachmentCids.has(cid)) continue;
+      if (isServicebeardStyleLogoCid(cid)) continue;
       inlineImages.push({
         ...attachment,
         placeholder: null,
       });
     }
   } else {
-    inlineImages = attachmentImages;
+    inlineImages = attachmentImages.filter(
+      (image) => !isServicebeardStyleLogoCid(image.contentId),
+    );
   }
 
   const bodyMarkdown = buildEmailMarkdownBody(plainText, bodyHtml);

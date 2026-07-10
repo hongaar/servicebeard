@@ -7,6 +7,7 @@ export interface EmailInlineImage {
   contentId: string | null;
   /** Marker left in markdown where the image appeared in the HTML body. */
   placeholder?: string | null;
+  contentDisposition?: "inline" | "attachment" | null;
 }
 
 export interface User {

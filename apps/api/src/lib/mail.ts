@@ -98,6 +98,7 @@ export async function parseEmail(raw: Buffer): Promise<ParsedEmail> {
       contentType: a.contentType,
       content: a.content,
       cid: a.cid,
+      contentDisposition: a.contentDisposition,
     })),
   );
 

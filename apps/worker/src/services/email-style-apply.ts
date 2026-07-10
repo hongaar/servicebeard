@@ -1,6 +1,7 @@
 import type { projects } from "@servicebeard/db";
 import type { QuotedEmail } from "@servicebeard/shared";
 import {
+  EMAIL_STYLE_LOGO_CID,
   normalizeEmailStyleConfig,
   renderPlainEmailPreviewHtml,
   renderStyledEmailHtml,
@@ -10,7 +11,7 @@ import {
 } from "@servicebeard/shared";
 import { markdownToHtml } from "@servicebeard/shared/email-content";
 
-export const EMAIL_STYLE_LOGO_CID = "servicebeard-logo@local";
+export { EMAIL_STYLE_LOGO_CID };
 
 export interface EmailStyleAttachment {
   filename: string;

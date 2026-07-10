@@ -106,6 +106,81 @@ describe("email content conversion", () => {
     expect(content.bodyMarkdown).not.toContain("oh hi there!");
   });
 
+  test("ignores branded logo images from quoted html history", async () => {
+    const { buildParsedEmailContent } =
+      await import("@servicebeard/shared/email-content");
+    const text = "plaintextreply";
+    const html =
+      '<p>plaintextreply</p><div class="gmail_quote"><img src="cid:servicebeard-logo@local" alt="logo"></div>';
+    const attachments = [
+      {
+        filename: "logo.png",
+        contentType: "image/png",
+        content: Buffer.from("fake-logo"),
+        cid: "servicebeard-logo@local",
+        contentDisposition: "inline",
+      },
+    ];
+
+    const content = buildParsedEmailContent(text, html, attachments);
+    expect(content.bodyMarkdown).toBe("plaintextreply");
+    expect(content.inlineImages).toHaveLength(0);
+  });
+
+  test("keeps user attachments on new plain-text emails", async () => {
+    const { shouldProcessInboundInlineImage } =
+      await import("@servicebeard/shared/email-content");
+    const image = {
+      filename: "screenshot.png",
+      contentType: "image/png",
+      content: Buffer.from("fake"),
+      contentId: null,
+      contentDisposition: "inline" as const,
+    };
+
+    expect(
+      shouldProcessInboundInlineImage("please see screenshot", image, {
+        inReplyTo: null,
+      }),
+    ).toBe(true);
+  });
+
+  test("skips quoted inline attachments on thread replies", async () => {
+    const { shouldProcessInboundInlineImage } =
+      await import("@servicebeard/shared/email-content");
+    const image = {
+      filename: "logo.png",
+      contentType: "image/png",
+      content: Buffer.from("fake-logo"),
+      contentId: null,
+      contentDisposition: "inline" as const,
+    };
+
+    expect(
+      shouldProcessInboundInlineImage("plaintextreply", image, {
+        inReplyTo: "<parent@servicebeard.local>",
+      }),
+    ).toBe(false);
+  });
+
+  test("keeps explicit user attachments on thread replies", async () => {
+    const { shouldProcessInboundInlineImage } =
+      await import("@servicebeard/shared/email-content");
+    const image = {
+      filename: "screenshot.png",
+      contentType: "image/png",
+      content: Buffer.from("fake"),
+      contentId: null,
+      contentDisposition: "attachment" as const,
+    };
+
+    expect(
+      shouldProcessInboundInlineImage("see attached", image, {
+        inReplyTo: "<parent@servicebeard.local>",
+      }),
+    ).toBe(true);
+  });
+
   test("preserves inline image position with placeholders", async () => {
     const {
       buildParsedEmailContent,

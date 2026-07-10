@@ -5,6 +5,7 @@ import {
   normalizeContentId,
   replaceCidImagesInMarkdown,
   replaceImagePlaceholdersInMarkdown,
+  shouldProcessInboundInlineImage,
 } from "@servicebeard/shared/email-content";
 import { logExternalError } from "../lib/external-error";
 
@@ -40,6 +41,13 @@ export async function resolveEmailMarkdown(
 
   for (const image of email.inlineImages) {
     if (image.content.length === 0) continue;
+    if (
+      !shouldProcessInboundInlineImage(markdown, image, {
+        inReplyTo: email.inReplyTo,
+      })
+    ) {
+      continue;
+    }
 
     const uploadedMarkdown = await uploadInlineImage(
       provider,

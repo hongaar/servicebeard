@@ -192,6 +192,7 @@ export async function parseEmail(
       contentType: a.contentType,
       content: a.content,
       cid: a.cid,
+      contentDisposition: a.contentDisposition,
     })),
   );
 

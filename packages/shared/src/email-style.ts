@@ -23,6 +23,8 @@ export interface EmailStyleConfig {
 
 export const MAX_LOGO_BYTES = 100 * 1024;
 
+export const EMAIL_STYLE_LOGO_CID = "servicebeard-logo@local";
+
 export const DEFAULT_EMAIL_STYLE_CONFIG: EmailStyleConfig = {
   primaryColor: "#2563eb",
   logo: null,
