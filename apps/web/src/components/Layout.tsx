@@ -8,6 +8,8 @@ import {
 } from "@extensions";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { Fragment } from "react";
 import { useTeamProjects, useTeams } from "../hooks/useAppQueries";
 import { iconMd } from "../lib/icons";
 import {
@@ -300,22 +302,57 @@ export function Layout({
                       </NavIcon>
                       <span className={styles.navLabel}>Job runs</span>
                     </Link>
-                    {adminNavItems.map((item) => (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        className={navLinkClass(
-                          pathname === item.to ||
-                            pathname.startsWith(`${item.to}/`),
-                        )}
-                        title={item.label}
-                      >
-                        <NavIcon>
-                          <item.icon {...iconMd} />
-                        </NavIcon>
-                        <span className={styles.navLabel}>{item.label}</span>
-                      </Link>
-                    ))}
+                    {adminNavItems.map((item, index) => {
+                      const prevItem = adminNavItems[index - 1];
+                      const showServicesSection =
+                        "href" in item && (!prevItem || !("href" in prevItem));
+
+                      if ("href" in item) {
+                        return (
+                          <Fragment key={item.href}>
+                            {showServicesSection && (
+                              <p className={styles.navSection}>Services</p>
+                            )}
+                            <a
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={styles.navLink}
+                              title={item.label}
+                            >
+                              <NavIcon>
+                                <item.icon {...iconMd} />
+                              </NavIcon>
+                              <span className={styles.navLabel}>
+                                {item.label}
+                                <ExternalLink
+                                  {...iconMd}
+                                  className={styles.navExternalIcon}
+                                  aria-hidden
+                                />
+                              </span>
+                            </a>
+                          </Fragment>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          className={navLinkClass(
+                            pathname === item.to ||
+                              pathname.startsWith(`${item.to}/`),
+                          )}
+                          title={item.label}
+                        >
+                          <NavIcon>
+                            <item.icon {...iconMd} />
+                          </NavIcon>
+                          <span className={styles.navLabel}>{item.label}</span>
+                        </Link>
+                      );
+                    })}
                   </>
                 )}
               </>

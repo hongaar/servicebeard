@@ -163,6 +163,12 @@
   transition: color var(--transition-fast);
 }
 
+.navExternalIcon {
+  margin-left: var(--space-1);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
 .sidebarFooter {
   margin-top: auto;
   padding-top: var(--space-4);

@@ -115,11 +115,17 @@ export function extensionAppFooterLinks(): ExtensionAppFooterLink[] {
   return [];
 }
 
-export interface ExtensionAdminNavItem {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-}
+export type ExtensionAdminNavItem =
+  | {
+      to: string;
+      label: string;
+      icon: LucideIcon;
+    }
+  | {
+      href: string;
+      label: string;
+      icon: LucideIcon;
+    };
 
 export type ExtensionAdminBreadcrumbItem = {
   label: string;
