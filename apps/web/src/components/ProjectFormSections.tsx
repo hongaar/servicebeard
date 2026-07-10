@@ -32,6 +32,7 @@ import { Button } from "./Button";
 import { DocsLink } from "./DocsLink";
 import { Checkbox, Input, Textarea } from "./Input";
 import { ProviderLogo } from "./ProviderLogo";
+import { PublicRepoMailWarning } from "./PublicRepoMailWarning";
 import { RadioCardGroup } from "./RadioCardGroup";
 
 type FormUpdater = (
@@ -622,6 +623,33 @@ export function ProjectProviderSection({
       return null;
     }
   }, [isGithub, values.providerProjectId]);
+  const gitlabProjectId = useMemo(() => {
+    if (!isGitlab || !values.providerProjectId.trim()) return null;
+    return values.providerProjectId.trim();
+  }, [isGitlab, values.providerProjectId]);
+  const repositoryVisibilityTarget = githubRepositorySlug ?? gitlabProjectId;
+
+  const { data: repositoryVisibility } = useQuery({
+    queryKey: [
+      "repository-visibility",
+      teamId,
+      values.provider,
+      values.providerBaseUrl,
+      repositoryVisibilityTarget,
+      values.providerTlsInsecure,
+    ],
+    queryFn: () =>
+      api.lookupRepositoryVisibility(teamId, {
+        provider: values.provider as "github" | "gitlab",
+        baseUrl: values.providerBaseUrl,
+        projectId: repositoryVisibilityTarget!,
+        providerTlsInsecure: values.providerTlsInsecure,
+      }),
+    enabled:
+      isCreate && Boolean(repositoryVisibilityTarget) && (isGithub || isGitlab),
+    staleTime: 60_000,
+  });
+  const showPublicRepoWarning = repositoryVisibility?.visibility === "public";
 
   const {
     data: existingInstallation,
@@ -905,6 +933,8 @@ export function ProjectProviderSection({
           },
         ]}
       />
+
+      {showPublicRepoWarning && <PublicRepoMailWarning />}
 
       {providerSelected && isGithub && (
         <>

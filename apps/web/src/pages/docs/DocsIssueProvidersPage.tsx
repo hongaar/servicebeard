@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { DocsLayout } from "../../components/DocsLayout";
+import { DocsWarning } from "../../components/DocsWarning";
 import { DOC_PATHS } from "../../lib/docs";
 import styles from "../../styles/docs.module.css";
 
@@ -17,6 +18,24 @@ export function DocsIssueProvidersPage() {
         issues, post comments, list labels and members, and register a webhook
         for comment events.
       </p>
+
+      <DocsWarning
+        id="public-repo-warning"
+        title="Do not connect a public repository or project"
+      >
+        <p>
+          Support mail is confidential. ServiceBeard copies customer email
+          addresses, subjects, and message bodies into issue descriptions and
+          comments. Anyone who can browse a <strong>public</strong> GitHub
+          repository or <strong>public</strong> GitLab project can read that
+          content.
+        </p>
+        <p>
+          When configuring a project, use a <strong>private</strong> GitHub
+          repository or a GitLab project with <strong>Private</strong>{" "}
+          visibility before connecting a support mailbox.
+        </p>
+      </DocsWarning>
 
       <h2>Paste a link in the wizard</h2>
       <p>

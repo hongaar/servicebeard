@@ -54,6 +54,10 @@ type ConnectionTestResult = {
   user?: { id: string; username: string };
 };
 
+type RepositoryVisibilityResult = {
+  visibility: "public" | "private" | "internal" | "unknown";
+};
+
 export type AccountResponse = {
   user: { id: string; email: string; name: string | null; isAdmin: boolean };
   linkedProviders: Array<{
@@ -445,6 +449,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  lookupRepositoryVisibility: (
+    teamId: string,
+    params: {
+      provider: "github" | "gitlab";
+      baseUrl: string;
+      projectId: string;
+      providerTlsInsecure?: boolean;
+    },
+  ) => {
+    const search = new URLSearchParams({
+      provider: params.provider,
+      baseUrl: params.baseUrl,
+      projectId: params.projectId,
+    });
+    if (params.providerTlsInsecure) {
+      search.set("providerTlsInsecure", "true");
+    }
+    return request<RepositoryVisibilityResult>(
+      `/teams/${teamId}/repository-visibility?${search.toString()}`,
+    );
+  },
 
   getGithubAppConfig: () => request<GithubAppConfig>("/github-app/config"),
 

@@ -35,6 +35,7 @@ import { providerFailureResponse } from "../lib/external-error";
 import { startGithubAppInstall } from "../lib/github-app-install";
 import { logger } from "../lib/logger";
 import { discoverMailAutoconfig } from "../lib/mail-discover";
+import { getRepositoryVisibility } from "../lib/repository-visibility";
 import {
   isMailConfigured,
   sendTeamInviteEmail,
@@ -495,6 +496,32 @@ teamRoutes.post("/:teamId/test-provider", async (c) => {
   } catch (err) {
     return c.json(providerFailureResponse("test-provider", err), 400);
   }
+});
+
+teamRoutes.get("/:teamId/repository-visibility", async (c) => {
+  const teamId = c.req.param("teamId");
+  await requireTeamMember(c, teamId, "admin");
+
+  const provider = c.req.query("provider")?.trim();
+  if (provider !== "github" && provider !== "gitlab") {
+    return c.json({ error: "provider must be github or gitlab" }, 400);
+  }
+
+  const baseUrl = c.req.query("baseUrl")?.trim();
+  const projectId = c.req.query("projectId")?.trim();
+  if (!baseUrl || !projectId) {
+    return c.json({ error: "baseUrl and projectId are required" }, 400);
+  }
+
+  return c.json(
+    await getRepositoryVisibility({
+      provider,
+      baseUrl,
+      projectId,
+      providerTlsInsecure: c.req.query("providerTlsInsecure") === "true",
+      providerCaCert: c.req.query("providerCaCert") ?? null,
+    }),
+  );
 });
 
 teamRoutes.get("/:teamId/github-app/install", async (c) => {

@@ -1,4 +1,5 @@
 import { DocsLayout } from "../../components/DocsLayout";
+import { DocsWarning } from "../../components/DocsWarning";
 import styles from "../../styles/docs.module.css";
 
 const GITLAB_PROJECT_TOKEN_DOCS =
@@ -25,6 +26,20 @@ export function DocsGitLabPage() {
         <code>acme/website</code>). You can also paste a GitLab project URL in
         the wizard — ServiceBeard extracts the path automatically.
       </p>
+
+      <DocsWarning title="Use a private project for support mail">
+        <p>
+          Customer mail is confidential. Inbound messages become GitLab issues
+          and notes that include the sender&apos;s address and message body. If
+          the project visibility is <strong>Public</strong>, that content is
+          visible to anyone who can browse the project — not only your team.
+        </p>
+        <p>
+          Set the GitLab project to <strong>Private</strong> (or{" "}
+          <strong>Internal</strong> on self-managed instances) before connecting
+          a support mailbox in ServiceBeard.
+        </p>
+      </DocsWarning>
 
       <h2>Recommended: project access token</h2>
       <p>

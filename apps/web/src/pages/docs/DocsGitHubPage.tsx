@@ -1,4 +1,5 @@
 import { DocsLayout } from "../../components/DocsLayout";
+import { DocsWarning } from "../../components/DocsWarning";
 
 export function DocsGitHubPage() {
   return (
@@ -19,6 +20,20 @@ export function DocsGitHubPage() {
         <code>owner/repo</code> automatically. For GitHub Enterprise Server,
         also set the instance root URL — not the API endpoint.
       </p>
+
+      <DocsWarning title="Use a private repository for support mail">
+        <p>
+          Customer mail is confidential. Inbound messages become GitHub issues
+          and comments that include the sender&apos;s address and message body.
+          If the repository is <strong>public</strong>, that content is visible
+          to anyone on the internet — not only your team.
+        </p>
+        <p>
+          Choose a <strong>private</strong> repository when creating or editing
+          the project, even if your personal access token only needs the{" "}
+          <code>public_repo</code> scope.
+        </p>
+      </DocsWarning>
 
       <h2>Which authentication method?</h2>
       <p>
@@ -179,7 +194,9 @@ export function DocsGitHubPage() {
             </li>
             <li>
               <strong>Public repositories only:</strong>{" "}
-              <code>public_repo</code> is enough.
+              <code>public_repo</code> is enough for API access. Do not use a
+              public repository for support mail — customer message content
+              would be publicly visible.
             </li>
           </ul>
         </li>
