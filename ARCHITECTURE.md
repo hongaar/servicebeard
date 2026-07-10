@@ -22,19 +22,46 @@ The worker uses **pg-boss** (Postgres-backed queues) for scheduling and job hand
 
 ## Scheduling
 
-A cron tick runs **once per minute** (`* * * * *`). Each tick walks **active projects independently** and runs jobs only when the project's interval has elapsed:
+A cron tick runs **once per minute** (`* * * * *`). Each tick is a **lightweight scheduler** that walks active projects and enqueues per-project jobs only when that project's interval has elapsed. Actual IMAP/comment work runs in separate concurrent worker pools — a slow mailbox no longer blocks other projects.
 
 | Job          | Default interval | Purpose                                         |
 | ------------ | ---------------- | ----------------------------------------------- |
 | IMAP poll    | 60s              | Inbound email → issue/comment                   |
 | Comment poll | 120s             | Outbound fallback when webhooks are unavailable |
 
-Additional queues:
+### Queues
 
-- **`send-email`** — one outbound comment → email send (usually from webhook)
-- **`ensure-webhook`** — register/update provider webhook on project create
+| Queue                  | Policy    | Role                                                              |
+| ---------------------- | --------- | ----------------------------------------------------------------- |
+| `imap-poll`            | singleton | Minute cron tick — schedules due projects only                    |
+| `imap-poll-project`    | short     | Poll one project's mailbox (`singletonKey = projectId` for dedup) |
+| `comment-poll`         | singleton | Minute cron tick — schedules due projects only                    |
+| `comment-poll-project` | short     | Poll one project's issue comments (`singletonKey = projectId`)    |
+| `send-email`           | standard  | One outbound comment → email send (usually from webhook)          |
+| `ensure-webhook`       | standard  | Register/update provider webhook on project create                |
 
-Poll jobs use a **singleton** queue policy so only one IMAP poll and one comment poll run at a time globally.
+### Concurrency
+
+The worker registers **N independent `boss.work()` handlers** per processing queue (`batchSize: 1` each). Concurrency is env-tunable and identical in docker-compose and Kubernetes:
+
+| Variable                   | Default | Effect                             |
+| -------------------------- | ------- | ---------------------------------- |
+| `SEND_EMAIL_CONCURRENCY`   | 5       | Parallel outbound email jobs       |
+| `IMAP_POLL_CONCURRENCY`    | 3       | Parallel per-project IMAP polls    |
+| `COMMENT_POLL_CONCURRENCY` | 3       | Parallel per-project comment polls |
+
+Horizontal scaling still works: multiple worker replicas each run the same pools; pg-boss distributes jobs across replicas. Cron scheduler ticks remain singleton so only one replica enqueues due projects per minute.
+
+### SMTP connection pooling
+
+Outbound project email reuses **pooled nodemailer transporters** keyed by credential fingerprint (`host`, `port`, `secure`, `user`, `password`). Projects sharing identical SMTP credentials share a pool; different credentials on the same host get separate pools. Each pool is capped by `SMTP_MAX_CONNECTIONS` (default 3). Idle pools are evicted after `SMTP_IDLE_TTL_MS` (default 60s).
+
+| Variable               | Default | Effect                                |
+| ---------------------- | ------- | ------------------------------------- |
+| `SMTP_MAX_CONNECTIONS` | 3       | Max concurrent SMTP connections/pool  |
+| `SMTP_MAX_MESSAGES`    | 100     | Max messages per pooled connection    |
+| `SMTP_IDLE_TTL_MS`     | 60000   | Close idle transporter pools after ms |
+| `SMTP_MAX_POOLS`       | 50      | LRU cap on cached credential pools    |
 
 ---
 
@@ -53,12 +80,13 @@ Multiple projects that share a GitHub App installation or the same API token dra
 
 On a rate-limit response, `providerFetch` throws `ProviderRateLimitError` immediately (no inline sleep). The worker then:
 
-| Path                    | Behavior                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------- |
-| **IMAP / comment poll** | Mark the bucket exhausted for this tick; skip remaining projects in that bucket; continue other buckets |
-| **`send-email` queue**  | Re-enqueue the job with `startAfter` set to the provider's reset time                                   |
+| Path                                             | Behavior                                                               |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| **IMAP / comment poll scheduler**                | Enqueues per-project jobs; rate limits are handled per job (see below) |
+| **`imap-poll-project` / `comment-poll-project`** | Re-enqueue the job with `startAfter` set to the provider's reset time  |
+| **`send-email` queue**                           | Re-enqueue the job with `startAfter` set to the provider's reset time  |
 
-Quota snapshots and limit hits are logged via `logProvider` (remaining, reset time, bucket key). Primary provider limits are hourly rolling windows, so waits are typically minutes — deferring at the worker keeps poll ticks from blocking unrelated projects.
+Quota snapshots and limit hits are logged via `logProvider` (remaining, reset time, bucket key). Primary provider limits are hourly rolling windows, so waits are typically minutes — deferring per job keeps one rate-limited project from blocking unrelated projects.
 
 ---
 
@@ -237,7 +265,7 @@ sequenceDiagram
   Provider->>API: Note / comment event
   API->>API: Verify signature
   API->>Queue: send-email job
-  Queue->>Worker: processOutboundComment
+  Queue->>Worker: processOutboundComment (concurrent pool)
   Worker->>Worker: Skip filters
   Worker->>DB: Load thread + last message
   Worker->>SMTP: Threaded reply to customer
@@ -252,7 +280,7 @@ sequenceDiagram
 | **Webhook** (preferred)     | Provider pushes `note` (GitLab) or `issue_comment` (GitHub) to API         |
 | **Comment poll** (fallback) | Worker lists comments since `thread.lastSeenNoteAt` for each active thread |
 
-Webhook handling is fast-path only: API validates, enqueues, returns `200`. Sending happens asynchronously in the worker.
+Webhook handling is fast-path only: API validates, enqueues, returns `200`. Sending happens asynchronously in the worker's concurrent `send-email` pool. Multiple outbound jobs can run in parallel; SMTP connections are pooled per credential set.
 
 ### Skip filters
 
@@ -311,7 +339,7 @@ Requires a **publicly reachable** API URL. If webhooks cannot be registered (e.g
 
 ## Error handling
 
-External failures (IMAP, SMTP, provider API) are logged and surfaced as **project sync errors** in the UI (categorized as mail vs provider). A failed inbound message is **not** marked ingested, so the next poll retries. Poll cursors (`lastImapPollAt`, `lastCommentPollAt`, `imapIngestedThrough`) update only after a successful poll cycle completes.
+External failures (IMAP, SMTP, provider API) are logged and surfaced as **project sync errors** in the UI (categorized as mail vs provider). A failed inbound message is **not** marked ingested, so the next poll retries. Poll cursors (`lastImapPollAt`, `lastCommentPollAt`) are claimed when a per-project job is enqueued; `imapIngestedThrough` advances only after a successful IMAP poll completes.
 
 Provider rate-limit errors are deferred rather than treated as hard failures — see [Provider API rate limiting](#provider-api-rate-limiting).
 
@@ -324,6 +352,13 @@ Provider rate-limit errors are deferred rather than treated as hard failures —
 | `isActive`                      | Master switch — inactive projects are not polled            |
 | `IMAP_POLL_INTERVAL_SECONDS`    | Env var (min 60s, default 60); inbound poll frequency       |
 | `COMMENT_POLL_INTERVAL_SECONDS` | Env var (min 60s, default 120); outbound fallback frequency |
+| `SEND_EMAIL_CONCURRENCY`        | Parallel outbound email workers (default 5)                 |
+| `IMAP_POLL_CONCURRENCY`         | Parallel per-project IMAP poll workers (default 3)          |
+| `COMMENT_POLL_CONCURRENCY`      | Parallel per-project comment poll workers (default 3)       |
+| `SMTP_MAX_CONNECTIONS`          | Max SMTP connections per credential pool (default 3)        |
+| `SMTP_MAX_MESSAGES`             | Max messages per pooled SMTP connection (default 100)       |
+| `SMTP_IDLE_TTL_MS`              | Evict idle SMTP pools after ms (default 60000)              |
+| `SMTP_MAX_POOLS`                | LRU cap on cached SMTP credential pools (default 50)        |
 | `imapMarkIngestedAsSeen`        | Write IMAP `\Seen` after ingest                             |
 | `inboundAckEnabled`             | Send auto-reply on new issue                                |
 | `inboundAckCcMailbox`           | CC support address on ack                                   |

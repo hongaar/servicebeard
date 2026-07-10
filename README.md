@@ -11,11 +11,12 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 - OIDC authentication (configurable IdP via env)
 - GitHub and GitLab OAuth sign-in
 - Teams, projects, member management
-- Per-project IMAP polling + SMTP outbound
+- Per-project IMAP polling + SMTP outbound (parallel worker pools)
 - Rules engine (match sender/subject/body → create issue with labels/assignee)
 - Bidirectional sync: email → issue/comment, issue comment → email reply
 - Loop prevention via bot-user filtering, sync markers, and note deduplication
 - Webhook + polling fallback for outbound comments
+- Concurrent email delivery with pooled SMTP connections
 - Docker Compose or Kubernetes (Helm) for self-hosting from this repo
 
 ## Stack
@@ -32,7 +33,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 
 **Inbound (email → issue)**
 
-1. Worker polls IMAP for unseen messages per active project
+1. Worker cron tick enqueues per-project IMAP poll jobs; concurrent workers poll mailboxes independently
 2. Thread match via `Message-ID` / `References` / subject+sender
 3. Existing thread → append as public comment on issue
 4. New thread → evaluate rules → create issue on the linked provider with metadata
@@ -42,7 +43,7 @@ Multi-tenant application that syncs project mailboxes (IMAP/SMTP) with issue tra
 
 1. Provider webhook (`note_events` on GitLab, `issue_comment` on GitHub) or polling fallback
 2. Skip internal comments (`[internal]` marker at the start or end, or GitLab internal notes), email-synced comments (sync marker), bot-authored notes, and already-processed notes
-3. Send threaded reply email via project SMTP
+3. Send threaded reply email via project SMTP (concurrent workers, pooled connections per credential set)
 
 New issues include a collapsible **Support details** footer with a link back to the ServiceBeard project and a reminder about the `[internal]` marker.
 
@@ -136,10 +137,17 @@ Environment variables for local development live in [`.env.example`](.env.exampl
 
 ### Worker
 
-| Variable                        | Description                                    |
-| ------------------------------- | ---------------------------------------------- |
-| `IMAP_POLL_INTERVAL_SECONDS`    | IMAP poll interval in seconds (minimum: 60)    |
-| `COMMENT_POLL_INTERVAL_SECONDS` | Comment poll interval in seconds (minimum: 60) |
+| Variable                        | Description                                                 |
+| ------------------------------- | ----------------------------------------------------------- |
+| `IMAP_POLL_INTERVAL_SECONDS`    | IMAP poll interval in seconds (minimum: 60)                 |
+| `COMMENT_POLL_INTERVAL_SECONDS` | Comment poll interval in seconds (minimum: 60)              |
+| `SEND_EMAIL_CONCURRENCY`        | Parallel outbound email workers (default: 5)                |
+| `IMAP_POLL_CONCURRENCY`         | Parallel per-project IMAP poll workers (default: 3)         |
+| `COMMENT_POLL_CONCURRENCY`      | Parallel per-project comment poll workers (default: 3)      |
+| `SMTP_MAX_CONNECTIONS`          | Max SMTP connections per credential pool (default: 3)       |
+| `SMTP_MAX_MESSAGES`             | Max messages per pooled SMTP connection (default: 100)      |
+| `SMTP_IDLE_TTL_MS`              | Evict idle SMTP transporter pools after ms (default: 60000) |
+| `SMTP_MAX_POOLS`                | LRU cap on cached SMTP credential pools (default: 50)       |
 
 ### Authentication
 

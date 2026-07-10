@@ -22,7 +22,6 @@ export async function closeBoss(): Promise<void> {
 
 export const QUEUE_NAMES = {
   IMAP_POLL: "imap-poll",
-  PROCESS_MESSAGE: "process-message",
   COMMENT_POLL: "comment-poll",
   SEND_EMAIL: "send-email",
   ENSURE_WEBHOOK: "ensure-webhook",

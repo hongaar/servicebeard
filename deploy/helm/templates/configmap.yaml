@@ -31,6 +31,13 @@ data:
   WEBHOOK_BASE_URL: {{ .Values.env.WEBHOOK_BASE_URL | quote }}
   IMAP_POLL_INTERVAL_SECONDS: {{ .Values.env.IMAP_POLL_INTERVAL_SECONDS | quote }}
   COMMENT_POLL_INTERVAL_SECONDS: {{ .Values.env.COMMENT_POLL_INTERVAL_SECONDS | quote }}
+  SEND_EMAIL_CONCURRENCY: {{ .Values.env.SEND_EMAIL_CONCURRENCY | quote }}
+  IMAP_POLL_CONCURRENCY: {{ .Values.env.IMAP_POLL_CONCURRENCY | quote }}
+  COMMENT_POLL_CONCURRENCY: {{ .Values.env.COMMENT_POLL_CONCURRENCY | quote }}
+  SMTP_MAX_CONNECTIONS: {{ .Values.env.SMTP_MAX_CONNECTIONS | quote }}
+  SMTP_MAX_MESSAGES: {{ .Values.env.SMTP_MAX_MESSAGES | quote }}
+  SMTP_IDLE_TTL_MS: {{ .Values.env.SMTP_IDLE_TTL_MS | quote }}
+  SMTP_MAX_POOLS: {{ .Values.env.SMTP_MAX_POOLS | quote }}
   {{- if .Values.extension.enabled }}
   SB_EXTENSION_MANIFEST: {{ .Values.extension.manifest | quote }}
   {{- end }}
