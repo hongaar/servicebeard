@@ -28,6 +28,7 @@ const METADATA_LABELS: Record<string, string> = {
   enqueued: "Enqueued",
   skippedNotDue: "Skipped (not due)",
   skippedRateLimited: "Skipped (rate limited)",
+  skippedErrors: "Skipped (errors)",
   exhaustedBuckets: "Rate-limit buckets",
   noteId: "Note ID",
   source: "Source",

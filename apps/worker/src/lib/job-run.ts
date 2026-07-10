@@ -21,8 +21,7 @@ export type PollTickSummary = {
   activeProjects: number;
   enqueued: number;
   skippedNotDue: number;
-  skippedRateLimited: number;
-  exhaustedBuckets: string[];
+  skippedErrors: number;
 };
 
 export type JobRunTrace = {

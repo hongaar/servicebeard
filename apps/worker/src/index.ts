@@ -24,10 +24,7 @@ import {
   type PollTickSummary,
 } from "./lib/job-run";
 import { logger } from "./lib/logger";
-import {
-  deferQueueJob,
-  shouldSkipProjectForRateLimit,
-} from "./lib/provider-rate-limit";
+import { deferQueueJob } from "./lib/provider-rate-limit";
 import { runExclusive } from "./lib/run-guard";
 import {
   getCommentPollConcurrency,
@@ -83,8 +80,7 @@ async function scheduleImapPollsForDueProjects(
 
   let enqueued = 0;
   let skippedNotDue = 0;
-  let skippedRateLimited = 0;
-  const exhaustedBuckets = new Set<string>();
+  let skippedErrors = 0;
 
   for (const project of activeProjects) {
     trace.current = {
@@ -95,52 +91,63 @@ async function scheduleImapPollsForDueProjects(
       teamId: project.teamId,
     };
 
-    if (shouldSkipProjectForRateLimit(project, exhaustedBuckets)) {
-      skippedRateLimited++;
-      continue;
-    }
-
-    const operational = await getEntitlements().isTeamOperational?.(
-      project.teamId,
-    );
-    if (operational === false) {
-      skippedNotDue++;
-      continue;
-    }
-
-    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(
-      project.teamId,
-    );
-    const teamInterval =
-      teamIntervalResult instanceof Promise
-        ? await teamIntervalResult
-        : teamIntervalResult;
-    const intervalSeconds = teamInterval ?? imapPollIntervalSeconds;
-    if (!isProjectPollDue(project.lastImapPollAt, intervalSeconds)) {
-      skippedNotDue++;
-      logger.debug(
-        {
-          projectId: project.id,
-          lastImapPollAt: project.lastImapPollAt,
-          intervalSeconds,
-        },
-        "imap poll not due yet",
+    try {
+      const operational = await getEntitlements().isTeamOperational?.(
+        project.teamId,
       );
-      continue;
+      if (operational === false) {
+        skippedNotDue++;
+        continue;
+      }
+
+      const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(
+        project.teamId,
+      );
+      const teamInterval =
+        teamIntervalResult instanceof Promise
+          ? await teamIntervalResult
+          : teamIntervalResult;
+      const intervalSeconds = teamInterval ?? imapPollIntervalSeconds;
+      if (!isProjectPollDue(project.lastImapPollAt, intervalSeconds)) {
+        skippedNotDue++;
+        logger.debug(
+          {
+            projectId: project.id,
+            lastImapPollAt: project.lastImapPollAt,
+            intervalSeconds,
+          },
+          "imap poll not due yet",
+        );
+        continue;
+      }
+
+      const claimTime = new Date();
+      await db
+        .update(projects)
+        .set({ lastImapPollAt: claimTime })
+        .where(eq(projects.id, project.id));
+
+      await boss.send(
+        QUEUE_NAMES.IMAP_POLL_PROJECT,
+        { projectId: project.id },
+        { singletonKey: project.id },
+      );
+      enqueued++;
+    } catch (err) {
+      skippedErrors++;
+      logger.warn(
+        {
+          err,
+          projectId: project.id,
+          projectName: project.name,
+          teamId: project.teamId,
+        },
+        "failed to schedule imap poll for project",
+      );
+      logExternalError("worker", "imap-poll-schedule", err, {
+        projectId: project.id,
+      });
     }
-
-    const claimTime = new Date();
-    await db
-      .update(projects)
-      .set({ lastImapPollAt: claimTime })
-      .where(eq(projects.id, project.id));
-
-    await boss.send(
-      QUEUE_NAMES.IMAP_POLL_PROJECT,
-      { projectId: project.id },
-      { singletonKey: project.id },
-    );
-    enqueued++;
   }
 
   logger.info(
@@ -148,8 +155,7 @@ async function scheduleImapPollsForDueProjects(
       activeProjects: activeProjects.length,
       enqueued,
       skippedNotDue,
-      skippedRateLimited,
-      exhaustedBuckets: [...exhaustedBuckets],
+      skippedErrors,
     },
     "imap poll tick",
   );
@@ -158,8 +164,7 @@ async function scheduleImapPollsForDueProjects(
     activeProjects: activeProjects.length,
     enqueued,
     skippedNotDue,
-    skippedRateLimited,
-    exhaustedBuckets: [...exhaustedBuckets],
+    skippedErrors,
   };
 }
 
@@ -176,8 +181,7 @@ async function scheduleCommentPollsForDueProjects(
 
   let enqueued = 0;
   let skippedNotDue = 0;
-  let skippedRateLimited = 0;
-  const exhaustedBuckets = new Set<string>();
+  let skippedErrors = 0;
 
   for (const project of activeProjects) {
     trace.current = {
@@ -188,62 +192,72 @@ async function scheduleCommentPollsForDueProjects(
       teamId: project.teamId,
     };
 
-    if (shouldSkipProjectForRateLimit(project, exhaustedBuckets)) {
-      skippedRateLimited++;
-      continue;
-    }
-
-    const operational = await getEntitlements().isTeamOperational?.(
-      project.teamId,
-    );
-    if (operational === false) {
-      skippedNotDue++;
-      continue;
-    }
-
-    const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(
-      project.teamId,
-    );
-    const teamInterval =
-      teamIntervalResult instanceof Promise
-        ? await teamIntervalResult
-        : teamIntervalResult;
-    const intervalSeconds = teamInterval ?? commentPollIntervalSeconds;
-    if (!isProjectPollDue(project.lastCommentPollAt, intervalSeconds)) {
-      skippedNotDue++;
-      logger.debug(
-        {
-          projectId: project.id,
-          lastCommentPollAt: project.lastCommentPollAt,
-          intervalSeconds,
-        },
-        "comment poll not due yet",
+    try {
+      const operational = await getEntitlements().isTeamOperational?.(
+        project.teamId,
       );
-      continue;
+      if (operational === false) {
+        skippedNotDue++;
+        continue;
+      }
+
+      const teamIntervalResult = getEntitlements().getImapPollIntervalSeconds?.(
+        project.teamId,
+      );
+      const teamInterval =
+        teamIntervalResult instanceof Promise
+          ? await teamIntervalResult
+          : teamIntervalResult;
+      const intervalSeconds = teamInterval ?? commentPollIntervalSeconds;
+      if (!isProjectPollDue(project.lastCommentPollAt, intervalSeconds)) {
+        skippedNotDue++;
+        logger.debug(
+          {
+            projectId: project.id,
+            lastCommentPollAt: project.lastCommentPollAt,
+            intervalSeconds,
+          },
+          "comment poll not due yet",
+        );
+        continue;
+      }
+
+      const claimTime = new Date();
+      await db
+        .update(projects)
+        .set({ lastCommentPollAt: claimTime })
+        .where(eq(projects.id, project.id));
+
+      await boss.send(
+        QUEUE_NAMES.COMMENT_POLL_PROJECT,
+        { projectId: project.id },
+        { singletonKey: project.id },
+      );
+      enqueued++;
+    } catch (err) {
+      skippedErrors++;
+      logger.warn(
+        {
+          err,
+          projectId: project.id,
+          projectName: project.name,
+          teamId: project.teamId,
+        },
+        "failed to schedule comment poll for project",
+      );
+      logExternalError("worker", "comment-poll-schedule", err, {
+        projectId: project.id,
+      });
     }
-
-    const claimTime = new Date();
-    await db
-      .update(projects)
-      .set({ lastCommentPollAt: claimTime })
-      .where(eq(projects.id, project.id));
-
-    await boss.send(
-      QUEUE_NAMES.COMMENT_POLL_PROJECT,
-      { projectId: project.id },
-      { singletonKey: project.id },
-    );
-    enqueued++;
   }
 
-  if (enqueued > 0 || skippedNotDue === 0 || skippedRateLimited > 0) {
+  if (enqueued > 0 || skippedNotDue === 0 || skippedErrors > 0) {
     logger.info(
       {
         activeProjects: activeProjects.length,
         enqueued,
         skippedNotDue,
-        skippedRateLimited,
-        exhaustedBuckets: [...exhaustedBuckets],
+        skippedErrors,
       },
       "comment poll tick",
     );
@@ -258,8 +272,7 @@ async function scheduleCommentPollsForDueProjects(
     activeProjects: activeProjects.length,
     enqueued,
     skippedNotDue,
-    skippedRateLimited,
-    exhaustedBuckets: [...exhaustedBuckets],
+    skippedErrors,
   };
 }
 
