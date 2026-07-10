@@ -18,5 +18,7 @@ test-results/
 *.tsbuildinfo
 *.private-key.pem
 
-# Extension public assets copied from cloud repo at build time (see scripts/copy-extension-public.ts)
+# Extension public assets merged at build time (see scripts/copy-extension-public.ts)
 apps/web/public/cloud/
+apps/web/public/sitemap.xml
+apps/web/public/robots.txt

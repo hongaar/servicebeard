@@ -5,18 +5,18 @@ import type { ResolvedExtensionManifest } from "./manifest";
 /** Merges extension `public` assets into the web app public directory. */
 export function copyExtensionPublicAssets(
   manifest: ResolvedExtensionManifest,
-  targetDir: string,
+  webPublicRoot: string,
 ): { copied: boolean; source?: string } {
   const sourceDir = manifest.public;
   if (!sourceDir || !existsSync(sourceDir)) {
     return { copied: false };
   }
 
-  mkdirSync(targetDir, { recursive: true });
+  mkdirSync(webPublicRoot, { recursive: true });
 
   for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
     const from = resolve(sourceDir, entry.name);
-    const to = resolve(targetDir, entry.name);
+    const to = resolve(webPublicRoot, entry.name);
     cpSync(from, to, { recursive: true, force: true });
   }
 

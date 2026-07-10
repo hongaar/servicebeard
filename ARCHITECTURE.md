@@ -393,7 +393,7 @@ Set `SB_EXTENSION_MANIFEST` to the path of an extension manifest file (typically
 export default {
   api: "./path/to/api-extension/index.ts",
   web: "./path/to/web-extension/index.tsx",
-  public: "./path/to/static-assets", // optional — merged into web public/cloud/ at build time
+  public: "./path/to/public",
   migrations: [
     { dir: "./path/to/drizzle", table: "__drizzle_migrations_extension" },
   ],
@@ -484,6 +484,6 @@ Build with an optional extension directory:
 docker build --build-context extension=/path/to/extension -f Dockerfile --target api .
 ```
 
-When the extension manifest declares a `public` directory, the web image build merges those static files into `apps/web/public/cloud/` via `scripts/copy-extension-public.ts` (no extension-specific paths in the Dockerfile). Extensions can also run the same copy locally, e.g. `bun run copy-public` in the extension repo.
+When the extension manifest declares a `public` directory, the web image build merges those static files into `apps/web/public/` via `scripts/copy-extension-public.ts` (the extension directory should mirror the web `public/` layout). Extensions can also run the same copy locally, e.g. `bun run copy-public` in the extension repo.
 
 Helm values support `extension.enabled`, `extension.manifest`, and `extension.env` for extension-specific configuration.

@@ -4,10 +4,11 @@ import {
   loadExtensionManifest,
 } from "@servicebeard/shared/extensions";
 
-const targetDir = process.argv[2];
-if (!targetDir) {
+const webPublicRoot = process.argv[2];
+
+if (!webPublicRoot) {
   console.error(
-    "Usage: bun run scripts/copy-extension-public.ts <web-public-dir>",
+    "Usage: bun run scripts/copy-extension-public.ts <web-public-root>",
   );
   process.exit(1);
 }
@@ -18,12 +19,12 @@ if (!manifest) {
   process.exit(0);
 }
 
-const result = copyExtensionPublicAssets(manifest, targetDir);
+const result = copyExtensionPublicAssets(manifest, webPublicRoot);
 if (!result.copied) {
   console.log("Extension manifest has no public assets — skipping.");
   process.exit(0);
 }
 
 console.log(
-  `Copied extension public assets from ${result.source} to ${targetDir}`,
+  `Copied extension public assets from ${result.source} to ${webPublicRoot}`,
 );
