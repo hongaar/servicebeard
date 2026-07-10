@@ -10,10 +10,17 @@
 
 name: servicebeard
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-servicebeard}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
@@ -40,6 +47,7 @@ services:
       additional_contexts:
         extension: ${EXTENSION_DIR:-../../extensions-stub}
     restart: unless-stopped
+    logging: *default-logging
     env_file: .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-servicebeard}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-servicebeard}
@@ -70,6 +78,7 @@ services:
       additional_contexts:
         extension: ${EXTENSION_DIR:-../../extensions-stub}
     restart: unless-stopped
+    logging: *default-logging
     env_file: .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-servicebeard}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-servicebeard}
@@ -91,6 +100,7 @@ services:
       additional_contexts:
         extension: ${EXTENSION_DIR:-../../extensions-stub}
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       api:
         condition: service_healthy
@@ -100,6 +110,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
