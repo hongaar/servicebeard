@@ -1,3 +1,8 @@
+import {
+  getBlockedMailPortsConfig,
+  isBlockedMailPort,
+} from "@servicebeard/shared";
+
 export type MailEndpoint = {
   protocol: "IMAP" | "SMTP";
   host: string;
@@ -30,14 +35,25 @@ export function formatMailConnectionError(
     );
   }
 
+  const blockedPorts = getBlockedMailPortsConfig();
+
   if (/timeout|ETIMEDOUT|ESOCKETTIMEDOUT/i.test(raw)) {
     if (
       endpoint.protocol === "SMTP" &&
-      (endpoint.port === 465 || endpoint.port === 25)
+      isBlockedMailPort("smtp", endpoint.port, blockedPorts)
     ) {
       return new Error(
         `Could not reach the SMTP server at ${target} (timed out). ` +
-          `Port ${endpoint.port} is often blocked by cloud hosts; try port 587 with STARTTLS if your provider supports it.`,
+          `Port ${endpoint.port} is blocked on this ServiceBeard instance; try port 587 with STARTTLS if your provider supports it.`,
+      );
+    }
+    if (
+      endpoint.protocol === "IMAP" &&
+      isBlockedMailPort("imap", endpoint.port, blockedPorts)
+    ) {
+      return new Error(
+        `Could not reach the IMAP server at ${target} (timed out). ` +
+          `Port ${endpoint.port} is blocked on this ServiceBeard instance; try port 993 with TLS if your provider supports it.`,
       );
     }
     return new Error(
@@ -53,12 +69,20 @@ export function formatMailConnectionError(
   ) {
     if (
       endpoint.protocol === "SMTP" &&
-      endpoint.secure &&
-      endpoint.port === 465
+      isBlockedMailPort("smtp", endpoint.port, blockedPorts)
     ) {
       return new Error(
         `SMTP connection to ${target} was closed before the handshake completed. ` +
-          `Port 465 is often blocked by cloud hosts; try port 587 with STARTTLS if your provider supports it.`,
+          `Port ${endpoint.port} is blocked on this ServiceBeard instance; try port 587 with STARTTLS if your provider supports it.`,
+      );
+    }
+    if (
+      endpoint.protocol === "IMAP" &&
+      isBlockedMailPort("imap", endpoint.port, blockedPorts)
+    ) {
+      return new Error(
+        `IMAP connection to ${target} was closed before the handshake completed. ` +
+          `Port ${endpoint.port} is blocked on this ServiceBeard instance; try port 993 with TLS if your provider supports it.`,
       );
     }
     return new Error(

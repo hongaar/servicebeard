@@ -38,6 +38,8 @@ data:
   SMTP_MAX_MESSAGES: {{ .Values.env.SMTP_MAX_MESSAGES | quote }}
   SMTP_IDLE_TTL_MS: {{ .Values.env.SMTP_IDLE_TTL_MS | quote }}
   SMTP_MAX_POOLS: {{ .Values.env.SMTP_MAX_POOLS | quote }}
+  BLOCKED_IMAP_PORTS: {{ .Values.env.BLOCKED_IMAP_PORTS | quote }}
+  BLOCKED_SMTP_PORTS: {{ .Values.env.BLOCKED_SMTP_PORTS | quote }}
   {{- if .Values.extension.enabled }}
   SB_EXTENSION_MANIFEST: {{ .Values.extension.manifest | quote }}
   {{- end }}

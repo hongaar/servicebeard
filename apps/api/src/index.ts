@@ -21,6 +21,7 @@ import { requestLogMiddleware } from "./middleware/request-log";
 import { requireTeamMember } from "./middleware/team";
 import { adminRoutes } from "./routes/admin";
 import { authRoutes } from "./routes/auth";
+import { configRoutes } from "./routes/config";
 import { githubAppRoutes } from "./routes/github-app";
 import { healthRoutes } from "./routes/health";
 import { projectRoutes } from "./routes/projects";
@@ -151,6 +152,7 @@ app.onError((err, c) => {
 app.route("/", healthRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/auth", authRoutes);
+app.route("/api", configRoutes);
 app.route("/api/search", searchRoutes);
 app.route("/api/github-app", githubAppRoutes);
 app.route("/api/teams", teamRoutes);

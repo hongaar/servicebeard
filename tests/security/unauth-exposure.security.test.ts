@@ -27,6 +27,18 @@ describe("Unauthenticated endpoint exposure and search scoping", () => {
     expect(Array.isArray(body.providers)).toBe(true);
   });
 
+  test("Instance config is public and lists blocked mail ports", async () => {
+    const { client } = await getSecurityContext();
+    const response = await client.anonymous.get("/api/config");
+    expect(response.status).toBe(200);
+    const body = response.body as {
+      blockedImapPorts: number[];
+      blockedSmtpPorts: number[];
+    };
+    expect(Array.isArray(body.blockedImapPorts)).toBe(true);
+    expect(Array.isArray(body.blockedSmtpPorts)).toBe(true);
+  });
+
   test("GitHub App config is public", async () => {
     const { client } = await getSecurityContext();
     const response = await client.anonymous.get("/api/github-app/config");

@@ -1,4 +1,7 @@
-import type { MailDiscoverResult } from "@servicebeard/shared";
+import type {
+  MailDiscoverResult,
+  BlockedMailPortsConfig,
+} from "@servicebeard/shared";
 import type {
   TeamEntitlementUsage,
   TeamListingMeta,
@@ -249,6 +252,7 @@ export const api = {
       method: "POST",
     }),
   getAuthConfig: () => request<AuthConfigResponse>("/auth/config"),
+  getInstanceConfig: () => request<BlockedMailPortsConfig>("/config"),
   loginWithProvider: (
     provider: string,
     data: {

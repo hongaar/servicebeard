@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 describe("mail connection errors", () => {
-  test("maps SMTP connection closed on port 465 to actionable guidance", async () => {
+  test("maps SMTP connection closed on blocked port 465 to actionable guidance", async () => {
+    process.env.BLOCKED_SMTP_PORTS = "465";
     const { formatMailConnectionError } =
       await import("./mail-connection-error");
 
@@ -13,11 +14,13 @@ describe("mail connection errors", () => {
     expect(err.message).toContain(
       "SMTP connection to smtp.migadu.com:465 (TLS)",
     );
-    expect(err.message).toContain("Port 465 is often blocked");
+    expect(err.message).toContain("Port 465 is blocked");
     expect(err.message).toContain("587");
+    delete process.env.BLOCKED_SMTP_PORTS;
   });
 
-  test("maps SMTP timeout on port 465 to actionable guidance", async () => {
+  test("maps SMTP timeout on blocked port 465 to actionable guidance", async () => {
+    process.env.BLOCKED_SMTP_PORTS = "465";
     const { formatMailConnectionError } =
       await import("./mail-connection-error");
 
@@ -28,6 +31,7 @@ describe("mail connection errors", () => {
 
     expect(err.message).toContain("timed out");
     expect(err.message).toContain("587");
+    delete process.env.BLOCKED_SMTP_PORTS;
   });
 
   test("maps authentication failures clearly", async () => {

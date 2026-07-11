@@ -88,6 +88,8 @@ env:
   SMTP_MAX_MESSAGES: "100"
   SMTP_IDLE_TTL_MS: "60000"
   SMTP_MAX_POOLS: "50"
+  BLOCKED_IMAP_PORTS: ""
+  BLOCKED_SMTP_PORTS: ""
 
 extension:
   enabled: false

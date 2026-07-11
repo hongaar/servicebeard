@@ -8,6 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useInstanceConfig } from "../hooks/useInstanceConfig";
 import { api } from "../lib/api";
 import { DOC_PATHS } from "../lib/docs";
 import {
@@ -28,6 +29,7 @@ import {
   type ProviderHosting,
 } from "../lib/projectForm";
 import styles from "../styles/pages.module.css";
+import { BlockedMailPortWarning } from "./BlockedMailPortWarning";
 import { Button } from "./Button";
 import { DocsLink } from "./DocsLink";
 import { Checkbox, Input, Textarea } from "./Input";
@@ -144,6 +146,7 @@ export function ProjectMailSection({
   >("idle");
   const [testMessage, setTestMessage] = useState("");
   const [detectingMail, setDetectingMail] = useState(false);
+  const { data: instanceConfig } = useInstanceConfig();
 
   const patchForm = (patch: Partial<ProjectSettingsFormValues>) => {
     for (const [key, val] of Object.entries(patch)) {
@@ -376,14 +379,26 @@ export function ProjectMailSection({
 
       {showMailSettings &&
         (passwordOnly ? (
-          <Input
-            label="Mailbox password"
-            type="password"
-            value={values.imapPassword}
-            error={fieldErrors?.imapPassword ?? fieldErrors?.smtpPassword}
-            onChange={(e) => handleMailboxPassword(e.target.value)}
-            hint={mailPasswordHint}
-          />
+          <>
+            <Input
+              label="Mailbox password"
+              type="password"
+              value={values.imapPassword}
+              error={fieldErrors?.imapPassword ?? fieldErrors?.smtpPassword}
+              onChange={(e) => handleMailboxPassword(e.target.value)}
+              hint={mailPasswordHint}
+            />
+            <BlockedMailPortWarning
+              protocol="imap"
+              port={values.imapPort}
+              config={instanceConfig}
+            />
+            <BlockedMailPortWarning
+              protocol="smtp"
+              port={values.smtpPort}
+              config={instanceConfig}
+            />
+          </>
         ) : (
           <div className={styles.mailServerFields}>
             <h4 className={styles.subsectionTitle}>IMAP (incoming)</h4>
@@ -400,19 +415,26 @@ export function ProjectMailSection({
                   )(e.target.value)
                 }
               />
-              <Input
-                label="Port"
-                type="number"
-                value={values.imapPort}
-                error={fieldErrors?.imapPort}
-                onChange={(e) =>
-                  setField(
-                    onChange,
-                    onClearFieldError,
-                    "imapPort",
-                  )(Number(e.target.value))
-                }
-              />
+              <div>
+                <Input
+                  label="Port"
+                  type="number"
+                  value={values.imapPort}
+                  error={fieldErrors?.imapPort}
+                  onChange={(e) =>
+                    setField(
+                      onChange,
+                      onClearFieldError,
+                      "imapPort",
+                    )(Number(e.target.value))
+                  }
+                />
+                <BlockedMailPortWarning
+                  protocol="imap"
+                  port={values.imapPort}
+                  config={instanceConfig}
+                />
+              </div>
             </div>
             <div className={styles.row}>
               <Input
@@ -472,19 +494,26 @@ export function ProjectMailSection({
                   )(e.target.value)
                 }
               />
-              <Input
-                label="Port"
-                type="number"
-                value={values.smtpPort}
-                error={fieldErrors?.smtpPort}
-                onChange={(e) =>
-                  setField(
-                    onChange,
-                    onClearFieldError,
-                    "smtpPort",
-                  )(Number(e.target.value))
-                }
-              />
+              <div>
+                <Input
+                  label="Port"
+                  type="number"
+                  value={values.smtpPort}
+                  error={fieldErrors?.smtpPort}
+                  onChange={(e) =>
+                    setField(
+                      onChange,
+                      onClearFieldError,
+                      "smtpPort",
+                    )(Number(e.target.value))
+                  }
+                />
+                <BlockedMailPortWarning
+                  protocol="smtp"
+                  port={values.smtpPort}
+                  config={instanceConfig}
+                />
+              </div>
             </div>
             <div className={styles.row}>
               <Input
