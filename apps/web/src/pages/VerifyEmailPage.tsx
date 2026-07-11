@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SignInLink } from "../components/AuthForms";
 import { api } from "../lib/api";
+import { queryClient, queryKeys } from "../lib/queryClient";
 import styles from "../styles/pages.module.css";
 
 export function VerifyEmailPage() {
@@ -24,7 +25,8 @@ export function VerifyEmailPage() {
       .verifyEmail(token)
       .then((result) => {
         setMessage(result.message);
-        setTimeout(() => navigate({ to: "/login" }), 2000);
+        queryClient.setQueryData(queryKeys.auth.me, { user: result.user });
+        setTimeout(() => navigate({ to: "/" }), 1500);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Verification failed");

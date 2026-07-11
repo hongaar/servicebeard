@@ -83,6 +83,13 @@ export async function createSessionForIdentity(
     await ensureProviderLink(userId, opts.provider, identity.externalSub);
   }
 
+  return createSessionForUser(userId);
+}
+
+export async function createSessionForUser(
+  userId: string,
+): Promise<{ token: string; user: SessionUser }> {
+  const db = getDb();
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
   });

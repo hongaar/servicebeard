@@ -9,6 +9,7 @@ import {
   completeProviderIdentity,
   completeProviderLogin,
   countSignInMethods,
+  createSessionForUser,
   credentialProviderLogin,
   destroySession,
   getLoginAdapter,
@@ -611,15 +612,27 @@ authRoutes.post("/verify-email", async (c) => {
 
   try {
     const { userId } = await verifyEmailWithToken(token);
+    const { token: sessionToken, user } = await createSessionForUser(userId);
+    setSessionCookie(c, sessionToken);
+
     await auditLog({
       userId,
       action: "verify_email",
       resourceType: "user",
       resourceId: userId,
     });
+    await auditLog({
+      userId,
+      action: "login",
+      resourceType: "user",
+      resourceId: userId,
+      metadata: { method: "email_verification" },
+    });
+
     return c.json({
       ok: true,
-      message: "Email confirmed. You can sign in now.",
+      message: "Email confirmed. Signing you in…",
+      user,
     });
   } catch (err) {
     const mapped = mapAuthError(err);

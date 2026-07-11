@@ -1,6 +1,6 @@
 import type {
-  MailDiscoverResult,
   BlockedMailPortsConfig,
+  MailDiscoverResult,
 } from "@servicebeard/shared";
 import type {
   TeamEntitlementUsage,
@@ -316,7 +316,17 @@ export const api = {
     }),
 
   verifyEmail: (token: string) =>
-    request<{ ok: boolean; message: string }>("/auth/verify-email", {
+    request<{
+      ok: boolean;
+      message: string;
+      user: {
+        id: string;
+        email: string;
+        name: string | null;
+        isAdmin: boolean;
+        emailVerified: boolean;
+      };
+    }>("/auth/verify-email", {
       method: "POST",
       body: JSON.stringify({ token }),
     }),

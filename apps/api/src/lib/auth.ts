@@ -38,6 +38,7 @@ export {
 } from "./login/providers";
 export {
   createSessionForIdentity,
+  createSessionForUser,
   destroySession,
   getSessionCookieName,
   getSessionUser,
