@@ -22,6 +22,7 @@ import {
   recordProjectSyncEvent,
 } from "../lib/external-error";
 import { logger } from "../lib/logger";
+import { coerceDate } from "../lib/dates";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import { applyEmailStyleToHtml } from "./email-style-apply";
 import {
@@ -37,8 +38,9 @@ import { sendEmail } from "./smtp";
 
 async function advanceLastSeenNoteAt(
   threadId: string,
-  noteCreatedAt: Date,
+  noteCreatedAt: Date | string,
 ): Promise<void> {
+  const noteAt = coerceDate(noteCreatedAt);
   const db = getDb();
   const thread = await db.query.issueThreads.findFirst({
     where: eq(issueThreads.id, threadId),
@@ -46,18 +48,18 @@ async function advanceLastSeenNoteAt(
   if (!thread) return;
 
   const current = thread.lastSeenNoteAt;
-  if (current && current.getTime() >= noteCreatedAt.getTime()) return;
+  if (current && current.getTime() >= noteAt.getTime()) return;
 
   await db
     .update(issueThreads)
-    .set({ lastSeenNoteAt: noteCreatedAt, updatedAt: new Date() })
+    .set({ lastSeenNoteAt: noteAt, updatedAt: new Date() })
     .where(eq(issueThreads.id, threadId));
 }
 
 async function advanceLastSeenNoteAtForIssue(
   projectId: string,
   issueExternalId: string,
-  noteCreatedAt: Date,
+  noteCreatedAt: Date | string,
 ): Promise<void> {
   const db = getDb();
   const thread = await db.query.issueThreads.findFirst({
@@ -93,8 +95,9 @@ function commentAuthorDisplayName(event: {
 
 export async function processOutboundComment(
   projectId: string,
-  event: NormalizedWebhookEvent,
+  event: NormalizedWebhookEvent & { createdAt: Date | string },
 ): Promise<void> {
+  const noteCreatedAt = coerceDate(event.createdAt);
   const db = getDb();
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
@@ -110,7 +113,7 @@ export async function processOutboundComment(
       authorUsername: event.authorUsername,
       internal: event.internal,
       system: event.system,
-      createdAt: event.createdAt,
+      createdAt: noteCreatedAt,
       bodyPreview: event.noteBody.slice(0, 120),
     },
     "processing outbound comment",
@@ -129,7 +132,7 @@ export async function processOutboundComment(
     await advanceLastSeenNoteAtForIssue(
       projectId,
       event.issueExternalId,
-      event.createdAt,
+      noteCreatedAt,
     );
     return;
   }
@@ -139,7 +142,7 @@ export async function processOutboundComment(
     await advanceLastSeenNoteAtForIssue(
       projectId,
       event.issueExternalId,
-      event.createdAt,
+      noteCreatedAt,
     );
     return;
   }
@@ -156,7 +159,7 @@ export async function processOutboundComment(
     await advanceLastSeenNoteAtForIssue(
       projectId,
       event.issueExternalId,
-      event.createdAt,
+      noteCreatedAt,
     );
     return;
   }
@@ -166,7 +169,7 @@ export async function processOutboundComment(
     await advanceLastSeenNoteAtForIssue(
       projectId,
       event.issueExternalId,
-      event.createdAt,
+      noteCreatedAt,
     );
     return;
   }
@@ -183,7 +186,7 @@ export async function processOutboundComment(
     await advanceLastSeenNoteAtForIssue(
       projectId,
       event.issueExternalId,
-      event.createdAt,
+      noteCreatedAt,
     );
     return;
   }
@@ -308,7 +311,7 @@ export async function processOutboundComment(
     ...addresses,
   });
 
-  await advanceLastSeenNoteAt(thread.id, event.createdAt);
+  await advanceLastSeenNoteAt(thread.id, noteCreatedAt);
 
   await provider.addReaction(event.issueIid, event.noteId, "e-mail");
 
