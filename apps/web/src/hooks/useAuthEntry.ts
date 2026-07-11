@@ -12,7 +12,14 @@ import {
   passkeyErrorMessage,
   registerPasskey,
 } from "../lib/passkey";
+import { queryClient, queryKeys } from "../lib/queryClient";
 import { normalizeRedirectPath } from "../lib/redirect";
+
+type AuthUser = { id: string; email: string; name: string | null };
+
+function syncAuthAfterLogin(user: AuthUser) {
+  queryClient.setQueryData(queryKeys.auth.me, { user });
+}
 
 export function useAuthEntry(search: { redirect?: string; error?: string }) {
   const navigate = useNavigate();
@@ -99,12 +106,13 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
         ...credentials,
         mode: "login",
       });
-      if ("requiresVerification" in result && result.requiresVerification) {
+      if ("requiresVerification" in result) {
         setInfo(result.message);
         setPendingVerificationEmail(credentials.email);
         setLoading(false);
         return;
       }
+      syncAuthAfterLogin(result.user);
       redirectAfterAuth();
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_not_verified") {
@@ -129,12 +137,13 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
         ...credentials,
         mode: "signup",
       });
-      if ("requiresVerification" in result && result.requiresVerification) {
+      if ("requiresVerification" in result) {
         setInfo(result.message);
         setPendingVerificationEmail(credentials.email);
         setLoading(false);
         return;
       }
+      syncAuthAfterLogin(result.user);
       redirectAfterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-up failed");
@@ -147,7 +156,8 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     setLoading(true);
     setError("");
     try {
-      await authenticateWithPasskey(type);
+      const result = await authenticateWithPasskey(type);
+      syncAuthAfterLogin(result.user);
       redirectAfterAuth();
     } catch (err) {
       setError(
@@ -172,12 +182,13 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     setPendingVerificationEmail("");
     try {
       const result = await registerPasskey(type, input);
-      if ("requiresVerification" in result && result.requiresVerification) {
+      if ("requiresVerification" in result) {
         setInfo(result.message);
         setPendingVerificationEmail(input.email);
         setLoading(false);
         return;
       }
+      syncAuthAfterLogin(result.user);
       redirectAfterAuth();
     } catch (err) {
       setError(
