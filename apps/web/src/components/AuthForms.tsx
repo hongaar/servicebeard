@@ -129,13 +129,19 @@ export function SsoLoginButton({
 export function AuthPageShell({
   children,
   subtitle = "Turn mailboxes into issue boards.",
+  cardClassName,
 }: {
   children?: ReactNode;
   subtitle?: string;
+  cardClassName?: string;
 }) {
   return (
     <div className={styles.container}>
-      <div className={[styles.card, styles.loginCard].join(" ")}>
+      <div
+        className={[styles.card, styles.loginCard, cardClassName]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <img
           src="/favicon.png"
           alt=""
@@ -146,7 +152,7 @@ export function AuthPageShell({
         <h1 className={styles.title}>
           Service<span className={styles.titleAccent}>Beard</span>
         </h1>
-        <p className={styles.subtitle}>{subtitle}</p>
+        {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
         {children}
       </div>
     </div>

@@ -50,6 +50,24 @@ type RefreshAppRoutesOptions = {
   teamId?: string;
 };
 
+export function prependCreatedTeamToCache(team: {
+  id: string;
+  name: string;
+  slug: string;
+}) {
+  queryClient.setQueryData<{
+    teams: Array<{ id: string; name: string; slug: string; role: string }>;
+  }>(queryKeys.teams.all, (existing) => {
+    if (existing?.teams.some((entry) => entry.id === team.id)) {
+      return existing;
+    }
+
+    return {
+      teams: [{ ...team, role: "owner" }, ...(existing?.teams ?? [])],
+    };
+  });
+}
+
 export async function refreshAppRoutes(
   router: { invalidate: () => Promise<void> },
   options: RefreshAppRoutesOptions = {},

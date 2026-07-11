@@ -7,12 +7,13 @@ import {
   getLastUsedSignInMethod,
   setLastUsedSignInMethod,
 } from "../lib/lastSignInMethod";
+import { shouldShowWelcome } from "../lib/onboarding";
 import {
   authenticateWithPasskey,
   passkeyErrorMessage,
   registerPasskey,
 } from "../lib/passkey";
-import { queryClient, queryKeys } from "../lib/queryClient";
+import { appQueries, queryClient, queryKeys } from "../lib/queryClient";
 import { normalizeRedirectPath } from "../lib/redirect";
 
 type AuthUser = { id: string; email: string; name: string | null };
@@ -39,10 +40,18 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
   const providers = authConfig?.providers ?? [];
   const configLoaded = !configLoading;
 
-  const redirectAfterAuth = () => {
+  const redirectAfterAuth = async (user: AuthUser) => {
     const path = normalizeRedirectPath(search.redirect);
     if (path) {
       window.location.href = path;
+      return;
+    }
+    const [{ teams }, { invites }] = await Promise.all([
+      queryClient.fetchQuery(appQueries.teams()),
+      queryClient.fetchQuery(appQueries.pendingInvites()),
+    ]);
+    if (shouldShowWelcome(user.id, teams.length, invites.length)) {
+      navigate({ to: "/welcome" });
       return;
     }
     navigate({ to: "/" });
@@ -113,7 +122,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
         return;
       }
       syncAuthAfterLogin(result.user);
-      redirectAfterAuth();
+      await redirectAfterAuth(result.user);
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_not_verified") {
         setPendingVerificationEmail(credentials.email);
@@ -144,7 +153,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
         return;
       }
       syncAuthAfterLogin(result.user);
-      redirectAfterAuth();
+      await redirectAfterAuth(result.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-up failed");
       setLoading(false);
@@ -158,7 +167,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
     try {
       const result = await authenticateWithPasskey(type);
       syncAuthAfterLogin(result.user);
-      redirectAfterAuth();
+      await redirectAfterAuth(result.user);
     } catch (err) {
       setError(
         passkeyErrorMessage(
@@ -189,7 +198,7 @@ export function useAuthEntry(search: { redirect?: string; error?: string }) {
         return;
       }
       syncAuthAfterLogin(result.user);
-      redirectAfterAuth();
+      await redirectAfterAuth(result.user);
     } catch (err) {
       setError(
         passkeyErrorMessage(

@@ -20,6 +20,10 @@ import { Card } from "../components/Card";
 import { CreateProjectWizard } from "../components/CreateProjectWizard";
 import { EmptyIcon } from "../components/EmptyIcon";
 import { Layout } from "../components/Layout";
+import {
+  OnboardingAnchor,
+  OnboardingPopover,
+} from "../components/OnboardingPopover";
 import { ProviderProjectLabel } from "../components/ProviderProjectLabel";
 import { TableRowActionLink } from "../components/TableRowAction";
 import { api } from "../lib/api";
@@ -29,6 +33,7 @@ import {
 } from "../lib/entitlements";
 import { clearFieldError, handleMutationError } from "../lib/formErrors";
 import type { ProjectsLoaderData } from "../lib/loaderTypes";
+import { isProjectHintPending, markOnboardingDone } from "../lib/onboarding";
 import {
   defaultProjectSettingsForm,
   formToCreateInput,
@@ -49,6 +54,7 @@ export function ProjectsPage() {
     wizardStep?: string;
     githubInstallationId?: string;
     githubAppError?: string;
+    onboarding?: string;
   };
   const navigate = useNavigate();
   const router = useRouter();
@@ -66,6 +72,7 @@ export function ProjectsPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [showProjectHint, setShowProjectHint] = useState(false);
   const projectsPageContext = {
     teamId,
     projectsCount: projects.length,
@@ -90,7 +97,23 @@ export function ProjectsPage() {
     setShowCreate(true);
   };
 
+  const dismissProjectHint = () => {
+    markOnboardingDone(user.id);
+    setShowProjectHint(false);
+    if (search.onboarding) {
+      navigate({
+        to: "/teams/$teamId/projects",
+        params: { teamId },
+        search: {},
+        replace: true,
+      });
+    }
+  };
+
   const tryOpenCreate = () => {
+    if (showProjectHint) {
+      dismissProjectHint();
+    }
     if (atProjectLimit) {
       if (LimitReachedDialog && entitlements) {
         setLimitDialogOpen(true);
@@ -105,6 +128,12 @@ export function ProjectsPage() {
     }
     openCreate();
   };
+
+  useEffect(() => {
+    if (search.onboarding === "project" || isProjectHintPending(user.id)) {
+      setShowProjectHint(true);
+    }
+  }, [search.onboarding, user.id]);
 
   useEffect(() => {
     const installationId = search.githubInstallationId;
@@ -214,9 +243,21 @@ export function ProjectsPage() {
           <h2 className={styles.sectionTitle}>All projects</h2>
           <p className={styles.sectionDescription}>{sectionDescription}</p>
         </div>
-        <Button onClick={() => (showCreate ? closeCreate() : tryOpenCreate())}>
-          {showCreate ? "Cancel" : "New project"}
-        </Button>
+        <OnboardingAnchor>
+          <Button
+            onClick={() => (showCreate ? closeCreate() : tryOpenCreate())}
+          >
+            {showCreate ? "Cancel" : "New project"}
+          </Button>
+          <OnboardingPopover
+            open={showProjectHint && !showCreate}
+            title="Create your first project"
+            onDismiss={dismissProjectHint}
+          >
+            A project links your support inbox to an issue board. Click here to
+            connect a mailbox and start syncing email.
+          </OnboardingPopover>
+        </OnboardingAnchor>
       </div>
 
       {error && (

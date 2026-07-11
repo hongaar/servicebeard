@@ -8,6 +8,7 @@ import {
   PROJECT_SECTION_LABELS,
   type ProjectSection,
 } from "../lib/navigation";
+import { shouldShowWelcome } from "../lib/onboarding";
 import { appQueries, queryClient } from "../lib/queryClient";
 import { isPlatformAdminTeamAccess } from "../lib/teamAccess";
 import { AcceptInvitePage } from "../pages/AcceptInvitePage";
@@ -35,6 +36,7 @@ import { SignupPage } from "../pages/SignupPage";
 import { TeamPage } from "../pages/TeamPage";
 import { TeamSettingsPage } from "../pages/TeamSettingsPage";
 import { VerifyEmailPage } from "../pages/VerifyEmailPage";
+import { WelcomePage } from "../pages/WelcomePage";
 import { rootRoute } from "./root.tsx";
 
 async function requireUser() {
@@ -212,6 +214,24 @@ export const githubAppInstallCompleteRoute = createRoute({
   head: routeHead("GitHub App"),
 });
 
+export const welcomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/welcome",
+  component: WelcomePage,
+  head: routeHead("Welcome"),
+  loader: async () => {
+    const user = await requireUser();
+    const [{ teams }, { invites: pendingInvites }] = await Promise.all([
+      queryClient.ensureQueryData(appQueries.teams()),
+      queryClient.ensureQueryData(appQueries.pendingInvites()),
+    ]);
+    if (!shouldShowWelcome(user.id, teams.length, pendingInvites.length)) {
+      throw redirect({ to: "/" });
+    }
+    return { user };
+  },
+});
+
 export const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -245,6 +265,9 @@ export const dashboardRoute = createRoute({
       queryClient.ensureQueryData(appQueries.teams()),
       queryClient.ensureQueryData(appQueries.pendingInvites()),
     ]);
+    if (shouldShowWelcome(user.id, teams.length, pendingInvites.length)) {
+      throw redirect({ to: "/welcome" });
+    }
     return { landing: false as const, user, teams, pendingInvites };
   },
 });

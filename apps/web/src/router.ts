@@ -30,6 +30,7 @@ import {
   teamRedirectRoute,
   teamSettingsRoute,
   verifyEmailRoute,
+  welcomeRoute,
 } from "./routes/index";
 import { rootRoute } from "./routes/root.tsx";
 
@@ -49,6 +50,7 @@ const routeTree = rootRoute.addChildren([
   docsLinearRoute,
   docsSelfHostRoute,
   githubAppInstallCompleteRoute,
+  welcomeRoute,
   dashboardRoute,
   adminOverviewRoute,
   adminHealthRoute,
