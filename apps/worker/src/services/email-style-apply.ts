@@ -45,7 +45,7 @@ export function applyEmailStyleToHtml(
   const preset = (project.emailStylePreset ?? "none") as EmailStylePreset;
   const { replyText } = options.quoted
     ? splitReplyAndQuote(options.contentMarkdown, options.quoted)
-    : { replyText: options.contentMarkdown.trim(), quotedText: null };
+    : { replyText: options.contentMarkdown.trim() };
 
   const contentHtml = options.contentHtml ?? markdownToHtml(replyText);
 
