@@ -66,7 +66,10 @@ RUN SB_EXTENSION_MANIFEST=; \
       (cd /app && SB_EXTENSION_MANIFEST="$SB_EXTENSION_MANIFEST" bun run scripts/copy-extension-public.ts /app/apps/web/public); \
     fi; \
     export SB_EXTENSION_MANIFEST; \
-    bunx vite build
+    bunx vite build; \
+    if [ -n "$SB_EXTENSION_MANIFEST" ]; then \
+      (cd /extension && bun run scripts/prerender-seo-html.ts /app/apps/web/dist); \
+    fi
 
 # ── API image ──
 FROM base AS api
