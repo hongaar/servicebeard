@@ -66,7 +66,7 @@ export const QUOTE_REPLY_MARKER_PATTERNS: RegExp[] = [
 
   // Russian
   new RegExp(
-    `${LINE_START}\\s*(ср,\\s.+\\n? г\\. в\\s.+,.+(\\[|<).+(\\]|>):)`,
+    `${LINE_START}\\s*(ср,\\s.+\\n?\\u202fг\\. в\\s.+,.+(\\[|<).+(\\]|>):)`,
     "im",
   ),
 
