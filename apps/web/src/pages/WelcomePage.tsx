@@ -1,8 +1,9 @@
+import { extensionOnSignupComplete } from "@extensions";
 import { slugifyName } from "@servicebeard/shared";
 import { useMutation } from "@tanstack/react-query";
 import { useLoaderData, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthPageShell } from "../components/AuthForms";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -111,6 +112,12 @@ export function WelcomePage() {
   const [teamName, setTeamName] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // A new user reaching /welcome means signup succeeded — record the conversion.
+  useEffect(() => {
+    extensionOnSignupComplete();
+  }, []);
+
   const step = STEPS[stepIndex]!;
   const isLast = stepIndex === STEPS.length - 1;
   const canContinue = step.id !== "team" ? true : teamName.trim().length > 0;

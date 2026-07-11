@@ -111,6 +111,9 @@ export function extensionAppExtras(): null {
   return null;
 }
 
+/** Called when a new user completes signup (from the /welcome page). */
+export function extensionOnSignupComplete(): void {}
+
 export function extensionAppFooterLinks(): ExtensionAppFooterLink[] {
   return [];
 }
