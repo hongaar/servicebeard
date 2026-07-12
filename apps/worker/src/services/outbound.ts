@@ -23,6 +23,7 @@ import {
 } from "../lib/external-error";
 import { logger } from "../lib/logger";
 import { coerceDate } from "../lib/dates";
+import { releaseNoteLock, tryAcquireNoteLock } from "../lib/note-lock";
 import { buildOutboundMultipartContent } from "./email-content-outbound";
 import { applyEmailStyleToHtml } from "./email-style-apply";
 import {
@@ -94,6 +95,26 @@ function commentAuthorDisplayName(event: {
 }
 
 export async function processOutboundComment(
+  projectId: string,
+  event: NormalizedWebhookEvent & { createdAt: Date | string },
+): Promise<void> {
+  const lockAcquired = await tryAcquireNoteLock(projectId, event.noteId);
+  if (!lockAcquired) {
+    logger.debug(
+      { projectId, noteId: event.noteId },
+      "skipping outbound comment, note already being processed",
+    );
+    return;
+  }
+
+  try {
+    await processOutboundCommentLocked(projectId, event);
+  } finally {
+    await releaseNoteLock(projectId, event.noteId);
+  }
+}
+
+async function processOutboundCommentLocked(
   projectId: string,
   event: NormalizedWebhookEvent & { createdAt: Date | string },
 ): Promise<void> {
@@ -298,18 +319,33 @@ export async function processOutboundComment(
     { projectId },
   );
 
-  await db.insert(emailMessages).values({
-    threadId: thread.id,
-    projectId,
-    direction: "outbound",
-    messageId,
-    inReplyTo,
-    references,
-    subject: parent.subject,
-    bodyText: body,
-    externalNoteId: event.noteId,
-    ...addresses,
-  });
+  const [inserted] = await db
+    .insert(emailMessages)
+    .values({
+      threadId: thread.id,
+      projectId,
+      direction: "outbound",
+      messageId,
+      inReplyTo,
+      references,
+      subject: parent.subject,
+      bodyText: body,
+      externalNoteId: event.noteId,
+      ...addresses,
+    })
+    .onConflictDoNothing({
+      target: [emailMessages.projectId, emailMessages.externalNoteId],
+    })
+    .returning({ id: emailMessages.id });
+
+  if (!inserted) {
+    logger.debug(
+      { projectId, noteId: event.noteId },
+      "note already recorded, skipping duplicate outbound",
+    );
+    await advanceLastSeenNoteAt(thread.id, noteCreatedAt);
+    return;
+  }
 
   await advanceLastSeenNoteAt(thread.id, noteCreatedAt);
 

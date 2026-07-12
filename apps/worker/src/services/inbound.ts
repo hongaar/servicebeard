@@ -267,18 +267,36 @@ export async function processInboundEmail(
       internal: false,
     });
 
-    await db.insert(emailMessages).values({
-      threadId: thread.id,
-      projectId,
-      direction: "inbound",
-      messageId: email.messageId,
-      inReplyTo: email.inReplyTo,
-      references: email.references,
-      subject: email.subject,
-      bodyText: email.body,
-      externalNoteId: result.noteId,
-      ...addresses,
-    });
+    const [inserted] = await db
+      .insert(emailMessages)
+      .values({
+        threadId: thread.id,
+        projectId,
+        direction: "inbound",
+        messageId: email.messageId,
+        inReplyTo: email.inReplyTo,
+        references: email.references,
+        subject: email.subject,
+        bodyText: email.body,
+        externalNoteId: result.noteId,
+        ...addresses,
+      })
+      .onConflictDoNothing({
+        target: [emailMessages.projectId, emailMessages.externalNoteId],
+      })
+      .returning({ id: emailMessages.id });
+
+    if (!inserted) {
+      logger.debug(
+        { projectId, noteId: result.noteId, messageId: email.messageId },
+        "inbound note already recorded, skipping duplicate",
+      );
+      await db
+        .update(issueThreads)
+        .set({ lastSeenNoteAt: result.createdAt, updatedAt: new Date() })
+        .where(eq(issueThreads.id, thread.id));
+      return;
+    }
 
     await db
       .update(issueThreads)
