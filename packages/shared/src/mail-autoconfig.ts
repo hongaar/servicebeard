@@ -142,3 +142,16 @@ export function slugifyName(name: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+/** Append a numeric suffix while respecting slug max length (e.g. `acme` → `acme-2`). */
+export function appendSlugSuffix(
+  base: string,
+  suffix: number,
+  maxLength = 50,
+): string {
+  const suffixStr = `-${suffix}`;
+  const maxBaseLen = Math.max(1, maxLength - suffixStr.length);
+  let trimmed = base.slice(0, maxBaseLen).replace(/-+$/, "");
+  if (!trimmed) trimmed = "team";
+  return `${trimmed}${suffixStr}`;
+}

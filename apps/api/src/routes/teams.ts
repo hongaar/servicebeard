@@ -37,6 +37,10 @@ import { logger } from "../lib/logger";
 import { discoverMailAutoconfig } from "../lib/mail-discover";
 import { getRepositoryVisibility } from "../lib/repository-visibility";
 import {
+  prepareTeamSlugForCreate,
+  resolveUniqueTeamSlug,
+} from "../lib/team-slug";
+import {
   isMailConfigured,
   sendTeamInviteEmail,
   sendTeamMemberAddedEmail,
@@ -110,9 +114,18 @@ teamRoutes.post("/", async (c) => {
   const body = createTeamSchema.parse(await c.req.json());
   const db = getDb();
 
+  const { slug, existingTeam } = await prepareTeamSlugForCreate(
+    db,
+    user.id,
+    body.slug,
+  );
+  if (existingTeam) {
+    return c.json(existingTeam, 200);
+  }
+
   const [team] = await db
     .insert(teams)
-    .values({ name: body.name, slug: body.slug })
+    .values({ name: body.name, slug })
     .returning();
 
   await db.insert(teamMembers).values({
@@ -200,8 +213,14 @@ teamRoutes.patch("/:teamId", async (c) => {
   const db = getDb();
 
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date() };
-  if (body.name !== undefined && body.slug === undefined) {
-    updates.slug = slugifyName(body.name);
+  if (body.slug !== undefined) {
+    updates.slug = await resolveUniqueTeamSlug(db, body.slug, teamId);
+  } else if (body.name !== undefined) {
+    updates.slug = await resolveUniqueTeamSlug(
+      db,
+      slugifyName(body.name),
+      teamId,
+    );
   }
 
   const [updated] = await db

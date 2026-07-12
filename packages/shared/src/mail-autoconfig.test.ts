@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
 describe("mail autoconfig", () => {
+  test("appendSlugSuffix keeps slug within max length", async () => {
+    const { appendSlugSuffix } =
+      await import("@servicebeard/shared/mail-autoconfig");
+
+    expect(appendSlugSuffix("acme", 2)).toBe("acme-2");
+    expect(
+      appendSlugSuffix("a-very-long-team-name-that-exceeds-the-limit", 3, 20),
+    ).toBe("a-very-long-team-n-3");
+  });
+
   test("mail.test resolves to local GreenMail settings", async () => {
     const { lookupMailAutoconfig, usesLocalPartMailAuth } =
       await import("@servicebeard/shared/mail-autoconfig");
