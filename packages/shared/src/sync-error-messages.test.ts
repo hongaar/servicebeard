@@ -31,4 +31,15 @@ describe("sync error messages", () => {
       "IMAP mailbox rejected a command while fetching new mailbox messages: SEARCH command failed: invalid date",
     );
   });
+
+  test("humanizes imapflow authentication failures", async () => {
+    const { humanizeSyncErrorMessage } = await import("./sync-error-messages");
+    const err = Object.assign(new Error("Command failed"), {
+      authenticationFailed: true,
+      responseText: "[UNAVAILABLE] Account suspended",
+    });
+    expect(humanizeSyncErrorMessage("imap", "fetch-since", err)).toBe(
+      "IMAP mailbox authentication failed while fetching new mailbox messages: [UNAVAILABLE] Account suspended",
+    );
+  });
 });

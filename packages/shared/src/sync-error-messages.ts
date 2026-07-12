@@ -46,10 +46,26 @@ export function describeSyncOperation(
 
 function imapResponseDetail(err: Error): string | null {
   const candidate = err as Error & {
+    authenticationFailed?: boolean;
+    response?: unknown;
     responseText?: string;
     executedCommand?: string;
+    serverResponseCode?: string;
   };
+
+  if (candidate.authenticationFailed) {
+    const parts = [
+      candidate.responseText?.trim(),
+      typeof candidate.response === "string" ? candidate.response.trim() : null,
+    ].filter((value): value is string => Boolean(value));
+    if (parts.length > 0) return parts.join(" ");
+    return "authentication failed";
+  }
+
   if (candidate.responseText?.trim()) return candidate.responseText.trim();
+  if (typeof candidate.response === "string" && candidate.response.trim()) {
+    return candidate.response.trim();
+  }
   return null;
 }
 
@@ -64,12 +80,26 @@ export function humanizeSyncErrorMessage(
   const message = err.message.trim();
   const lower = message.toLowerCase();
 
-  if (lower === "command failed") {
+  if (lower === "command failed" || lower === "authentication failed") {
     const detail = imapResponseDetail(err);
+    const candidate = err as Error & { authenticationFailed?: boolean };
     if (detail) {
+      if (
+        candidate.authenticationFailed ||
+        /authentication failed|invalid login|\b535\b|\b534\b/i.test(detail)
+      ) {
+        return `${target} authentication failed while ${action}: ${detail}`;
+      }
       return `${target} rejected a command while ${action}: ${detail}`;
     }
+    if (candidate.authenticationFailed) {
+      return `${target} authentication failed while ${action}`;
+    }
     return `${target} command failed while ${action}`;
+  }
+
+  if (lower.includes("authentication failed")) {
+    return message;
   }
 
   if (lower.includes("unsupported state or unable to authenticate data")) {

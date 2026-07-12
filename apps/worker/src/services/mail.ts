@@ -1,6 +1,7 @@
 import {
   firstMailboxAddress,
   formatMailboxAddress,
+  formatMailConnectionError,
   normalizeMessageId,
   optionalMailboxAddress,
   resolveInboundSender,
@@ -48,6 +49,19 @@ function createImapClient(creds: MailCredentials): ImapFlow {
   });
 }
 
+function imapEndpoint(creds: MailCredentials) {
+  return {
+    protocol: "IMAP" as const,
+    host: creds.imapHost,
+    port: creds.imapPort,
+    secure: creds.imapSecure,
+  };
+}
+
+function rethrowImapError(creds: MailCredentials, err: unknown): never {
+  throw formatMailConnectionError(imapEndpoint(creds), err);
+}
+
 function parseImapInternalDate(value: Date | string | undefined): Date {
   if (value instanceof Date) return value;
   if (value) return new Date(value);
@@ -70,56 +84,60 @@ export async function fetchInboxMessagesSince(
   const messages: InboxFetchResult["messages"] = [];
   let scannedThrough: Date | null = null;
 
-  await client.connect();
-  const lock = await client.getMailboxLock("INBOX");
-
   try {
-    const uids = await client.search({ since }, { uid: true });
-    if (!uids || uids.length === 0) {
-      return { messages, scannedThrough };
-    }
+    await client.connect();
+    const lock = await client.getMailboxLock("INBOX");
 
-    const pendingUids: number[] = [];
-
-    for await (const msg of client.fetch(
-      uids,
-      { envelope: true, uid: true, internalDate: true },
-      { uid: true },
-    )) {
-      if (!msg.uid) continue;
-      const internalDate = parseImapInternalDate(msg.internalDate);
-      scannedThrough = laterDate(scannedThrough, internalDate);
-
-      const envelopeId = msg.envelope?.messageId?.trim();
-      if (!envelopeId) {
-        pendingUids.push(msg.uid);
-        continue;
+    try {
+      const uids = await client.search({ since }, { uid: true });
+      if (!uids || uids.length === 0) {
+        return { messages, scannedThrough };
       }
-      const messageId = normalizeMessageId(envelopeId);
-      if (!skipMessageIds.has(messageId)) {
-        pendingUids.push(msg.uid);
+
+      const pendingUids: number[] = [];
+
+      for await (const msg of client.fetch(
+        uids,
+        { envelope: true, uid: true, internalDate: true },
+        { uid: true },
+      )) {
+        if (!msg.uid) continue;
+        const internalDate = parseImapInternalDate(msg.internalDate);
+        scannedThrough = laterDate(scannedThrough, internalDate);
+
+        const envelopeId = msg.envelope?.messageId?.trim();
+        if (!envelopeId) {
+          pendingUids.push(msg.uid);
+          continue;
+        }
+        const messageId = normalizeMessageId(envelopeId);
+        if (!skipMessageIds.has(messageId)) {
+          pendingUids.push(msg.uid);
+        }
       }
-    }
 
-    if (pendingUids.length === 0) {
-      return { messages, scannedThrough };
-    }
+      if (pendingUids.length === 0) {
+        return { messages, scannedThrough };
+      }
 
-    for await (const msg of client.fetch(
-      pendingUids,
-      { source: true, uid: true, internalDate: true },
-      { uid: true },
-    )) {
-      if (!msg.source || !msg.uid) continue;
-      messages.push({
-        uid: msg.uid,
-        raw: msg.source,
-        internalDate: parseImapInternalDate(msg.internalDate),
-      });
+      for await (const msg of client.fetch(
+        pendingUids,
+        { source: true, uid: true, internalDate: true },
+        { uid: true },
+      )) {
+        if (!msg.source || !msg.uid) continue;
+        messages.push({
+          uid: msg.uid,
+          raw: msg.source,
+          internalDate: parseImapInternalDate(msg.internalDate),
+        });
+      }
+    } finally {
+      lock.release();
+      await client.logout();
     }
-  } finally {
-    lock.release();
-    await client.logout();
+  } catch (err) {
+    rethrowImapError(creds, err);
   }
 
   return { messages, scannedThrough };
@@ -143,14 +161,15 @@ export async function markMessageSeen(
       await client.logout();
     }
   } catch (err) {
-    logExternalError("imap", "mark-seen", err, {
+    const formatted = formatMailConnectionError(imapEndpoint(creds), err);
+    logExternalError("imap", "mark-seen", formatted, {
       projectId: context?.projectId,
       host: creds.imapHost,
       port: creds.imapPort,
       user: creds.imapUser,
       uid,
     });
-    throw err;
+    throw formatted;
   }
 }
 
