@@ -26,6 +26,7 @@ import {
 import { logger } from "./lib/logger";
 import { deferQueueJob } from "./lib/provider-rate-limit";
 import { runExclusive } from "./lib/run-guard";
+import { clearStaleProjectPollJobs } from "./lib/stale-poll-jobs";
 import {
   getCommentPollConcurrency,
   getImapPollConcurrency,
@@ -462,6 +463,20 @@ async function stopExistingWorker(): Promise<void> {
   }
 }
 
+async function ensureQueue(
+  boss: PgBoss,
+  name: string,
+  options: Omit<NonNullable<Parameters<PgBoss["createQueue"]>[1]>, "name"> = {},
+): Promise<void> {
+  const queueOptions = { name, ...options };
+  const existing = await boss.getQueue(name);
+  if (existing) {
+    await boss.updateQueue(name, queueOptions);
+  } else {
+    await boss.createQueue(name, queueOptions);
+  }
+}
+
 export async function startWorker(): Promise<PgBoss> {
   await stopExistingWorker();
 
@@ -476,30 +491,26 @@ export async function startWorker(): Promise<PgBoss> {
   const boss = new PgBoss(connectionString);
   await boss.start();
 
-  await boss.createQueue(QUEUE_NAMES.IMAP_POLL, {
-    name: QUEUE_NAMES.IMAP_POLL,
+  await ensureQueue(boss, QUEUE_NAMES.IMAP_POLL, {
     policy: "singleton",
     expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
   });
-  await boss.createQueue(QUEUE_NAMES.COMMENT_POLL, {
-    name: QUEUE_NAMES.COMMENT_POLL,
+  await ensureQueue(boss, QUEUE_NAMES.COMMENT_POLL, {
     policy: "singleton",
     expireInSeconds: POLL_JOB_EXPIRE_SECONDS,
   });
-  await boss.createQueue(QUEUE_NAMES.IMAP_POLL_PROJECT, {
-    name: QUEUE_NAMES.IMAP_POLL_PROJECT,
-    policy: "short",
+  await ensureQueue(boss, QUEUE_NAMES.IMAP_POLL_PROJECT, {
+    policy: "singleton",
   });
-  await boss.createQueue(QUEUE_NAMES.COMMENT_POLL_PROJECT, {
-    name: QUEUE_NAMES.COMMENT_POLL_PROJECT,
-    policy: "short",
+  await ensureQueue(boss, QUEUE_NAMES.COMMENT_POLL_PROJECT, {
+    policy: "singleton",
   });
-  await boss.createQueue(QUEUE_NAMES.SEND_EMAIL);
-  await boss.createQueue(QUEUE_NAMES.ENSURE_WEBHOOK);
+  await ensureQueue(boss, QUEUE_NAMES.SEND_EMAIL);
+  await ensureQueue(boss, QUEUE_NAMES.ENSURE_WEBHOOK);
 
   await boss.purgeQueue(QUEUE_NAMES.IMAP_POLL);
   await boss.purgeQueue(QUEUE_NAMES.COMMENT_POLL);
-  await boss.expire();
+  await clearStaleProjectPollJobs(boss);
   logger.info("cleared imap and comment poll queue backlogs");
 
   boss.work(QUEUE_NAMES.IMAP_POLL, { batchSize: 1 }, async () => {

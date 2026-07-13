@@ -1,9 +1,9 @@
+import { DEFAULT_IMAP_POLL_OVERLAP_HOURS } from "@servicebeard/shared";
 import { describe, expect, test } from "bun:test";
-import {
-  advanceImapIngestedThrough,
-  computeImapPollSince,
-  IMAP_POLL_OVERLAP_MS,
-} from "./inbound";
+import { advanceImapIngestedThrough, computeImapPollSince } from "./inbound";
+
+const DEFAULT_IMAP_POLL_OVERLAP_MS =
+  DEFAULT_IMAP_POLL_OVERLAP_HOURS * 60 * 60 * 1000;
 
 describe("imap poll watermark", () => {
   const projectCreatedAt = new Date("2026-06-01T10:00:00Z");
@@ -17,7 +17,7 @@ describe("imap poll watermark", () => {
   test("searches from watermark minus overlap", () => {
     const watermark = new Date("2026-06-10T12:00:00Z");
     expect(computeImapPollSince(projectCreatedAt, watermark)).toEqual(
-      new Date(watermark.getTime() - IMAP_POLL_OVERLAP_MS),
+      new Date(watermark.getTime() - DEFAULT_IMAP_POLL_OVERLAP_MS),
     );
   });
 

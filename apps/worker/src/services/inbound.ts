@@ -11,6 +11,7 @@ import {
   formatAddIssueCommentSuccess,
   formatCreateIssueSuccess,
   formatSendAckInfo,
+  getImapPollOverlapMs,
   isEligibleForInboundRuleEvaluation,
   isEmailEligibleForInboundSync,
   isReplySubject,
@@ -48,9 +49,6 @@ import {
 } from "./rules";
 import { sendEmail } from "./smtp";
 
-/** Re-scan this far before the ingest watermark to tolerate out-of-order delivery. */
-export const IMAP_POLL_OVERLAP_MS = 24 * 60 * 60 * 1000;
-
 export { isEmailEligibleForInboundSync } from "@servicebeard/shared";
 
 export function computeImapPollSince(
@@ -62,7 +60,7 @@ export function computeImapPollSince(
     return new Date(floor);
   }
   return new Date(
-    Math.max(floor, imapIngestedThrough.getTime() - IMAP_POLL_OVERLAP_MS),
+    Math.max(floor, imapIngestedThrough.getTime() - getImapPollOverlapMs()),
   );
 }
 
