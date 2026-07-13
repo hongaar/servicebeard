@@ -37,7 +37,7 @@ import {
   replyBodyWithQuote,
   threadingForParent,
 } from "./email-thread";
-import { maybeReopenIssueOnReply } from "./issue-reopen";
+import { reopenIssueOnReply, resolveClosedIssueReply } from "./issue-reopen";
 import { fetchInboxMessagesSince, markMessageSeen, parseEmail } from "./mail";
 import { createProjectProvider } from "./provider";
 import {
@@ -236,95 +236,108 @@ export async function processInboundEmail(
   const provider = createProjectProvider(project);
 
   const addresses = inboundEmailAddresses(email);
+  let closedReplySourceRuleId: string | null = null;
 
   if (thread) {
-    await maybeReopenIssueOnReply(
+    const reopenContext = {
+      projectId,
+      providerName: project.provider,
+      rules: project.rules.map((rule) => ({
+        id: rule.id,
+        actionStatus: rule.actionStatus,
+        actionReopenOnReply: rule.actionReopenOnReply,
+      })),
+    };
+    const replyAction = await resolveClosedIssueReply(
       provider,
-      {
-        projectId,
-        providerName: project.provider,
-        rules: project.rules.map((rule) => ({
-          id: rule.id,
-          actionStatus: rule.actionStatus,
-          actionReopenOnReply: rule.actionReopenOnReply,
-        })),
-      },
+      reopenContext,
       thread,
-      {
-        senderEmail: email.senderEmail,
-        senderName: email.senderName,
-      },
     );
 
-    const markdownBody = await resolveEmailMarkdown(email, provider, projectId);
-    const commentBody = formatCommentBody(
-      email,
-      project.inboundCommentTemplate,
-      markdownBody,
-      project.provider,
-    );
-    const result = await provider.addComment(thread.issueIid, commentBody, {
-      internal: false,
-    });
+    if (replyAction === "create-new-issue") {
+      closedReplySourceRuleId = thread.matchedRuleId;
+    } else {
+      if (replyAction === "reopen") {
+        await reopenIssueOnReply(provider, reopenContext, thread, {
+          senderEmail: email.senderEmail,
+          senderName: email.senderName,
+        });
+      }
 
-    const [inserted] = await db
-      .insert(emailMessages)
-      .values({
-        threadId: thread.id,
+      const markdownBody = await resolveEmailMarkdown(
+        email,
+        provider,
         projectId,
-        direction: "inbound",
-        messageId: email.messageId,
-        inReplyTo: email.inReplyTo,
-        references: email.references,
-        subject: email.subject,
-        bodyText: email.body,
-        externalNoteId: result.noteId,
-        ...addresses,
-      })
-      .onConflictDoNothing({
-        target: [emailMessages.projectId, emailMessages.externalNoteId],
-      })
-      .returning({ id: emailMessages.id });
-
-    if (!inserted) {
-      logger.debug(
-        { projectId, noteId: result.noteId, messageId: email.messageId },
-        "inbound note already recorded, skipping duplicate",
       );
+      const commentBody = formatCommentBody(
+        email,
+        project.inboundCommentTemplate,
+        markdownBody,
+        project.provider,
+      );
+      const result = await provider.addComment(thread.issueIid, commentBody, {
+        internal: false,
+      });
+
+      const [inserted] = await db
+        .insert(emailMessages)
+        .values({
+          threadId: thread.id,
+          projectId,
+          direction: "inbound",
+          messageId: email.messageId,
+          inReplyTo: email.inReplyTo,
+          references: email.references,
+          subject: email.subject,
+          bodyText: email.body,
+          externalNoteId: result.noteId,
+          ...addresses,
+        })
+        .onConflictDoNothing({
+          target: [emailMessages.projectId, emailMessages.externalNoteId],
+        })
+        .returning({ id: emailMessages.id });
+
+      if (!inserted) {
+        logger.debug(
+          { projectId, noteId: result.noteId, messageId: email.messageId },
+          "inbound note already recorded, skipping duplicate",
+        );
+        await db
+          .update(issueThreads)
+          .set({ lastSeenNoteAt: result.createdAt, updatedAt: new Date() })
+          .where(eq(issueThreads.id, thread.id));
+        return;
+      }
+
       await db
         .update(issueThreads)
         .set({ lastSeenNoteAt: result.createdAt, updatedAt: new Date() })
         .where(eq(issueThreads.id, thread.id));
+
+      logger.info(
+        { threadId: thread.id, messageId: email.messageId },
+        "added comment to existing thread",
+      );
+      recordProjectSyncEvent({
+        projectId,
+        service: project.provider,
+        operation: "add-issue-comment",
+        severity: "success",
+        message: formatAddIssueCommentSuccess({
+          issueIid: thread.issueIid,
+          senderEmail: email.senderEmail,
+          senderName: email.senderName,
+        }),
+        metadata: {
+          threadId: thread.id,
+          issueIid: thread.issueIid,
+          messageId: email.messageId,
+          noteId: result.noteId,
+        },
+      });
       return;
     }
-
-    await db
-      .update(issueThreads)
-      .set({ lastSeenNoteAt: result.createdAt, updatedAt: new Date() })
-      .where(eq(issueThreads.id, thread.id));
-
-    logger.info(
-      { threadId: thread.id, messageId: email.messageId },
-      "added comment to existing thread",
-    );
-    recordProjectSyncEvent({
-      projectId,
-      service: project.provider,
-      operation: "add-issue-comment",
-      severity: "success",
-      message: formatAddIssueCommentSuccess({
-        issueIid: thread.issueIid,
-        senderEmail: email.senderEmail,
-        senderName: email.senderName,
-      }),
-      metadata: {
-        threadId: thread.id,
-        issueIid: thread.issueIid,
-        messageId: email.messageId,
-        noteId: result.noteId,
-      },
-    });
-    return;
   }
 
   if (
@@ -340,7 +353,7 @@ export async function processInboundEmail(
     return;
   }
 
-  const { matched, rule } = evaluateRules(
+  const { matched, rule: evaluatedRule } = evaluateRules(
     project.rules.map((r: (typeof project.rules)[number]) => ({
       ...r,
       actionLabels: r.actionLabels ?? [],
@@ -348,13 +361,28 @@ export async function processInboundEmail(
     email,
   );
 
-  if (!matched || !rule?.actionCreateIssue) {
+  const sourceRule = closedReplySourceRuleId
+    ? project.rules.find((r) => r.id === closedReplySourceRuleId)
+    : undefined;
+  const rule = closedReplySourceRuleId ? (sourceRule ?? null) : evaluatedRule;
+
+  if (closedReplySourceRuleId && !sourceRule) {
+    logger.info(
+      { messageId: email.messageId, ruleId: closedReplySourceRuleId },
+      "source rule missing for closed reply, skipping new issue",
+    );
+    return;
+  }
+
+  if (!closedReplySourceRuleId && (!matched || !rule?.actionCreateIssue)) {
     logger.info(
       { messageId: email.messageId },
       "no matching rule or create disabled",
     );
     return;
   }
+
+  if (!rule) return;
 
   const billingPeriod = await getEntitlements().getBillingPeriod?.(
     project.teamId,

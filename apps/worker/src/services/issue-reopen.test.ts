@@ -1,6 +1,6 @@
 import type { IssueProvider } from "@servicebeard/providers";
 import { describe, expect, test } from "bun:test";
-import { maybeReopenIssueOnReply } from "./issue-reopen";
+import { reopenIssueOnReply, resolveClosedIssueReply } from "./issue-reopen";
 
 function mockProvider(overrides: Partial<IssueProvider> = {}): IssueProvider {
   return {
@@ -36,17 +36,10 @@ const baseEmail = {
   senderName: "Customer",
 };
 
-describe("maybeReopenIssueOnReply", () => {
-  test("skips when matched rule has reopen disabled", async () => {
-    let updated = false;
-    const provider = mockProvider({
-      updateIssueStatus: async () => {
-        updated = true;
-      },
-    });
-
-    const reopened = await maybeReopenIssueOnReply(
-      provider,
+describe("resolveClosedIssueReply", () => {
+  test("returns create-new-issue when reopen is disabled on a closed issue", async () => {
+    const action = await resolveClosedIssueReply(
+      mockProvider(),
       {
         ...baseProject,
         rules: [
@@ -58,33 +51,35 @@ describe("maybeReopenIssueOnReply", () => {
         ],
       },
       baseThread,
-      baseEmail,
     );
 
-    expect(reopened).toBe(false);
-    expect(updated).toBe(false);
+    expect(action).toBe("create-new-issue");
   });
 
-  test("skips when issue is not closed", async () => {
-    let updated = false;
-    const provider = mockProvider({
-      getIssueState: async () => ({ closed: false, statusId: "opened" }),
-      updateIssueStatus: async () => {
-        updated = true;
-      },
-    });
-
-    const reopened = await maybeReopenIssueOnReply(
-      provider,
+  test("returns comment when issue is open", async () => {
+    const action = await resolveClosedIssueReply(
+      mockProvider({
+        getIssueState: async () => ({ closed: false, statusId: "opened" }),
+      }),
       baseProject,
       baseThread,
-      baseEmail,
     );
 
-    expect(reopened).toBe(false);
-    expect(updated).toBe(false);
+    expect(action).toBe("comment");
   });
 
+  test("returns reopen when issue is closed and reopen is enabled", async () => {
+    const action = await resolveClosedIssueReply(
+      mockProvider(),
+      baseProject,
+      baseThread,
+    );
+
+    expect(action).toBe("reopen");
+  });
+});
+
+describe("reopenIssueOnReply", () => {
   test("reopens with rule default status", async () => {
     let targetStatus: string | undefined;
     const provider = mockProvider({
@@ -93,7 +88,7 @@ describe("maybeReopenIssueOnReply", () => {
       },
     });
 
-    const reopened = await maybeReopenIssueOnReply(
+    const reopened = await reopenIssueOnReply(
       provider,
       baseProject,
       baseThread,
@@ -112,7 +107,7 @@ describe("maybeReopenIssueOnReply", () => {
       },
     });
 
-    const reopened = await maybeReopenIssueOnReply(
+    const reopened = await reopenIssueOnReply(
       provider,
       {
         ...baseProject,

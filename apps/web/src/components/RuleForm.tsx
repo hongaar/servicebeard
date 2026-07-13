@@ -335,7 +335,7 @@ export function RuleForm({
           checked={form.actionReopenOnReply ?? true}
           onChange={(v) => setForm((f) => ({ ...f, actionReopenOnReply: v }))}
           disabled={!form.actionCreateIssue}
-          hint="When enabled, a customer reply on a closed issue reopens it using this rule's default status, or your provider's default open status."
+          hint="When enabled, a customer reply on a closed issue reopens it using this rule's default status, or your provider's default open status. When disabled, a new issue is created instead."
         />
 
         <div className={styles.sectionTitle}>Default issue settings</div>
