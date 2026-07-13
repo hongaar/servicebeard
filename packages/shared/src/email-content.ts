@@ -56,8 +56,18 @@ export function isImageContentType(contentType: string): boolean {
   return contentType.toLowerCase().startsWith("image/");
 }
 
+/**
+ * Base64 payloads inside a data: URI are long runs with no `<` or newline.
+ * They make turndown pathologically slow and trigger catastrophic backtracking
+ * in the quote-attribution patterns, so we drop the payload (linear-time, single
+ * quantifier with nothing after it) before any HTML regex/markdown work runs.
+ */
+export function stripInlineBase64Payloads(html: string): string {
+  return html.replace(/;base64,[A-Za-z0-9+/=\s]{256,}/gi, ";base64,");
+}
+
 export function htmlToMarkdown(html: string): string {
-  const cleaned = html
+  const cleaned = stripInlineBase64Payloads(html)
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
   return turndown.turndown(cleaned).trim();
@@ -122,7 +132,7 @@ function removeBalancedTables(html: string, openTagPattern: RegExp): string {
 }
 
 export function stripQuotedHtmlBlocks(html: string): string {
-  let result = truncateHtmlAtGmailQuote(html);
+  let result = truncateHtmlAtGmailQuote(stripInlineBase64Payloads(html));
   result = truncateHtmlAtQuoteAttribution(result);
   result = removeBalancedTables(result, /<table[^>]*data-sb-quote="1"/i);
   result = result.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, "");
@@ -684,12 +694,21 @@ export function buildParsedEmailContent(
   let inlineImages: EmailInlineImage[] = [];
 
   if (bodyHtml) {
-    const strippedHtml = stripQuotedHtmlBlocks(bodyHtml);
-    const { html, slots } = replaceHtmlImagesWithPlaceholders(strippedHtml);
-    bodyHtml = html;
+    // Extract inline images first so their base64 payloads are captured before
+    // any regex/markdown work; stripping quotes afterwards drops quoted images
+    // (their placeholders won't survive) without ever scanning the raw payload.
+    const { html: placeholderedHtml, slots } =
+      replaceHtmlImagesWithPlaceholders(bodyHtml);
+    const strippedHtml = stripQuotedHtmlBlocks(placeholderedHtml);
+    bodyHtml = strippedHtml;
+    // Drop images whose placeholder was removed by quote-stripping (i.e. images
+    // that lived inside quoted history) so they are not re-uploaded.
+    const survivingSlots = slots.filter((slot) =>
+      strippedHtml.includes(slot.placeholder),
+    );
     const usedAttachmentCids = new Set<string>();
 
-    inlineImages = slots.map((slot) => {
+    inlineImages = survivingSlots.map((slot) => {
       if (slot.contentId) {
         const attachment = attachmentImages.find(
           (image) =>

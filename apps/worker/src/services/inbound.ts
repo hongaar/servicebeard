@@ -188,6 +188,10 @@ export async function processImapPoll(projectId: string): Promise<void> {
     } catch (err) {
       logExternalError("inbound", "process-message", err, { projectId, uid });
     }
+
+    // Yield between messages so a large batch cannot monopolize the event loop
+    // and starve the pg-boss cron scheduler / other poll handlers.
+    await new Promise((resolve) => setImmediate(resolve));
   }
 
   const imapIngestedThrough = advanceImapIngestedThrough(

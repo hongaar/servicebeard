@@ -9,7 +9,7 @@ import {
   getImapPollIntervalSeconds,
 } from "@servicebeard/shared";
 import { getEntitlements } from "@servicebeard/shared/entitlements";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import PgBoss from "pg-boss";
 import { loadWorkerExtensions } from "./extensions";
 import { initBugsink } from "./lib/bugsink";
@@ -68,6 +68,28 @@ function isProjectPollDue(
   return Date.now() - lastPollAt.getTime() >= intervalSeconds * 1000;
 }
 
+/**
+ * True when a project poll for this queue is already queued or running. The
+ * singleton policy only dedupes the active state, so a new job could still be
+ * created behind a long-running one; this guard skips enqueue entirely so a slow
+ * poll can never stack up back-to-back work for the same project.
+ */
+async function hasPendingProjectPoll(
+  queueName: string,
+  projectId: string,
+): Promise<boolean> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT 1
+    FROM pgboss.job
+    WHERE name = ${queueName}
+      AND singleton_key = ${projectId}
+      AND state IN ('created', 'retry', 'active')
+    LIMIT 1
+  `);
+  return (rows as unknown as { length: number }).length > 0;
+}
+
 async function scheduleImapPollsForDueProjects(
   boss: PgBoss,
   trace: JobRunTrace,
@@ -81,6 +103,7 @@ async function scheduleImapPollsForDueProjects(
 
   let enqueued = 0;
   let skippedNotDue = 0;
+  let skippedActive = 0;
   let skippedErrors = 0;
 
   for (const project of activeProjects) {
@@ -122,11 +145,15 @@ async function scheduleImapPollsForDueProjects(
         continue;
       }
 
-      const claimTime = new Date();
-      await db
-        .update(projects)
-        .set({ lastImapPollAt: claimTime })
-        .where(eq(projects.id, project.id));
+      // lastImapPollAt is advanced when the poll finishes (see processImapPoll),
+      // not here, so the interval is measured from real completion. Skip if a
+      // poll for this project is still queued or running to avoid stacking.
+      if (
+        await hasPendingProjectPoll(QUEUE_NAMES.IMAP_POLL_PROJECT, project.id)
+      ) {
+        skippedActive++;
+        continue;
+      }
 
       await boss.send(
         QUEUE_NAMES.IMAP_POLL_PROJECT,
@@ -156,6 +183,7 @@ async function scheduleImapPollsForDueProjects(
       activeProjects: activeProjects.length,
       enqueued,
       skippedNotDue,
+      skippedActive,
       skippedErrors,
     },
     "imap poll tick",
@@ -165,6 +193,7 @@ async function scheduleImapPollsForDueProjects(
     activeProjects: activeProjects.length,
     enqueued,
     skippedNotDue,
+    skippedActive,
     skippedErrors,
   };
 }
@@ -182,6 +211,7 @@ async function scheduleCommentPollsForDueProjects(
 
   let enqueued = 0;
   let skippedNotDue = 0;
+  let skippedActive = 0;
   let skippedErrors = 0;
 
   for (const project of activeProjects) {
@@ -223,11 +253,18 @@ async function scheduleCommentPollsForDueProjects(
         continue;
       }
 
-      const claimTime = new Date();
-      await db
-        .update(projects)
-        .set({ lastCommentPollAt: claimTime })
-        .where(eq(projects.id, project.id));
+      // lastCommentPollAt is advanced when the poll finishes
+      // (see pollCommentsForProject), not here, so the interval reflects real
+      // completion. Skip if a poll is still queued or running for this project.
+      if (
+        await hasPendingProjectPoll(
+          QUEUE_NAMES.COMMENT_POLL_PROJECT,
+          project.id,
+        )
+      ) {
+        skippedActive++;
+        continue;
+      }
 
       await boss.send(
         QUEUE_NAMES.COMMENT_POLL_PROJECT,
@@ -258,6 +295,7 @@ async function scheduleCommentPollsForDueProjects(
         activeProjects: activeProjects.length,
         enqueued,
         skippedNotDue,
+        skippedActive,
         skippedErrors,
       },
       "comment poll tick",
@@ -273,6 +311,7 @@ async function scheduleCommentPollsForDueProjects(
     activeProjects: activeProjects.length,
     enqueued,
     skippedNotDue,
+    skippedActive,
     skippedErrors,
   };
 }

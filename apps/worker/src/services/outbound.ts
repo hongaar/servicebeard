@@ -525,6 +525,13 @@ export async function pollCommentsForProject(projectId: string): Promise<void> {
     }
   }
 
+  // Advance the poll watermark on completion (not at enqueue) so the interval is
+  // measured from when work actually finished.
+  await db
+    .update(projects)
+    .set({ lastCommentPollAt: new Date() })
+    .where(eq(projects.id, projectId));
+
   logger.info(
     {
       projectId,

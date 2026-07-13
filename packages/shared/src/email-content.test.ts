@@ -17,6 +17,33 @@ describe("email content conversion", () => {
     expect(content.body).toContain("HTML");
   });
 
+  test("handles large inline base64 images without pathological slowdown", async () => {
+    const { buildParsedEmailContent, stripInlineBase64Payloads } =
+      await import("@servicebeard/shared/email-content");
+
+    // ~600KB base64 payload inside a data URI: one long run with no `<`/newline,
+    // which previously triggered catastrophic regex backtracking + slow turndown.
+    const payload = "A".repeat(600_000);
+    const html =
+      `<p>Hi there, please see the screenshot below.</p>` +
+      `<img src="data:image/png;base64,${payload}" alt="shot" />` +
+      `<blockquote><p>On Mon, Jane wrote:</p><p>Old message</p></blockquote>`;
+
+    const start = Date.now();
+    const content = buildParsedEmailContent(false, html, []);
+    const elapsedMs = Date.now() - start;
+
+    expect(elapsedMs).toBeLessThan(2_000);
+    expect(content.body).toContain("Hi there");
+    expect(content.body).not.toContain("Old message");
+    // The image is still extracted with its full payload for upload.
+    expect(content.inlineImages).toHaveLength(1);
+    expect(content.inlineImages[0]?.content.length).toBeGreaterThan(400_000);
+
+    // Direct helper drops the payload but keeps the marker (linear-time).
+    expect(stripInlineBase64Payloads(`x;base64,${payload}`)).toBe("x;base64,");
+  });
+
   test("replaces cid image refs in markdown", async () => {
     const { replaceCidImagesInMarkdown } =
       await import("@servicebeard/shared/email-content");

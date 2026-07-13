@@ -21,6 +21,7 @@ export type PollTickSummary = {
   activeProjects: number;
   enqueued: number;
   skippedNotDue: number;
+  skippedActive: number;
   skippedErrors: number;
 };
 
